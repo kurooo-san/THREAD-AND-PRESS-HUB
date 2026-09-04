@@ -1,0 +1,12 @@
+# Hard block all direct web access to the storage tree.
+# Payment proofs contain personal data (RA 10173) and must only ever be
+# served through the authenticated handler serve-proof.php.
+#
+# Works on both Apache 2.2 and 2.4.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

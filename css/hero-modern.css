@@ -1,0 +1,196 @@
+/* =========================================================
+   Thread & Press Hub — Modern hero (home page only).
+
+   Loaded by index.php after home-ai.css, and every rule is scoped
+   under `.home-page .hero`, so nothing outside the hero section can
+   be affected. Removing the <link> restores the previous photo hero.
+
+   Accent matches the navbar: gold #d8b878 -> #c8a96e.
+   ========================================================= */
+
+.home-page .hero {
+    --hr-accent-grad: linear-gradient(135deg, #d8b878, #c8a96e);
+    --hr-text:        #f4f2ee;
+    --hr-muted:       rgba(244, 242, 238, 0.66);
+
+    position: relative;
+    min-height: 720px;
+    color: var(--hr-text);
+    /* Fallback only — the photo sits on top of this via .hero-bg. */
+    background: linear-gradient(180deg, #1b1815 0%, #141211 55%, #17161a 100%);
+
+    /* Full-bleed to the very top: slide up behind the floating navbar, then
+       pad the same amount back so the card is never covered by it.
+       --tp-nav-h is published by navbar-modern.css. */
+    margin-top: calc(-1 * var(--tp-nav-h, 104px));
+    padding-top: var(--tp-nav-h, 104px);
+}
+
+/* The hero photo stays. */
+.home-page .hero .hero-bg {
+    display: block;
+    z-index: 0;
+}
+
+/* Wash over the photo: heavy on the left so the card reads cleanly,
+   light on the right so the apparel is still visible. */
+.home-page .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, rgba(14, 12, 11, 0.9) 0%, rgba(14, 12, 11, 0.62) 45%, rgba(14, 12, 11, 0.28) 100%),
+        radial-gradient(900px 440px at 84% 6%, rgba(200, 169, 110, 0.14), transparent 62%);
+}
+
+.home-page .hero .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 620px;
+}
+
+/* ---- The card ---- */
+.home-page .hero .hero-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 2.75rem;
+    border-radius: 26px;
+    /* Near-solid so the type reads like the reference, but still slightly
+       translucent + blurred so it sits ON the photo instead of over it. */
+    background: linear-gradient(180deg, rgba(39, 35, 32, 0.92), rgba(30, 27, 26, 0.94));
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 26px 64px rgba(0, 0, 0, 0.42);
+}
+
+/* ---- Badge ---- */
+.home-page .hero .hero-badge {
+    display: inline-block;
+    margin-bottom: 1.6rem;
+    padding: 7px 15px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    color: var(--hr-text);
+    font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+/* ---- Type ---- */
+.home-page .hero h1 {
+    margin: 0 0 1.15rem;
+    font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
+    font-size: 3.4rem;
+    font-weight: 700;
+    line-height: 1.07;
+    letter-spacing: -0.032em;
+    color: var(--hr-text);
+    text-shadow: none;
+}
+
+.home-page .hero .hero-subtitle {
+    margin: 0 0 2rem;
+    max-width: 34rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.65;
+    color: var(--hr-muted);
+    opacity: 1;
+    text-shadow: none;
+}
+
+/* ---- Buttons ---- */
+.home-page .hero .hero-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+}
+
+.home-page .hero .btn-hero,
+.home-page .hero .btn-hero-ai,
+.home-page .hero .btn-hero-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 48px;
+    padding: 0 1.5rem;
+    border-radius: 12px;
+    font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+/* Primary — solid light */
+.home-page .hero .btn-hero {
+    background: #f7f5f1 !important;
+    color: #16140f !important;
+    border: 0 !important;
+}
+.home-page .hero .btn-hero:hover {
+    background: #ffffff !important;
+    color: #16140f !important;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+}
+
+/* Accent — same orange as the navbar Try-On pill */
+.home-page .hero .btn-hero-ai,
+.home-page .hero .btn-hero-ai:hover {
+    background: var(--hr-accent-grad);
+    color: #1a1a1a !important;
+    border: 0;
+}
+.home-page .hero .btn-hero-ai {
+    box-shadow: 0 10px 26px rgba(200, 169, 110, 0.38);
+}
+.home-page .hero .btn-hero-ai:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px rgba(200, 169, 110, 0.5);
+}
+
+/* Tertiary — plain text, no border (as in the reference) */
+.home-page .hero .btn-hero-outline {
+    background: transparent !important;
+    color: var(--hr-text) !important;
+    border: 0 !important;
+    padding: 0 0.5rem;
+}
+.home-page .hero .btn-hero-outline:hover {
+    background: transparent !important;
+    color: #fff !important;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+@media (max-width: 991.98px) {
+    .home-page .hero { min-height: 620px; }
+    .home-page .hero h1 { font-size: 2.6rem; }
+    .home-page .hero .hero-panel { padding: 2.25rem; border-radius: 22px; }
+}
+
+@media (max-width: 575.98px) {
+    .home-page .hero { min-height: 560px; }
+    .home-page .hero h1 { font-size: 2rem; letter-spacing: -0.025em; }
+    .home-page .hero .hero-subtitle { font-size: 0.94rem; }
+    .home-page .hero .hero-panel { padding: 1.6rem; border-radius: 20px; }
+    .home-page .hero .hero-buttons { gap: 0.55rem; }
+    .home-page .hero .btn-hero,
+    .home-page .hero .btn-hero-ai { height: 46px; padding: 0 1.2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-page .hero .btn-hero:hover,
+    .home-page .hero .btn-hero-ai:hover { transform: none; }
+    .home-page .hero .btn-hero-ai::after { animation: none; }
+}

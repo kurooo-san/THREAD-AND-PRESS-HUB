@@ -1,0 +1,58 @@
+# =========================================================
+# Thread & Press Hub
+#
+# The GitHub repo is PUBLIC, so anything listed here must never
+# be committed. Removing a line does not just change the next
+# push — git history keeps whatever was ever committed, and
+# GitHub caches it even after a force-push.
+# =========================================================
+
+# ---- Secrets -------------------------------------------------
+# .env holds the live Gemini key, DB password, SMTP password and
+# reCAPTCHA secret. .env.example (placeholders only) IS tracked.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Unauthenticated maintenance scripts ---------------------
+# update_admin.php resets the admin password to a hardcoded value
+# and prints it. test_email.php prints the SMTP config and will
+# mail any address given in ?to=. Neither has an auth guard.
+update_admin.php
+test_email.php
+
+# ---- Real customer data (RA 10173) ---------------------------
+# Database dumps containing live user rows, emails and password
+# hashes. The migrate_*.sql schema files ARE tracked.
+threadpresshub.sql
+backup_*.sql
+*.dump
+
+# Uploads: payment receipts, try-on photos of real people,
+# customer design files and support-chat attachments.
+uploads/
+storage/payment-proofs/
+storage/payment-config/
+serve-proof-cache/
+
+# AI-generated product art is regenerated on demand.
+images/products/ai_*
+images/products/aidesign_*
+
+# ---- Dependencies (restore with `composer install`) ----------
+vendor/
+composer.phar
+composer-setup.php
+
+# ---- Local / editor / OS -------------------------------------
+*.bak
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+nbproject/

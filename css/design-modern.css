@@ -1,0 +1,141 @@
+/* =========================================================
+   Custom Design — "floating studio" restyle (pixelthreads-
+   inspired). Loaded ONLY on custom-design.php, additive.
+   Panels become floating islands over an airy stage; the
+   engine, markup and JS are untouched.
+   Light + dark safe: light backgrounds here carry no
+   !important, so dark-mode.css keeps winning in dark mode
+   (explicit dark refinements are provided at the bottom).
+   ========================================================= */
+
+/* ---- Airy stage ---- */
+body .design-tool-container {
+    max-width: 1520px;
+    padding-top: 1.25rem;
+}
+body .design-workspace {
+    gap: 1.6rem;
+    align-items: stretch;
+}
+
+/* ---- Floating island panels ---- */
+body .design-toolbar,
+body .design-preview-panel {
+    border-radius: 26px !important;
+    border: none !important;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow:
+        0 24px 60px rgba(26, 26, 26, 0.12),
+        0 4px 14px rgba(26, 26, 26, 0.06) !important;
+}
+body .design-canvas-area {
+    border-radius: 26px !important;
+    border: none !important;
+    box-shadow:
+        0 24px 60px rgba(26, 26, 26, 0.10),
+        0 4px 14px rgba(26, 26, 26, 0.05) !important;
+    overflow: hidden;
+}
+
+/* Toolbar + preview float independently while you scroll */
+body .design-toolbar,
+body .design-preview-panel {
+    align-self: start;
+    position: sticky;
+    top: 86px;
+}
+body .design-preview-panel {
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+}
+body .design-preview-panel::-webkit-scrollbar { width: 8px; }
+body .design-preview-panel::-webkit-scrollbar-thumb { background: #e2e2e2; border-radius: 8px; }
+
+/* ---- Canvas stage: pill toolbar + whisper-subtle checker ---- */
+body .canvas-toolbar {
+    margin: 0.9rem 0.9rem 0;
+    border: none;
+    border-radius: 999px;
+    background: rgba(250, 250, 250, 0.92);
+    box-shadow: 0 6px 18px rgba(26, 26, 26, 0.08);
+    padding: 0.5rem 0.9rem;
+}
+body .canvas-wrapper {
+    background: repeating-conic-gradient(#f6f6f4 0% 25%, #fdfdfc 0% 50%) 50% / 22px 22px;
+}
+
+/* ---- Controls: soft pills + micro-motion ---- */
+body .canvas-action-btn,
+body .side-toggle-btn {
+    border-radius: 999px !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease !important;
+}
+body .canvas-action-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.10); }
+
+body .tool-btn,
+body .apparel-type-btn,
+body .apparel-tab {
+    border-radius: 14px !important;
+}
+body .tool-btn:hover,
+body .apparel-type-btn:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); }
+
+/* Section headers: quieter, studio-like */
+body .tool-section h6 { letter-spacing: 0.09em; }
+
+/* Live preview box melts into its floating card */
+body .live-preview-box,
+body .preview-3d-container { border-radius: 18px; }
+
+/* Price estimate: soft inset card */
+body .price-calculator { border-radius: 18px !important; }
+
+/* Submit button: bolder, rounder */
+body .btn-submit-design {
+    border-radius: 999px !important;
+    padding: 0.9rem 1.25rem !important;
+    letter-spacing: 0.02em;
+}
+
+/* ---- Entrance: panels drift in ---- */
+@keyframes panelIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+body .design-toolbar  { animation: panelIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both 0.05s; }
+body .design-canvas-area { animation: panelIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both 0.12s; }
+body .design-preview-panel { animation: panelIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both 0.19s; }
+
+/* ---- Dark mode refinements (must outrank dark-mode.css) ---- */
+html.dark-mode body .design-toolbar,
+html.dark-mode body .design-preview-panel {
+    background: rgba(26, 26, 32, 0.90) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+html.dark-mode body .design-canvas-area {
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5) !important;
+}
+html.dark-mode body .canvas-toolbar {
+    background: rgba(30, 30, 36, 0.92) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Accessibility ---- */
+@media (prefers-reduced-motion: reduce) {
+    body .design-toolbar,
+    body .design-canvas-area,
+    body .design-preview-panel { animation: none !important; }
+    body .canvas-action-btn,
+    body .tool-btn { transition: none !important; }
+}
+
+/* Small screens: un-stick the panels so nothing overlaps */
+@media (max-width: 991px) {
+    body .design-toolbar,
+    body .design-preview-panel {
+        position: static;
+        max-height: none;
+    }
+}

@@ -1,0 +1,380 @@
+Thread and Press Hub - Apparel Studio Ordering System
+========================================
+
+INSTALLATION INSTRUCTIONS
+=========================
+
+REQUIREMENTS:
+- PHP 7.4 or higher
+- MySQL/MariaDB
+- Apache with mod_rewrite
+- XAMPP (or similar development environment)
+
+STEP 1: DATABASE SETUP
+======================
+
+1. Open phpMyAdmin: http://localhost/phpmyadmin
+2. Click "New" to create a database
+3. Enter database name: threadpresshub
+4. Select database
+5. Go to "Import" tab
+6. Choose threadpresshub.sql file
+7. Click "Go" to import
+
+STEP 2: VERIFY FILES
+====================
+
+Check that these files exist in C:\xampp\htdocs\\
+
+Files to verify:
+- index.php
+- login.php
+- register.php
+- shop.php
+- cart.php
+- checkout.php
+- orders.php
+- profile.php
+- logout.php
+- order_confirmation.php
+- payment_gcash.php
+- order_details.php
+- admin/dashboard.php
+- admin/products.php
+- admin/orders.php
+- admin/users.php
+- admin/order_details.php
+- includes/config.php
+- includes/header.php
+- includes/footer.php
+- css/style.css
+- threadpresshub.sql
+- README.md
+- SETUP_GUIDE.md
+
+Folders to verify/create:
+- images/
+- images/products/
+- includes/
+- admin/
+- css/
+
+STEP 3: FILE PERMISSIONS
+=========================
+
+Windows:
+1. Right-click threadpresshub folder
+2. Properties → Security
+3. Click Edit
+4. Select your user
+5. Check "Modify"
+6. Apply → OK
+
+STEP 4: DATABASE CONFIGURATION
+==============================
+
+The includes/config.php contains:
+- Host: localhost
+- User: root
+- Password: (empty by default)
+- Database: threadpresshub
+
+If your MySQL has different credentials, edit includes/config.php
+
+STEP 5: START SERVICES
+======================
+
+1. Open XAMPP Control Panel
+2. Click "Start" for Apache
+3. Click "Start" for MySQL
+4. Wait for both to show green
+
+STEP 6: FIRST ACCESS
+====================
+
+1. Open browser
+2. Visit: http://localhost/threadpresshub/
+3. You should see the Thread and Press Hub homepage
+
+STEP 7: ADMIN LOGIN
+===================
+
+First admin account:
+- Email: admin@threadpresshub.com
+- Password: admin123
+
+IMPORTANT: Change this password after first login!
+
+To change admin password:
+1. Login with admin account
+2. Click Profile (top right)
+3. Enter current password
+4. Enter new password
+5. Save Changes
+
+STEP 8: ADD PRODUCTS
+====================
+
+1. Login as admin
+2. Click Admin (top navigation)
+3. Click "Manage Products"
+4. Fill in product details:
+   - Name
+   - Price
+   - Category
+   - Description
+   - Image (upload JPG/PNG)
+5. Click "Add Product"
+
+STEP 9: TEST THE SYSTEM
+=======================
+
+Create a test customer account:
+1. Go to http://localhost/threadpresshub/
+2. Click "Register"
+3. Fill in details
+4. Select account type (Regular, PWD, or Senior)
+5. Click "Create Account"
+
+Test ordering:
+1. Click "Login" or go to menu
+2. Browse products
+3. Add to cart
+4. View cart
+5. Checkout
+6. Select payment method
+7. Enter delivery address
+8. Place order
+
+TROUBLESHOOTING
+===============
+
+ERROR: "Connection failed"
+→ Check if MySQL is running
+→ Verify database name in includes/config.php
+→ Check MySQL user/password
+
+ERROR: "No such file or directory"
+→ Verify threadpresshub.sql exists
+→ Check all PHP files are in correct folders
+→ Check includes/config.php database name matches
+
+ERROR: Images not uploading
+→ Create images/products/ folder if missing
+→ Check folder permissions (must be writable)
+→ Check PHP upload size in php.ini
+
+ERROR: Cart not working
+→ Check browser allows localStorage
+→ Try different browser
+→ Clear browser cache
+
+ERROR: Login/register not working
+→ Check database has users table
+→ Verify config.php database connection
+→ Check MySQL service is running
+
+FEATURES
+========
+
+CUSTOMER FEATURES:
+✓ User registration and authentication
+✓ Browse coffee menu
+✓ Add items to shopping cart
+✓ View cart with quantity management
+✓ Checkout with order review
+✓ PWD Discount (12% off)
+✓ Senior Citizen Discount (15% off)
+✓ GCash payment option
+✓ Cash on Delivery option
+✓ Order tracking
+✓ Order history
+✓ User profile management
+
+ADMIN FEATURES:
+✓ Dashboard with statistics
+✓ Product management
+✓ Order management
+✓ Order status updates
+✓ User account viewing
+✓ Revenue tracking
+
+PAYMENT OPTIONS
+===============
+
+1. GCash Payment
+   - Digital payment
+   - Reference verification
+   - Real-time confirmation
+
+2. Cash on Delivery
+   - Pay on delivery
+   - No upfront payment
+   - Driver collects payment
+
+DISCOUNT STRUCTURE
+==================
+
+Account Types:
+1. Regular: No discount
+2. PWD (Person with Disability): 12% discount
+   - Requires valid PWD ID
+3. Senior Citizen: 15% discount
+   - Requires valid Senior ID
+
+Discounts applied at checkout
+
+DELIVERY
+========
+
+- Delivery Fee: ₱50
+- Free for orders over ₱500 (customizable)
+- Delivery address required
+- Special instructions supported
+
+DATABASE TABLES
+===============
+
+users
+- id, fullname, email, phone
+- password, user_type
+- pwd_id, senior_id
+- created_at, updated_at
+
+products
+- id, name, description
+- price, category, image
+- status, created_at, updated_at
+
+orders
+- id, user_id, subtotal
+- discount_amount, discount_type
+- delivery_fee, total
+- payment_method, payment_reference
+- delivery_address, notes, status
+- created_at, updated_at
+
+order_items
+- id, order_id, product_id
+- quantity, unit_price, subtotal
+
+gcash_transactions
+- id, order_id, reference_number
+- amount, status
+- created_at, updated_at
+
+CUSTOMIZATION
+=============
+
+Change App Name:
+- Edit includes/header.php (line with "CaféHaven")
+- Edit includes/footer.php
+- Edit css/style.css
+
+Change Colors:
+- Edit css/style.css CSS variables
+- --coffee-dark: #2d1810
+- --accent-green: #00704a
+
+Change Delivery Fee:
+- checkout.php and cart.php
+- DELIVERY_FEE = 50
+
+Add New Categories:
+- admin/products.php category dropdown
+- Add category value
+
+Add New Discount:
+- includes/config.php calculateDiscount() function
+
+SECURITY NOTES
+==============
+
+BEFORE GOING LIVE:
+☐ Change admin password
+☐ Update database credentials
+☐ Enable HTTPS/SSL
+☐ Implement real GCash API
+☐ Set up regular backups
+☐ Update PHP/MySQL
+☐ Set proper file permissions
+☐ Use environment variables for sensitive data
+☐ Implement CSRF tokens
+☐ Add rate limiting
+☐ Regular security audits
+
+SUPPORT
+=======
+
+For issues:
+1. Check README.md for detailed documentation
+2. Check browser console (F12) for errors
+3. Check PHP error logs in XAMPP
+4. Verify all files are in correct locations
+5. Verify database is created properly
+6. Check MySQL is running
+
+FILES STRUCTURE
+===============
+
+threadpresshub/
+├── index.php (Homepage)
+├── login.php (Login page)
+├── register.php (Registration)
+├── logout.php (Logout)
+├── shop.php (Product menu)
+├── cart.php (Shopping cart)
+├── checkout.php (Order checkout)
+├── orders.php (Order history)
+├── profile.php (User profile)
+├── payment_gcash.php (GCash payment)
+├── order_confirmation.php (Order confirmation)
+├── order_details.php (Order details)
+├── admin/
+│   ├── dashboard.php (Admin dashboard)
+│   ├── products.php (Product management)
+│   ├── orders.php (Order management)
+│   ├── users.php (User management)
+│   └── order_details.php (Admin order view)
+├── includes/
+│   ├── config.php (Database config)
+│   ├── header.php (Navigation header)
+│   └── footer.php (Page footer)
+├── css/
+│   └── style.css (Styling)
+├── images/
+│   └── products/ (Product images)
+├── threadpresshub.sql (Database dump)
+├── README.md (Full documentation)
+└── SETUP_GUIDE.md (This file)
+
+NEXT STEPS
+==========
+
+1. ✓ Install and configure database
+2. ✓ Upload files to threadpresshub folder
+3. ✓ Start Apache and MySQL
+4. ✓ Test homepage access
+5. ✓ Login as admin
+6. ✓ Change admin password
+7. ✓ Add your coffee products
+8. ✓ Test customer registration
+9. ✓ Test placing an order
+10. ✓ Customize branding (optional)
+
+READY TO GO!
+============
+
+Thread and Press Hub is now set up and ready to accept orders.
+
+Start by:
+1. Adding your coffee products
+2. Testing the ordering system
+3. Customizing the branding
+4. Going live when ready!
+
+Enjoy your online coffee shop!
+
+---
+
+For detailed documentation: Read README.md

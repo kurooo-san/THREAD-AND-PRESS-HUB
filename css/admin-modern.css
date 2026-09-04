@@ -1,0 +1,757 @@
+/* =========================================================
+   Thread & Press Hub — Admin shell (sidebar + dashboard).
+
+   Loaded by header.php on /admin/ pages only, AFTER style.css, so it
+   wins over the older admin rules without editing them. Every rule is
+   scoped under body.admin-page — remove the <link> and the previous
+   admin styling comes straight back.
+   ========================================================= */
+
+body.admin-page {
+    --ad-page:        #f2f0ec;
+    --ad-card:        #ffffff;
+    --ad-line:        #e6e3dc;
+    --ad-ink:         #16171a;
+    --ad-muted:       #6f6b63;
+    --ad-faint:       #97928a;
+
+    --ad-amber:       #d9884c;
+    --ad-amber-lite:  #e8a05a;
+    --ad-amber-deep:  #c96a3a;
+    --ad-amber-grad:  linear-gradient(135deg, #e8a05a, #c96a3a);
+    --ad-amber-tint:  rgba(232, 149, 90, 0.14);
+
+    --ad-panel:       linear-gradient(180deg, #17181b, #101114);
+    --ad-on-dark:     #f4f2ee;
+    --ad-on-dark-dim: rgba(244, 242, 238, 0.65);
+    --ad-on-dark-lbl: rgba(244, 242, 238, 0.35);
+    --ad-hairline:    rgba(255, 255, 255, 0.08);
+
+    --ad-ok-bg:       #e8f3ea;  --ad-ok-fg:       #2c6e3f;
+    --ad-warn-bg:     #faf3dc;  --ad-warn-fg:     #8a6d1a;
+    --ad-info-bg:     #f4ede2;  --ad-info-fg:     #a5601e;
+
+    background: var(--ad-page) !important;
+    font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
+}
+
+body.admin-page .admin-layout {
+    display: flex !important;
+    /* The storefront navbar is not rendered on admin pages any more, so the
+       shell owns the full viewport instead of `calc(100vh - 60px)`. */
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* =========================================================
+   Sidebar
+   ========================================================= */
+body.admin-page .admin-sidebar {
+    width: 264px;
+    min-width: 264px;
+    background: var(--ad-panel) !important;
+    color: var(--ad-on-dark) !important;
+    border-right: 1px solid var(--ad-hairline);
+    display: flex !important;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 1040;
+    font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
+}
+
+/* ---- Header ---- */
+body.admin-page .ad-side-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 16px;
+    border-bottom: 1px solid var(--ad-hairline);
+}
+body.admin-page .ad-logo {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 11px;
+    background: var(--ad-amber-grad);
+    color: #1b1206;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+body.admin-page .ad-wordmark { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+body.admin-page .ad-wordmark b {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+}
+body.admin-page .ad-wordmark span {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ad-amber-lite);
+    margin-top: 2px;
+}
+body.admin-page .ad-side-close {
+    margin-left: auto;
+    background: none;
+    border: 0;
+    color: var(--ad-on-dark-dim);
+    padding: 4px;
+    line-height: 0;
+    cursor: pointer;
+}
+body.admin-page .ad-side-close:hover { color: #fff; }
+
+/* ---- Nav ---- */
+body.admin-page .ad-side-nav {
+    flex: 1 1 auto;
+    padding: 12px 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 0;
+}
+body.admin-page .ad-side-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--ad-on-dark-lbl);
+    padding: 16px 12px 6px;
+}
+body.admin-page .ad-side-link {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    color: var(--ad-on-dark-dim);
+    font-size: 13.5px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+body.admin-page .ad-side-link svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    stroke: currentColor;
+}
+body.admin-page .ad-side-link:hover,
+body.admin-page .ad-side-link:focus {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    text-decoration: none;
+}
+body.admin-page .ad-side-link.active {
+    background: var(--ad-amber-tint);
+    color: #f7f5f1;
+}
+body.admin-page .ad-side-link.active svg { stroke: var(--ad-amber-lite); }
+
+body.admin-page .ad-side-badge {
+    margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--ad-amber-lite);
+    color: #1b1206;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* ---- Pinned footer ---- */
+body.admin-page .ad-side-foot {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid var(--ad-hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+body.admin-page .ad-user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-decoration: none;
+    color: inherit;
+}
+body.admin-page .ad-user-chip:hover { background: rgba(255, 255, 255, 0.08); text-decoration: none; }
+body.admin-page .ad-avatar {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--ad-amber-grad);
+    color: #1b1206;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+body.admin-page .ad-user-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+body.admin-page .ad-user-text b {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+body.admin-page .ad-user-text span { font-size: 10.5px; color: var(--ad-on-dark-lbl); white-space: nowrap; }
+body.admin-page .ad-signout {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--ad-on-dark-lbl);
+    line-height: 0;
+    padding: 4px;
+    border-radius: 8px;
+}
+body.admin-page .ad-signout:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+body.admin-page .ad-signout svg { width: 15px; height: 15px; stroke: currentColor; }
+
+/* =========================================================
+   Page shell
+   ========================================================= */
+body.admin-page .admin-main-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: var(--ad-page);
+}
+body.admin-page .admin-container {
+    max-width: 1360px;
+    padding: 28px 32px 48px;
+    margin: 0 auto;
+    color: var(--ad-ink);
+}
+
+body.admin-page .ad-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+}
+body.admin-page .ad-head h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+    color: var(--ad-ink);
+}
+body.admin-page .ad-head p { margin: 0; font-size: 13.5px; color: var(--ad-muted); }
+body.admin-page .ad-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Clears the fixed notification bell, which lives in the sidebar include
+       so every admin page keeps it. */
+    padding-right: 56px;
+}
+body.admin-page .ad-select {
+    appearance: none;
+    -webkit-appearance: none;
+    height: 40px;
+    padding: 0 34px 0 14px;
+    border-radius: 11px;
+    border: 1px solid #ddd9d0;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f6b63' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 11px center;
+    background-size: 15px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ad-ink);
+    cursor: pointer;
+}
+
+/* =========================================================
+   Cards
+   ========================================================= */
+body.admin-page .ad-card {
+    background: var(--ad-card);
+    border: 1px solid var(--ad-line);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+body.admin-page .ad-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 16px;
+    margin-bottom: 18px;
+}
+body.admin-page .ad-stat-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+body.admin-page .ad-stat-label { font-size: 12.5px; font-weight: 500; color: var(--ad-muted); }
+body.admin-page .ad-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--ad-ink);
+}
+body.admin-page .ad-stat-sub { margin-top: 6px; font-size: 12px; color: var(--ad-faint); }
+
+body.admin-page .ad-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+body.admin-page .ad-trend.up   { background: var(--ad-ok-bg);   color: var(--ad-ok-fg); }
+body.admin-page .ad-trend.down { background: #fbeaea;           color: #9b2c2c; }
+body.admin-page .ad-trend.flat { background: #f0eee9;           color: var(--ad-muted); }
+
+/* =========================================================
+   Chart + order status row
+   ========================================================= */
+body.admin-page .ad-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+    gap: 16px;
+    margin-bottom: 18px;
+    align-items: start;
+}
+@media (max-width: 1100px) {
+    body.admin-page .ad-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+body.admin-page .ad-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+body.admin-page .ad-card-head h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--ad-ink);
+    letter-spacing: -0.01em;
+}
+body.admin-page .ad-card-head p { margin: 3px 0 0; font-size: 12px; color: var(--ad-faint); }
+
+body.admin-page .ad-legend { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+body.admin-page .ad-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ad-muted); }
+body.admin-page .ad-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+body.admin-page .ad-chart-wrap { height: 300px; }
+
+/* ---- Order status rows ---- */
+body.admin-page .ad-status-row { margin-bottom: 14px; }
+body.admin-page .ad-status-row:last-of-type { margin-bottom: 0; }
+body.admin-page .ad-status-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 7px;
+}
+body.admin-page .ad-status-top b { font-size: 13px; font-weight: 600; color: var(--ad-ink); }
+body.admin-page .ad-status-top span { font-size: 13px; font-weight: 700; color: var(--ad-muted); }
+body.admin-page .ad-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: #efece6;
+    overflow: hidden;
+}
+body.admin-page .ad-bar i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--ad-faint);
+}
+body.admin-page .ad-bar i.c-green  { background: #3f9d5f; }
+body.admin-page .ad-bar i.c-amber  { background: #d9884c; }
+body.admin-page .ad-bar i.c-yellow { background: #e0b93f; }
+body.admin-page .ad-bar i.c-blue   { background: #3f7fd9; }
+
+body.admin-page .ad-alert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 13px 14px;
+    border-radius: 12px;
+    background: #faf6ef;
+    border: 1px solid #ece3d4;
+}
+body.admin-page .ad-alert div { min-width: 0; }
+body.admin-page .ad-alert small { display: block; font-size: 11.5px; color: var(--ad-muted); }
+body.admin-page .ad-alert b { font-size: 14px; font-weight: 700; color: var(--ad-ink); }
+body.admin-page .ad-btn-dark {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 15px;
+    border-radius: 9px;
+    background: #17181b;
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 0;
+}
+body.admin-page .ad-btn-dark:hover { background: #26282c; color: #fff; text-decoration: none; }
+
+/* =========================================================
+   Recent orders table
+   ========================================================= */
+body.admin-page .ad-table-wrap { overflow-x: auto; }
+body.admin-page .ad-table { width: 100%; border-collapse: collapse; }
+body.admin-page .ad-table th {
+    text-align: left;
+    padding: 0 14px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ad-faint);
+    border-bottom: 1px solid var(--ad-line);
+    white-space: nowrap;
+}
+body.admin-page .ad-table td {
+    padding: 13px 14px;
+    font-size: 13.5px;
+    color: var(--ad-ink);
+    border-bottom: 1px solid #f1eee8;
+    white-space: nowrap;
+}
+body.admin-page .ad-table tbody tr:last-child td { border-bottom: 0; }
+body.admin-page .ad-table tbody tr:hover { background: #faf8f4; }
+body.admin-page .ad-table .ad-num { font-weight: 700; }
+
+body.admin-page .ad-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+body.admin-page .ad-pill.s-pending   { background: var(--ad-warn-bg); color: var(--ad-warn-fg); }
+body.admin-page .ad-pill.s-confirmed { background: var(--ad-info-bg); color: var(--ad-info-fg); }
+body.admin-page .ad-pill.s-completed { background: var(--ad-ok-bg);   color: var(--ad-ok-fg); }
+body.admin-page .ad-pill.s-other     { background: #eeecE7; color: var(--ad-muted); }
+
+body.admin-page .ad-btn-out {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 13px;
+    border-radius: 8px;
+    border: 1px solid #ddd9d0;
+    background: #fff;
+    color: var(--ad-ink);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+}
+body.admin-page .ad-btn-out:hover { background: #faf8f4; color: var(--ad-ink); text-decoration: none; }
+
+/* ---- Row action buttons (Edit / Ban / Delete) ----
+   Kept on one line: the cell is a flex row, and each POST sits in its own
+   inline form, so the existing confirm() handlers and CSRF fields are
+   untouched. Tints stay muted so a table of them still reads as data. */
+body.admin-page .ad-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+body.admin-page .ad-actions form { display: inline-flex; margin: 0; }
+
+body.admin-page .ad-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 8px;
+    border: 1px solid #ddd9d0;
+    background: #fff;
+    color: var(--ad-ink);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+body.admin-page .ad-act svg { width: 14px; height: 14px; stroke: currentColor; flex-shrink: 0; }
+body.admin-page .ad-act:hover,
+body.admin-page .ad-act:focus { background: #faf8f4; color: var(--ad-ink); text-decoration: none; }
+body.admin-page .ad-act:focus-visible { outline: 2px solid var(--ad-amber); outline-offset: 1px; }
+
+body.admin-page .ad-act-warn { color: #8a5a12; background: #fdf8ef; border-color: #e8d9bd; }
+body.admin-page .ad-act-warn:hover,
+body.admin-page .ad-act-warn:focus { color: #8a5a12; background: #f7eeda; border-color: #dcc79c; }
+
+body.admin-page .ad-act-ok { color: var(--ad-ok-fg); background: #f2f9f4; border-color: #cfe4d6; }
+body.admin-page .ad-act-ok:hover,
+body.admin-page .ad-act-ok:focus { color: var(--ad-ok-fg); background: #e6f2ea; border-color: #b6d6c1; }
+
+body.admin-page .ad-act-danger { color: #9b2c2c; background: #fdf5f5; border-color: #ecd2d2; }
+body.admin-page .ad-act-danger:hover,
+body.admin-page .ad-act-danger:focus { color: #9b2c2c; background: #f8e7e7; border-color: #dfb6b6; }
+
+@media (max-width: 767.98px) {
+    body.admin-page .ad-act { padding: 0 9px; }
+    body.admin-page .ad-act .ad-act-text { display: none; }  /* icon-only when tight */
+}
+
+body.admin-page .ad-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ad-amber-deep);
+    text-decoration: none;
+    white-space: nowrap;
+}
+body.admin-page .ad-link:hover { text-decoration: underline; color: var(--ad-amber-deep); }
+
+body.admin-page .ad-empty { padding: 28px 4px; text-align: center; font-size: 13px; color: var(--ad-faint); }
+
+/* =========================================================
+   Forms inside admin cards
+   Scoped to .admin-container so Bootstrap's .form-control keeps working
+   everywhere else; these only change how it looks on admin pages.
+   ========================================================= */
+body.admin-page .admin-container .form-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ad-muted);
+    margin-bottom: 6px;
+}
+body.admin-page .admin-container .form-label small { font-weight: 500; color: var(--ad-faint); }
+
+body.admin-page .admin-container .form-control,
+body.admin-page .admin-container .form-select {
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid #ddd9d0;
+    background-color: #fff;
+    font-family: inherit;
+    font-size: 13.5px;
+    color: var(--ad-ink);
+    box-shadow: none;
+}
+body.admin-page .admin-container textarea.form-control { height: auto; min-height: 88px; padding: 10px 12px; line-height: 1.55; }
+body.admin-page .admin-container input[type="file"].form-control { padding: 8px 12px; height: auto; }
+body.admin-page .admin-container .form-control-sm { height: 34px; padding: 0 9px; font-size: 13px; border-radius: 8px; }
+body.admin-page .admin-container .form-control:focus,
+body.admin-page .admin-container .form-select:focus {
+    border-color: var(--ad-amber);
+    box-shadow: 0 0 0 3px rgba(217, 136, 76, 0.15);
+    background-color: #fff;
+}
+body.admin-page .admin-container .form-control::placeholder { color: #b4afa6; }
+
+body.admin-page .admin-container .form-check-input:checked {
+    background-color: var(--ad-amber);
+    border-color: var(--ad-amber);
+}
+body.admin-page .admin-container .form-check-input:focus {
+    border-color: var(--ad-amber);
+    box-shadow: 0 0 0 3px rgba(217, 136, 76, 0.15);
+}
+body.admin-page .admin-container .form-check-label { font-size: 13.5px; color: var(--ad-ink); }
+body.admin-page .admin-container .form-text { font-size: 12px; color: var(--ad-faint); }
+
+/* Full-width primary action (e.g. "Add Product") */
+body.admin-page .ad-btn-block {
+    width: 100%;
+    height: 46px;
+    justify-content: center;
+    margin-left: 0;
+    border-radius: 11px;
+    font-size: 13.5px;
+}
+
+/* Ghost / secondary button used beside a primary one */
+body.admin-page .ad-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 40px;
+    padding: 0 15px;
+    border-radius: 10px;
+    border: 1px solid #ddd9d0;
+    background: #fff;
+    color: var(--ad-ink);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+body.admin-page .ad-btn-ghost:hover { background: #faf8f4; color: var(--ad-ink); }
+body.admin-page .ad-btn-dark svg,
+body.admin-page .ad-btn-ghost svg { width: 15px; height: 15px; stroke: currentColor; flex-shrink: 0; }
+
+/* Small uppercase tag, e.g. the "Gemini" chip */
+body.admin-page .ad-tag {
+    display: inline-block;
+    vertical-align: middle;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #17181b;
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* Alerts */
+body.admin-page .admin-container .alert {
+    border-radius: 12px;
+    border: 1px solid transparent;
+    padding: 12px 15px;
+    font-size: 13.5px;
+    margin-bottom: 18px;
+}
+body.admin-page .admin-container .alert-success { background: var(--ad-ok-bg); border-color: #cfe4d6; color: var(--ad-ok-fg); }
+body.admin-page .admin-container .alert-danger  { background: #fdf5f5; border-color: #ecd2d2; color: #9b2c2c; }
+
+/* Stock cell: number field + save button on one line */
+body.admin-page .ad-stock {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+body.admin-page .ad-stock .form-control-sm { width: 68px; text-align: center; }
+body.admin-page .ad-stock-note { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; }
+body.admin-page .ad-stock-note.warn { color: #8a5a12; }
+body.admin-page .ad-stock-note.out  { color: #9b2c2c; }
+
+/* Icon-only variant of the row action button */
+body.admin-page .ad-act.ad-act-icon { padding: 0; width: 30px; justify-content: center; }
+
+/* =========================================================
+   Notification bell (rendered by the sidebar include)
+   ========================================================= */
+body.admin-page #adminNotifWrap { position: fixed; top: 28px; right: 32px; z-index: 1050; }
+body.admin-page #adminNotifBtn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 11px;
+    background: #fff;
+    border: 1px solid #ddd9d0;
+    color: var(--ad-ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+    cursor: pointer;
+}
+body.admin-page #adminNotifBtn:hover { background: #faf8f4; }
+body.admin-page #adminNotifBtn svg { width: 17px; height: 17px; stroke: currentColor; }
+body.admin-page #adminNotifBadge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--ad-amber-lite) !important;
+    color: #1b1206 !important;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    border: 2px solid var(--ad-page);
+    box-sizing: content-box;
+}
+body.admin-page #adminNotifPanel {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 320px;
+    background: #fff;
+    border: 1px solid var(--ad-line);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(20, 18, 14, 0.14);
+    overflow: hidden;
+}
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+body.admin-page .sidebar-toggle {
+    position: fixed;
+    top: 28px;
+    left: 18px;
+    z-index: 1041;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    border: 1px solid #ddd9d0;
+    background: #fff;
+    color: var(--ad-ink);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+@media (max-width: 991.98px) {
+    body.admin-page .admin-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    body.admin-page .admin-sidebar.open { transform: translateX(0); }
+    body.admin-page .admin-container { padding: 24px 18px 40px; }
+    body.admin-page .ad-head { padding-top: 46px; }
+    body.admin-page .ad-head-actions { padding-right: 0; }
+    body.admin-page #adminNotifWrap { top: 28px; right: 18px; }
+}
+
+@media (max-width: 575.98px) {
+    body.admin-page .ad-head h1 { font-size: 23px; }
+    body.admin-page .ad-chart-wrap { height: 240px; }
+}

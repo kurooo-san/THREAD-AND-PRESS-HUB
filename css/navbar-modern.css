@@ -1,0 +1,511 @@
+/* =========================================================
+   Thread & Press Hub — Modern floating navbar.
+
+   Loaded AFTER style.css, and every rule is scoped under .tp-nav (a
+   marker class added to the existing .cafe-navbar). That gives these
+   rules higher specificity than the older navbar rules without editing
+   them, so removing this file + the marker class restores the previous
+   navbar exactly.
+
+   The bar is dark on a light page. Colours all come from the token
+   block below — change them there, not rule by rule.
+   ========================================================= */
+
+/* Total vertical space the navbar occupies (shell height + its margins).
+   Published on :root so the hero can pull itself up by exactly this much
+   and sit underneath the floating bar. Keep in sync with .tp-nav-shell.
+   --tp-nav-gap is the bar's stand-off from the viewport top while stuck. */
+:root { --tp-nav-gap: 16px; --tp-nav-h: 104px; }   /* 16 + 72 shell + 16 */
+@media (max-width: 991.98px) { :root { --tp-nav-h: 96px; } }   /* 16 + 64 + 16 */
+@media (max-width: 575.98px) { :root { --tp-nav-gap: 10px; --tp-nav-h: 84px; } } /* 10 + 64 + 10 */
+
+/* ---- Colour tokens ---- */
+.tp-nav {
+    /* Transparent: the bar floats over whatever is behind it, so a hero
+       image can run full-bleed to the top of the page. */
+    --nv-strip:         transparent;
+    --nv-shell:         linear-gradient(180deg, #17181b, #101114);
+    --nv-shell-border:  rgba(255, 255, 255, 0.08);
+    --nv-shell-shadow:  0 12px 32px rgba(10, 10, 12, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --nv-surface:       #1b1c20;
+    --nv-surface-soft:  rgba(255, 255, 255, 0.06);
+    --nv-border:        rgba(255, 255, 255, 0.12);
+    --nv-text:          #f4f2ee;
+    --nv-muted:         rgba(244, 242, 238, 0.55);
+    --nv-icon:          rgba(244, 242, 238, 0.8);
+    --nv-icon-hover:    rgba(244, 242, 238, 1);
+    --nv-active-bg:     #ffffff;
+    --nv-active-text:   #101114;
+    --nv-hover-bg:      rgba(255, 255, 255, 0.07);
+    --nv-accent:        #c8a96e;
+    --nv-accent-grad:   linear-gradient(135deg, #d8b878, #c8a96e);
+    --nv-avatar:        linear-gradient(135deg, #8a6a52, #5f4636);
+}
+
+/* =========================================================
+   Strip + floating shell
+   ========================================================= */
+.tp-nav.cafe-navbar {
+    position: sticky;
+    /* The 16px stand-off lives in the shell's margin, NOT in `top`. Putting it
+       in both would stack them and park the stuck bar 32px down instead of 16.
+       Distance from the viewport top while stuck === --tp-nav-gap. */
+    top: 0;
+    z-index: 50;
+    background: var(--nv-strip) !important;
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
+    /* The wrapper is a transparent full-width strip. Without this it would
+       swallow clicks in the gutters either side of the rounded bar. */
+    pointer-events: none;
+}
+
+/* Admin pages deliberately keep a non-sticky bar so it cannot ride over the
+   sidebar. Re-asserted here because the rule above would otherwise tie with
+   `body.admin-page .cafe-navbar` and win on load order. */
+body.admin-page .tp-nav.cafe-navbar { position: relative; }
+
+/* Bootstrap's .sticky-top utility carries `z-index: 1020`, and the shop filter
+   rail (shop.php) and checkout order summary (checkout.php) both use it. With
+   the navbar lowered to 50 those would paint OVER the bar, and their own
+   `top` offsets (90px / 20px) would tuck them under it. Put them on the same
+   scale as the navbar and offset them clear of the bar. The !important is
+   needed to beat the inline `style="top: …"` on both elements. */
+.sticky-top:not(.tp-nav) {
+    z-index: 40;
+    top: calc(var(--tp-nav-h, 104px) + 8px) !important;
+}
+
+.tp-nav .tp-nav-shell {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    height: 72px;
+    width: calc(100% - 32px);
+    max-width: 1440px;
+    margin: var(--tp-nav-gap, 16px) auto;
+    padding: 0 20px 0 24px;
+    border-radius: 18px;
+    background: var(--nv-shell);
+    border: 1px solid var(--nv-shell-border);
+    box-shadow: var(--nv-shell-shadow);
+    transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Scrolled state. Applied to the SHELL, never the wrapper — a background on
+   the full-width wrapper would paint a band across the gutters, which is
+   exactly what the transparent strip is avoiding. The bar turns translucent
+   and blurs, so products pass behind it instead of under a solid block. */
+.tp-nav.is-scrolled .tp-nav-shell {
+    background: rgba(16, 17, 20, 0.82);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 24px rgba(10, 10, 12, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* The three groups: brand | nav pills | actions. */
+@media (min-width: 992px) {
+    .tp-nav .navbar-collapse {
+        display: flex !important;
+        flex: 1 1 auto;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 0;
+    }
+}
+
+.tp-nav .navbar-brand,
+.tp-nav .nav-link,
+.tp-nav .dropdown-item,
+.tp-nav .btn-register {
+    font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
+}
+
+/* =========================================================
+   Brand
+   ========================================================= */
+.tp-nav .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+    color: var(--nv-text) !important;
+}
+.tp-nav .navbar-brand:hover { opacity: 0.9; }
+
+.tp-nav .brand-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--nv-accent-grad);
+    color: #1a1a1a;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 12px rgba(200, 169, 110, 0.35);
+}
+
+.tp-nav .brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.05;
+}
+.tp-nav .brand-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--nv-text);
+    white-space: nowrap;
+}
+.tp-nav .brand-sub {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    color: var(--nv-muted);
+    margin-top: 2px;
+}
+
+/* =========================================================
+   Centre pill group
+   ========================================================= */
+.tp-nav .tp-nav-pill {
+    background: var(--nv-surface);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+    flex-direction: row;
+}
+
+.tp-nav .tp-nav-pill .nav-link {
+    color: var(--nv-muted) !important;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: 0;
+    padding: 8px 16px !important;
+    margin: 0;
+    border-radius: 999px;
+    white-space: nowrap;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+.tp-nav .tp-nav-pill .nav-link:hover,
+.tp-nav .tp-nav-pill .nav-link:focus {
+    color: var(--nv-text) !important;
+    background: var(--nv-hover-bg);
+}
+.tp-nav .tp-nav-pill .nav-link.active {
+    color: var(--nv-active-text) !important;
+    background: var(--nv-active-bg);
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* =========================================================
+   Right-hand actions
+   ========================================================= */
+.tp-nav .tp-nav-actions {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* -- Call-to-action pills (Design Studio / Try-On) -- */
+.tp-nav .tp-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px !important;
+    margin: 0;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: transform 0.18s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.tp-nav .tp-cta i { margin: 0; font-size: 14px; }
+.tp-nav .tp-cta:hover { transform: translateY(-1px); }
+
+.tp-nav .tp-cta-ghost {
+    color: var(--nv-text) !important;
+    background: var(--nv-surface-soft);
+    border: 1px solid var(--nv-border);
+}
+.tp-nav .tp-cta-ghost:hover,
+.tp-nav .tp-cta-ghost:focus,
+.tp-nav .tp-cta-ghost.active {
+    color: var(--nv-text) !important;
+    background: var(--nv-hover-bg);
+}
+
+.tp-nav .tp-cta-solid,
+.tp-nav .tp-cta-solid:hover,
+.tp-nav .tp-cta-solid:focus,
+.tp-nav .tp-cta-solid.active {
+    color: #1a1a1a !important;
+    background: var(--nv-accent-grad);
+    border: 0;
+    box-shadow: 0 4px 14px rgba(200, 169, 110, 0.38);
+}
+
+/* -- Divider between Try-On and the icon buttons -- */
+.tp-nav .tp-nav-divider {
+    width: 1px;
+    height: 26px;
+    background: rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+    list-style: none;
+}
+
+/* =========================================================
+   Icon buttons (theme toggle, cart)
+   ========================================================= */
+.tp-nav .tp-icon-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0 !important;
+    margin: 0;
+    border-radius: 50%;
+    color: var(--nv-icon) !important;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.tp-nav .tp-icon-btn .tp-ico {
+    width: 17px;
+    height: 17px;
+    display: block;
+    flex-shrink: 0;
+}
+.tp-nav .tp-icon-btn:hover,
+.tp-nav .tp-icon-btn:focus,
+.tp-nav .tp-icon-btn.active {
+    color: var(--nv-icon-hover) !important;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+/* Cart count. The cart scripts set display:inline-block / none inline, so this
+   is centred with line-height rather than flex — an inline style would win. */
+.tp-nav .tp-icon-btn .badge {
+    position: absolute;
+    top: 0;
+    right: -2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    background: #c8a96e !important;
+    color: #17181b !important;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+/* =========================================================
+   Account chip
+   ========================================================= */
+.tp-nav .tp-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 14px 0 4px !important;
+    margin: 0;
+    border-radius: 999px;
+    background: var(--nv-surface-soft);
+    border: 1px solid var(--nv-border);
+    color: var(--nv-text) !important;
+    transition: background 0.2s ease;
+}
+.tp-nav .tp-user:hover,
+.tp-nav .tp-user:focus,
+.tp-nav .tp-user.active { background: var(--nv-hover-bg); color: var(--nv-text) !important; }
+.tp-nav .dropdown-toggle::after { display: none !important; }
+
+.tp-nav .tp-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--nv-avatar);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.tp-nav .tp-user-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    text-align: left;
+}
+/* First name only — no max-width, no ellipsis. */
+.tp-nav .tp-user-name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--nv-text);
+    white-space: nowrap;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+}
+.tp-nav .tp-user-sub {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--nv-muted);
+    white-space: nowrap;
+}
+
+/* Signed-out buttons reuse the CTA look. */
+.tp-nav .btn-signin {
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    color: var(--nv-text) !important;
+    background: transparent;
+    border: 1px solid var(--nv-border);
+    border-radius: 999px;
+    padding: 0 16px !important;
+    font-size: 13.5px;
+    font-weight: 600;
+}
+/* On login.php the active-link script matches this link's own href and adds
+   .active, which `.cafe-navbar .nav-link.active` (0,3,0) paints with
+   --primary (#1a1a1a) — near-black on the dark bar. Match that specificity
+   so the label stays legible. Same reason the CTA/icon/user rules below
+   each carry an .active variant. */
+.tp-nav .btn-signin.active { color: var(--nv-text) !important; }
+.tp-nav .btn-signin:hover,
+.tp-nav .btn-signin:focus {
+    color: var(--nv-text) !important;
+    background: var(--nv-surface-soft);
+}
+.tp-nav .btn-register {
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    background: var(--nv-accent-grad) !important;
+    color: #1a1a1a !important;
+    border: 0;
+    border-radius: 999px;
+    padding: 0 18px !important;
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(200, 169, 110, 0.38);
+}
+.tp-nav .btn-register:hover { opacity: 0.94; }
+
+/* =========================================================
+   Mobile toggler + collapsed layout
+   ========================================================= */
+.tp-nav .navbar-toggler {
+    margin-left: auto;
+    border: 1px solid var(--nv-border) !important;
+    border-radius: 12px;
+    padding: 0.35rem 0.6rem;
+    color: var(--nv-text);
+}
+.tp-nav .navbar-toggler:focus { box-shadow: none; }
+.tp-nav .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(244,242,238,0.85)' stroke-width='2' stroke-linecap='round' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E") !important;
+    filter: none !important;
+}
+
+@media (max-width: 991.98px) {
+    /* The fixed 72px row only makes sense while everything fits on one line. */
+    .tp-nav .tp-nav-shell {
+        height: auto;
+        min-height: 64px;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        border-radius: 16px;
+    }
+    .tp-nav .navbar-collapse {
+        width: 100%;
+        margin-top: 12px;
+        border-top: 1px solid var(--nv-border);
+        padding-top: 12px;
+    }
+    .tp-nav .tp-nav-pill,
+    .tp-nav .tp-nav-actions {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        margin-left: 0;
+        gap: 6px;
+    }
+    .tp-nav .tp-nav-pill {
+        background: transparent;
+        border-radius: 0;
+        padding: 0;
+        margin-bottom: 8px;
+    }
+    .tp-nav .tp-nav-pill .nav-link { border-radius: 12px; }
+    .tp-nav .tp-cta,
+    .tp-nav .btn-signin,
+    .tp-nav .btn-register { justify-content: center; width: 100%; }
+    .tp-nav .tp-nav-divider {
+        width: 100%;
+        height: 1px;
+        margin: 6px 0;
+    }
+    .tp-nav .tp-icon-btn {
+        width: 100%;
+        height: auto;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 10px 14px !important;
+        border-radius: 12px;
+    }
+    /* Absolute positioning has nothing to anchor to in the stacked row. */
+    .tp-nav .tp-icon-btn .badge {
+        position: static;
+        margin-left: auto;
+    }
+    .tp-nav .tp-user {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 575.98px) {
+    /* Vertical margin comes from --tp-nav-gap so it can never drift
+       out of sync with --tp-nav-h (and the hero's pull-up). */
+    .tp-nav .tp-nav-shell { width: calc(100% - 20px); }
+    .tp-nav .brand-name { font-size: 15px; }
+    .tp-nav .brand-logo { width: 36px; height: 36px; border-radius: 11px; }
+}
+
+/* Dropdown menu follows the navbar surface, not the page surface. */
+.tp-nav .dropdown-menu {
+    border-radius: 14px;
+    border: 1px solid var(--nv-border);
+    padding: 6px;
+    margin-top: 8px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+}
+.tp-nav .dropdown-item { border-radius: 9px; font-size: 13px; padding: 8px 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .tp-nav .tp-cta:hover { transform: none; }
+    .tp-nav .tp-nav-shell,
+    .tp-nav .tp-cta,
+    .tp-nav .tp-icon-btn,
+    .tp-nav .tp-user { transition: none; }
+}
+
+/* The dropdown hangs off the navbar, so it follows the navbar surface
+   rather than the page surface. */

@@ -1,0 +1,538 @@
+/* =========================================================
+   Thread & Press Hub — Dark Mode (additive, opt-in).
+   Everything is scoped under html.dark-mode, so when dark mode
+   is OFF this file has ZERO effect — the light design is untouched.
+   ========================================================= */
+
+/* ---- Flip the design tokens: most var()-based elements follow ---- */
+html.dark-mode {
+    /* Flip ONLY the light surface/text tokens. IMPORTANT: --primary (and its
+       aliases) stay dark on purpose — across the site they are used as dark
+       BACKGROUNDS (buttons, badges, chat header, chat bubbles, size chips…),
+       so flipping them to light would break all of those. */
+    --text-dark: #e9e9ec;
+    --text-medium: #c2c2c9;
+    --text-light: #9a9aa2;
+    --bg-white: #17171c;
+    --bg-light: #1d1d24;
+    --bg-gray: #24242c;
+    --border-light: #2e2e36;
+    --border-medium: #3a3a44;
+    --coffee-cream: #24242c;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.45);
+    --shadow-md: 0 6px 16px rgba(0,0,0,0.55);
+    --shadow-lg: 0 12px 34px rgba(0,0,0,0.65);
+    color-scheme: dark;
+}
+
+/* ---- Base ---- */
+html.dark-mode body {
+    background-color: #15151a !important;
+    color: #e9e9ec;
+}
+html.dark-mode body.home-page {
+    background:
+        radial-gradient(circle at top right, rgba(200,169,110,0.10), transparent 30%),
+        linear-gradient(180deg, #16161a 0%, #101014 60%, #14141a 100%) !important;
+}
+
+/* ---- Navbar ---- */
+html.dark-mode .cafe-navbar {
+    background: #17171c !important;
+    border-bottom: 1px solid #2a2a32 !important;
+}
+html.dark-mode .cafe-navbar .nav-link,
+html.dark-mode .navbar-brand {
+    color: #e9e9ec !important;
+}
+html.dark-mode .cafe-navbar .nav-link:hover { color: var(--accent, #c8a96e) !important; }
+html.dark-mode .navbar-toggler { border-color: #3a3a44 !important; }
+html.dark-mode .navbar-toggler-icon {
+    filter: invert(1) grayscale(1) brightness(1.4);
+}
+
+/* ---- Generic surfaces / cards ---- */
+html.dark-mode .card,
+html.dark-mode .home-surface,
+html.dark-mode .product-card,
+html.dark-mode .category-card,
+html.dark-mode .order-summary,
+html.dark-mode .discount-card,
+html.dark-mode .feature-item,
+html.dark-mode .payment-card,
+html.dark-mode .design-toolbar,
+html.dark-mode .design-canvas-area,
+html.dark-mode .design-preview-panel,
+html.dark-mode .tool-section,
+html.dark-mode .my-designs-section,
+html.dark-mode .design-card,
+html.dark-mode .tryon-card,
+html.dark-mode .modal-content,
+html.dark-mode .list-group-item,
+html.dark-mode .accordion-item,
+html.dark-mode .accordion-button {
+    background-color: #1d1d24 !important;
+    color: #e9e9ec !important;
+    border-color: #2e2e36 !important;
+}
+html.dark-mode .card-header,
+html.dark-mode .payment-card-header {
+    background-color: #202028 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+
+/* Inline light backgrounds (safe: matches the "background" declaration only) */
+html.dark-mode [style*="background:#fff"],
+html.dark-mode [style*="background: #fff"],
+html.dark-mode [style*="background:#ffffff"],
+html.dark-mode [style*="background: #ffffff"],
+html.dark-mode [style*="background:white"],
+html.dark-mode [style*="background: white"],
+html.dark-mode [style*="background-color:#fff"],
+html.dark-mode [style*="background-color: #fff"],
+html.dark-mode [style*="background-color:#ffffff"],
+html.dark-mode [style*="background-color: #ffffff"] {
+    background-color: #1d1d24 !important;
+}
+html.dark-mode [style*="background:#f8f9fa"],
+html.dark-mode [style*="background: #f8f9fa"],
+html.dark-mode [style*="background:#f8f8f8"],
+html.dark-mode [style*="background:#fafafa"],
+html.dark-mode [style*="background:#f5f5f5"],
+html.dark-mode [style*="background:#f2f2f2"],
+html.dark-mode [style*="background-color:#f8f9fa"],
+html.dark-mode [style*="background-color:#f8f8f8"] {
+    background-color: #24242c !important;
+}
+
+/* ---- Text helpers ---- */
+html.dark-mode .text-muted { color: #9a9aa2 !important; }
+html.dark-mode .text-dark { color: #e9e9ec !important; }
+html.dark-mode h1, html.dark-mode h2, html.dark-mode h3,
+html.dark-mode h4, html.dark-mode h5, html.dark-mode h6 { color: #f2f2f4; }
+html.dark-mode a { color: #d8c49a; }
+html.dark-mode hr, html.dark-mode .dropdown-divider { border-color: #33333c !important; }
+
+/* ---- Forms ---- */
+html.dark-mode input,
+html.dark-mode textarea,
+html.dark-mode select,
+html.dark-mode .form-control,
+html.dark-mode .form-select {
+    background-color: #1d1d24 !important;
+    color: #e9e9ec !important;
+    border-color: #33333c !important;
+}
+html.dark-mode input::placeholder,
+html.dark-mode textarea::placeholder { color: #7a7a82 !important; }
+html.dark-mode .form-control:focus,
+html.dark-mode .form-select:focus {
+    border-color: var(--accent, #c8a96e) !important;
+    box-shadow: 0 0 0 0.2rem rgba(200,169,110,0.2) !important;
+}
+
+/* ---- Dropdowns ---- */
+html.dark-mode .dropdown-menu {
+    background-color: #1d1d24 !important;
+    border-color: #33333c !important;
+}
+html.dark-mode .dropdown-item { color: #e9e9ec !important; }
+html.dark-mode .dropdown-item:hover,
+html.dark-mode .dropdown-item:focus { background-color: #26262e !important; }
+
+/* ---- Tables ---- */
+html.dark-mode .table {
+    color: #e9e9ec !important;
+    border-color: #2e2e36 !important;
+}
+html.dark-mode .table > :not(caption) > * > * {
+    background-color: #1d1d24 !important;
+    color: #e9e9ec !important;
+    border-color: #2e2e36 !important;
+}
+html.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: #202028 !important;
+}
+html.dark-mode .table-light,
+html.dark-mode .table thead th { background-color: #24242c !important; color: #e9e9ec !important; }
+
+/* ---- Buttons (keep them visible on dark) ---- */
+html.dark-mode .btn-dark,
+html.dark-mode .btn-hero,
+html.dark-mode .btn-submit-design,
+html.dark-mode .btn-pay {
+    background: var(--accent, #c8a96e) !important;
+    color: #1a1a1a !important;
+    border-color: var(--accent, #c8a96e) !important;
+}
+html.dark-mode .btn-outline-dark {
+    color: #e9e9ec !important;
+    border-color: #4a4a54 !important;
+}
+html.dark-mode .btn-outline-dark:hover {
+    background: #e9e9ec !important;
+    color: #1a1a1a !important;
+}
+html.dark-mode .btn-light,
+html.dark-mode .btn-hero-outline {
+    background: #26262e !important;
+    color: #e9e9ec !important;
+    border-color: #33333c !important;
+}
+
+/* ---- Breadcrumb ---- */
+html.dark-mode .breadcrumb { background: transparent !important; }
+html.dark-mode .breadcrumb-item,
+html.dark-mode .breadcrumb-item.active { color: #9a9aa2 !important; }
+
+/* ---- Footer ---- */
+html.dark-mode footer {
+    background-color: #101014 !important;
+    color: #c9c9cf !important;
+    border-color: #2a2a32 !important;
+}
+html.dark-mode footer a { color: #a8a8b0 !important; }
+html.dark-mode footer a:hover { color: var(--accent, #c8a96e) !important; }
+
+/* ---- The theme toggle button itself ---- */
+.theme-toggle { cursor: pointer; }
+.theme-toggle i { transition: transform 0.3s ease; }
+.theme-toggle:hover i { transform: rotate(20deg); }
+html.dark-mode .theme-toggle i { color: var(--accent, #c8a96e) !important; }
+
+/* ---- Emphasis text that used --primary as a TEXT colour (now dark-on-dark) → gold ---- */
+html.dark-mode .cafe-navbar .nav-link.active,
+html.dark-mode .discount-rate,
+html.dark-mode .discount-section h6,
+html.dark-mode .text-accent-green,
+html.dark-mode .form-link a,
+html.dark-mode .btn-outline-primary,
+html.dark-mode .chat-tab.active {
+    color: var(--accent, #c8a96e) !important;
+}
+html.dark-mode .btn-outline-primary { border-color: var(--accent, #c8a96e) !important; }
+
+/* ============================================================
+   CHATBOT WIDGET — proper dark theme (its header/bubbles used
+   --primary + hardcoded white, which the generic rules mangled).
+   ============================================================ */
+html.dark-mode .chatbot-widget {
+    background: #1b1b21 !important;
+    border-color: #2e2e36 !important;
+}
+html.dark-mode .chat-header {
+    background: #202028 !important;
+    color: #f2f2f4 !important;
+    border-bottom: 1px solid #2e2e36 !important;
+}
+html.dark-mode .chat-header .chat-title,
+html.dark-mode .chat-header .chat-subtitle,
+html.dark-mode .chat-header .chat-header-text *,
+html.dark-mode .chat-header i { color: #f2f2f4 !important; }
+html.dark-mode .chat-header-avatar { background: rgba(255,255,255,0.10) !important; }
+
+html.dark-mode .chat-tabs { background: #1b1b21 !important; border-color: #2e2e36 !important; }
+html.dark-mode .chat-tab { color: #a8a8b0 !important; }
+html.dark-mode .chat-tab:hover { background: #26262e !important; color: #e9e9ec !important; }
+html.dark-mode .chat-tab.active { border-bottom-color: var(--accent, #c8a96e) !important; }
+
+html.dark-mode .chat-quick-actions { background: #1b1b21 !important; }
+html.dark-mode .chat-quick-action {
+    background: #24242c !important; color: #d0d0d6 !important; border-color: #33333c !important;
+}
+html.dark-mode .chat-quick-action:hover { background: #2e2e36 !important; border-color: #3a3a44 !important; }
+
+html.dark-mode .chat-messages { background: #15151a !important; }
+html.dark-mode .bot-message { background: #26262e !important; color: #e9e9ec !important; }
+html.dark-mode .user-message { background: var(--accent, #c8a96e) !important; color: #1a1a1a !important; }
+
+html.dark-mode .chat-input-area { background: #1b1b21 !important; border-color: #2e2e36 !important; }
+html.dark-mode .chat-input {
+    background: #24242c !important; color: #e9e9ec !important; border-color: #33333c !important;
+}
+html.dark-mode .chat-input:focus { background: #24242c !important; border-color: var(--accent, #c8a96e) !important; }
+html.dark-mode .chat-input::placeholder { color: #7a7a82 !important; }
+html.dark-mode .chat-footer-note { color: #7a7a82 !important; background: #1b1b21 !important; }
+
+/* Live Support tab header variant */
+html.dark-mode .support-widget-chat-header,
+html.dark-mode .support-chat-header {
+    background: #202028 !important; color: #f2f2f4 !important; border-color: #2e2e36 !important;
+}
+
+/* ============================================================
+   ADMIN PANEL — full dark coverage.
+   (.admin-card was hardcoded white → washed out with light text.)
+   ============================================================ */
+html.dark-mode .admin-card {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .admin-card h1,
+html.dark-mode .admin-card h2,
+html.dark-mode .admin-card h3,
+html.dark-mode .admin-card h4,
+html.dark-mode .admin-card h5,
+html.dark-mode .admin-card h6 { color: #f2f2f4 !important; }
+html.dark-mode .stat-card { background: #202028 !important; color: #f2f2f4 !important; }
+
+/* Any remaining white / inline-light surfaces inside admin pages */
+html.dark-mode body.admin-page .card,
+html.dark-mode body.admin-page .table-responsive,
+html.dark-mode body.admin-page [style*="background:#fff"],
+html.dark-mode body.admin-page [style*="background: #fff"],
+html.dark-mode body.admin-page [style*="background:#ffffff"],
+html.dark-mode body.admin-page [style*="background: #ffffff"],
+html.dark-mode body.admin-page [style*="background:white"],
+html.dark-mode body.admin-page [style*="background: white"] {
+    background-color: #1d1d24 !important;
+    color: #e9e9ec !important;
+    border-color: #2e2e36 !important;
+}
+
+/* Admin tables */
+html.dark-mode .table { background: transparent !important; }
+html.dark-mode .table thead { background-color: #202028 !important; }
+html.dark-mode .table thead th { color: #b6b6bd !important; }
+html.dark-mode .table tbody td { color: #e9e9ec !important; border-color: #2e2e36 !important; }
+html.dark-mode .table tbody tr:hover td { background-color: #24242c !important; }
+
+/* Form labels + helper text (were faint on the now-dark cards) */
+html.dark-mode label,
+html.dark-mode .form-label { color: #cccdd3 !important; }
+html.dark-mode .form-text { color: #9a9aa2 !important; }
+
+/* Admin section sub-headings / muted labels */
+html.dark-mode body.admin-page h1,
+html.dark-mode body.admin-page h2,
+html.dark-mode body.admin-page h3,
+html.dark-mode body.admin-page h4,
+html.dark-mode body.admin-page h5,
+html.dark-mode body.admin-page h6 { color: #f2f2f4 !important; }
+
+/* Custom-order / custom-design admin card variants (were hardcoded white) */
+html.dark-mode .co-order-card,
+html.dark-mode .design-request-card,
+html.dark-mode .design-stat-card {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+
+/* Cream inner boxes (Order Summary / Delivery Address use inline #f8f7f4) */
+html.dark-mode [style*="background-color: #f8f7f4"],
+html.dark-mode [style*="background-color:#f8f7f4"],
+html.dark-mode [style*="background: #f8f7f4"],
+html.dark-mode [style*="background:#f8f7f4"] {
+    background-color: #24242c !important;
+    color: #e9e9ec !important;
+    border-color: #33333c !important;
+}
+
+/* Legacy "coffee-dark" used as a TEXT colour → light (it stays dark for backgrounds).
+   Fixes the "Total", payment method, and .text-coffee-dark headings on dark cards. */
+html.dark-mode .text-coffee-dark,
+html.dark-mode [style*="var(--coffee-dark)"] { color: #f2f2f4 !important; }
+
+/* Hairline dividers inside those boxes */
+html.dark-mode [style*="1px solid #ddd"],
+html.dark-mode [style*="1px solid #eee"],
+html.dark-mode [style*="1px solid #e5e5e5"] { border-color: #33333c !important; }
+
+/* Contact messages, custom-order stat cards, and the payment/verify box */
+html.dark-mode .message-card,
+html.dark-mode .co-stat-card {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .co-payment-section {
+    background: #24242c !important;
+    border-color: #2e2e36 !important;
+}
+/* Default (uncoloured) stat number → light; inline-coloured numbers keep their colour */
+html.dark-mode .co-stat-card .stat-num { color: #f2f2f4; }
+
+/* Remaining light-grey inline backgrounds (#f0f0f0) → dark */
+html.dark-mode [style*="background:#f0f0f0"],
+html.dark-mode [style*="background: #f0f0f0"],
+html.dark-mode [style*="background-color:#f0f0f0"],
+html.dark-mode [style*="background-color: #f0f0f0"] {
+    background-color: #24242c !important;
+}
+
+/* Dashboard quick-link cards (.admin-quick-card was hardcoded white) */
+html.dark-mode .admin-quick-card {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .admin-quick-card:hover { border-color: var(--accent, #c8a96e) !important; }
+
+/* Support Chat (admin) — white panels/bubbles */
+html.dark-mode .support-widget-new,
+html.dark-mode .support-input-area {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .support-conv-item.active { background: #24242c !important; }
+html.dark-mode .support-msg-admin .support-msg-bubble {
+    background: #26262e !important;
+    color: #e9e9ec !important;
+}
+
+/* Customer-facing white cards: My Custom Orders, Cart items, chat list items */
+html.dark-mode .custom-order-card,
+html.dark-mode .cart-item,
+html.dark-mode .support-conv-item {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .support-conv-item:hover { background: #24242c !important; }
+
+/* Customer orders list cards (orders.php — hardcoded white) */
+html.dark-mode .order-card {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+
+/* Bootstrap's .bg-light utility (used as summary boxes on order pages) */
+html.dark-mode .bg-light {
+    background-color: #24242c !important;
+    color: #e9e9ec !important;
+}
+
+/* Order Tracking page cards (custom-order-tracking.php) */
+html.dark-mode .tracking-card,
+html.dark-mode .tracking-card-header,
+html.dark-mode .tracking-card-body {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+
+/* ============================================================
+   CUSTOM DESIGN TOOL — buttons/panels hardcoded white.
+   Non-active states go dark; active states keep their highlight.
+   ============================================================ */
+html.dark-mode .tool-btn:not(.active),
+html.dark-mode .apparel-type-btn:not(.active),
+html.dark-mode .apparel-tab:not(.active),
+html.dark-mode .canvas-action-btn:not(.active),
+html.dark-mode .side-toggle-btn:not(.active),
+html.dark-mode .stamp-btn {
+    background: #24242c !important;
+    color: #e9e9ec !important;
+    border-color: #33333c !important;
+}
+html.dark-mode .tool-btn:not(.active):hover,
+html.dark-mode .apparel-type-btn:not(.active):hover,
+html.dark-mode .apparel-tab:not(.active):hover,
+html.dark-mode .canvas-action-btn:not(.active):hover,
+html.dark-mode .stamp-btn:hover { background: #2e2e36 !important; }
+
+/* Active tool button → gold to pop on dark */
+html.dark-mode .tool-btn.active {
+    background: var(--accent, #c8a96e) !important;
+    color: #1a1a1a !important;
+    border-color: var(--accent, #c8a96e) !important;
+}
+
+/* Upload area + layers list */
+html.dark-mode .upload-area { background: #1d1d24 !important; border-color: #3a3a44 !important; }
+html.dark-mode .upload-area:hover { border-color: var(--accent, #c8a96e) !important; }
+html.dark-mode .layer-row { background: #24242c !important; color: #e9e9ec !important; border-color: #33333c !important; }
+html.dark-mode .layer-row:hover { background: #2e2e36 !important; }
+html.dark-mode .layer-row.selected { border-color: var(--accent, #c8a96e) !important; background: #2a2620 !important; }
+
+/* Canvas work area */
+html.dark-mode .canvas-toolbar { background: #1b1b21 !important; border-color: #2e2e36 !important; }
+
+/* ===== Shop filters sidebar (.shop-sidebar was hardcoded white) ===== */
+html.dark-mode .shop-sidebar {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .filter-link:not(.active):hover { background: #24242c !important; }
+html.dark-mode .size-filter-btn:not(.active) {
+    background: #24242c !important;
+    color: #e9e9ec !important;
+    border-color: #33333c !important;
+}
+html.dark-mode .size-filter-btn:not(.active):hover { background: #2e2e36 !important; border-color: var(--accent, #c8a96e) !important; }
+
+/* ===== Design canvas — dark transparency checker (Photoshop-style) =====
+   The light checker (#f0f0f0/#fafafa) looked like a bright white patch in dark
+   mode and hid the white shirt/design. A dark checker keeps the "transparent"
+   meaning while making the shirt and artwork clearly visible. */
+html.dark-mode .canvas-wrapper {
+    background: repeating-conic-gradient(#26262b 0% 25%, #303036 0% 50%) 50% / 20px 20px !important;
+}
+
+/* Live Preview box + 3D faces → dark studio backdrop (white shirt pops) */
+html.dark-mode .live-preview-box { background: #17171c !important; }
+html.dark-mode .preview-3d-face {
+    background: radial-gradient(ellipse at 50% 32%, #26262b 0%, #17171c 82%) !important;
+    /* tone down the light-mode white inner glow */
+    box-shadow: inset 0 -18px 30px rgba(0,0,0,0.35), inset 0 8px 20px rgba(255,255,255,0.04) !important;
+}
+html.dark-mode .preview-3d-face::after {
+    background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent 42%, rgba(0,0,0,0.25)) !important;
+}
+
+/* Price Estimate card (was a light-green gradient) → subtle dark green */
+html.dark-mode .price-calculator {
+    background: linear-gradient(135deg, #16241c 0%, #131e19 100%) !important;
+    border-color: #2c4a38 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .price-label { color: #9a9aa2 !important; }
+html.dark-mode .price-value { color: #e9e9ec !important; }
+html.dark-mode .price-row.total,
+html.dark-mode .price-row.total * { color: #f2f2f4 !important; }
+html.dark-mode .price-select {
+    background: #24242c !important;
+    color: #e9e9ec !important;
+    border-color: #33333c !important;
+}
+
+/* Checkout "Discount & Benefits" box (light-green in light mode) */
+html.dark-mode .discount-section {
+    background: #16241c !important;
+    border-color: #2c4a38 !important;
+    color: #e9e9ec !important;
+}
+
+/* Special Discounts cards — use full `background` shorthand because the light
+   style is a gradient (background-image), which background-color can't replace */
+html.dark-mode .discount-card {
+    background: linear-gradient(180deg, #1f1f26, #1a1a20) !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .discount-icon {
+    background: #26262e !important;
+    color: var(--accent, #c8a96e) !important;
+}
+
+/* Login / Register card (.form-container was hardcoded white) */
+html.dark-mode .form-container {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+
+/* Browser autofill paints inputs light blue-gray — repaint them dark */
+html.dark-mode input:-webkit-autofill,
+html.dark-mode input:-webkit-autofill:hover,
+html.dark-mode input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #1d1d24 inset !important;
+    -webkit-text-fill-color: #e9e9ec !important;
+    caret-color: #e9e9ec;
+}

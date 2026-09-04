@@ -1,0 +1,135 @@
+/* =========================================================
+   Shop — modern polish (loaded ONLY on shop.php, additive).
+   Premium fashion-store feel: slow image zoom, soft lift,
+   gold hairlines, staggered entrance. Light + dark safe —
+   no backgrounds are overridden here, only motion & accents.
+   ========================================================= */
+
+/* ---- Page title: gold accent underline ---- */
+.container h1 {
+    position: relative;
+    padding-bottom: 0.55rem;
+}
+.container h1::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 46px;
+    height: 3px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #d8b878, #c8a96e 60%, transparent);
+}
+
+/* ---- Product cards: lift + gold hairline + deep soft shadow ---- */
+.product-card {
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.35s ease !important;
+    will-change: transform;
+}
+.product-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(200, 169, 110, 0.55) !important;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ---- Slow cinematic image zoom on hover ---- */
+.product-image-wrapper { overflow: hidden; }
+.product-image {
+    transition: transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.product-card:hover .product-image {
+    transform: scale(1.07);
+}
+
+/* Subtle scrim rises from the bottom of the photo on hover — makes the
+   quick-add button & badge pop against any product photo. */
+.product-image-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 45%;
+    background: linear-gradient(to top, rgba(10, 10, 12, 0.35), transparent);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+.product-card:hover .product-image-wrapper::after { opacity: 1; }
+.product-actions { z-index: 2; }
+
+/* ---- Staggered entrance (first paint) ---- */
+@keyframes shopCardIn {
+    from { opacity: 0; transform: translateY(22px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.product-card {
+    animation: shopCardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* stagger the first two rows; anything later just uses the base delay */
+.col-lg-4:nth-child(1) .product-card { animation-delay: 0.05s; }
+.col-lg-4:nth-child(2) .product-card { animation-delay: 0.12s; }
+.col-lg-4:nth-child(3) .product-card { animation-delay: 0.19s; }
+.col-lg-4:nth-child(4) .product-card { animation-delay: 0.26s; }
+.col-lg-4:nth-child(5) .product-card { animation-delay: 0.33s; }
+.col-lg-4:nth-child(6) .product-card { animation-delay: 0.40s; }
+
+/* ---- Filters: gold active bar + hover glide ---- */
+.filter-link {
+    position: relative;
+    transition: all 0.25s ease !important;
+}
+.filter-link:hover { transform: translateX(3px); }
+.filter-link.active::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 20%;
+    bottom: 20%;
+    width: 3px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #d8b878, #c8a96e);
+}
+
+/* Color swatches: pop on hover, visible ring for dark swatches */
+.color-swatch-btn, .filter-section [style*="border-radius:50%"] { transition: transform 0.2s ease; }
+.filter-section button:hover { transform: scale(1.18); }
+
+/* Size chips: gold hover */
+.size-filter-btn { transition: all 0.2s ease !important; }
+.size-filter-btn:hover { transform: translateY(-2px); }
+
+/* ---- Toolbar: pill sort dropdown ---- */
+.shop-toolbar select {
+    border-radius: 999px !important;
+    padding: 0.45rem 2rem 0.45rem 1rem;
+    border: 1.5px solid var(--border-light, #e5e5e5);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+.shop-toolbar select:hover,
+.shop-toolbar select:focus {
+    border-color: #c8a96e;
+    box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.15);
+}
+
+/* ---- Add to Cart button: sheen sweep on hover ---- */
+.product-card .btn,
+.product-card button[onclick*="quickAddModal"],
+.product-card .add-to-cart-btn {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.product-card .btn:hover { transform: translateY(-1px); }
+
+/* ---- Accessibility: respect reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+    .product-card { animation: none !important; }
+    .product-card,
+    .product-image,
+    .filter-link,
+    .size-filter-btn { transition: none !important; }
+    .product-card:hover .product-image { transform: none; }
+}
