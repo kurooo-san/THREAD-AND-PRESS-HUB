@@ -1,0 +1,58 @@
+# =========================================================
+# Keeps secrets, customer data and dead weight out of the image.
+#
+# .gitignore does NOT apply to `docker build` — without this file the
+# COPY step would bake .env and the database dumps into a published
+# image layer, where they are readable by anyone who pulls it.
+# =========================================================
+
+# ---- Secrets -------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Unauthenticated maintenance scripts ---------------------------
+update_admin.php
+test_email.php
+composer-setup.php
+composer.phar
+seed_payment_demo.php
+insert_sample_products.php
+migrate.php
+
+# ---- Real customer data (RA 10173) ---------------------------------
+threadpresshub.sql
+backup_*.sql
+*.dump
+
+# Runtime uploads live on a Railway volume, not in the image.
+uploads/
+storage/payment-proofs/
+storage/payment-config/
+
+# ---- Rebuilt during the image build --------------------------------
+vendor/
+
+# ---- Not needed at runtime -----------------------------------------
+tests/
+phpunit.xml
+.git/
+.github/
+.claude/
+.vscode/
+.idea/
+*.md
+!README.md
+system architecture/
+QR-instapay.PNG
+css/style_backup.css
+
+# ---- Local / OS ----------------------------------------------------
+*.bak
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
