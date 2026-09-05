@@ -23,9 +23,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j"$(nproc)" mysqli pdo_mysql gd mbstring zip intl \
-    && a2enmod rewrite headers \
-    && apt-get purge -y --auto-remove \
     && rm -rf /var/lib/apt/lists/*
+
+# Apache modules. Exactly one MPM may be loaded or startup aborts with
+# "AH00534: Configuration error: More than one MPM loaded." The apt step
+# above can leave a second one enabled, so the others are explicitly
+# disabled before prefork (the MPM mod_php requires) is turned back on.
+RUN a2dismod mpm_event mpm_worker mpm_prefork 2>/dev/null || true; \
+    a2enmod mpm_prefork rewrite headers \
+    && echo "MPMs enabled: $(ls /etc/apache2/mods-enabled/ | grep -c '^mpm_.*\.load$') (must be 1)" \
+    && test "$(ls /etc/apache2/mods-enabled/ | grep -c '^mpm_.*\.load$')" = "1"
 
 # ---- PHP runtime settings -----------------------------------------
 # The AI product generator makes three sequential Gemini calls and
@@ -60,6 +67,7 @@ RUN { \
         echo '</FilesMatch>'; \
         echo 'ServerTokens Prod'; \
         echo 'ServerSignature Off'; \
+        echo 'ServerName localhost'; \
     } > /etc/apache2/conf-available/zz-app.conf \
     && a2enconf zz-app
 
