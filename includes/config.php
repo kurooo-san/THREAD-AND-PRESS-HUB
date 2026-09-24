@@ -20,6 +20,17 @@ function loadEnv($path = __DIR__ . '/../.env') {
 
 loadEnv();
 
+// Railway: a single MYSQL_URL (mysql://user:pass@host:port/db) overrides the DB_* values.
+$_dbUrl = parse_url((string) (getenv('MYSQL_URL') ?: ''));
+if (!empty($_dbUrl['host'])) {
+    putenv('DB_HOST=' . $_dbUrl['host']);
+    putenv('DB_PORT=' . ($_dbUrl['port'] ?? 3306));
+    putenv('DB_USER=' . urldecode($_dbUrl['user'] ?? ''));
+    putenv('DB_PASS=' . urldecode($_dbUrl['pass'] ?? ''));
+    putenv('DB_NAME=' . ltrim($_dbUrl['path'] ?? '', '/'));
+}
+unset($_dbUrl);
+
 // Database Configuration
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_USER', getenv('DB_USER') ?: 'root');
