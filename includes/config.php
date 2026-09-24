@@ -48,6 +48,9 @@ if ($conn->connect_error) {
 }
 
 $conn->set_charset("utf8");
+// Match XAMPP MariaDB's defaults. MySQL 8 (Railway) adds ONLY_FULL_GROUP_BY,
+// which rejects GROUP BY queries that work locally.
+$conn->query("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
 
 // Session configuration - Only start if not already active
 if (session_status() === PHP_SESSION_NONE) {
