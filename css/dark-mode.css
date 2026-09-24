@@ -36,20 +36,8 @@ html.dark-mode body.home-page {
         linear-gradient(180deg, #16161a 0%, #101014 60%, #14141a 100%) !important;
 }
 
-/* ---- Navbar ---- */
-html.dark-mode .cafe-navbar {
-    background: #17171c !important;
-    border-bottom: 1px solid #2a2a32 !important;
-}
-html.dark-mode .cafe-navbar .nav-link,
-html.dark-mode .navbar-brand {
-    color: #e9e9ec !important;
-}
-html.dark-mode .cafe-navbar .nav-link:hover { color: var(--accent, #c8a96e) !important; }
-html.dark-mode .navbar-toggler { border-color: #3a3a44 !important; }
-html.dark-mode .navbar-toggler-icon {
-    filter: invert(1) grayscale(1) brightness(1.4);
-}
+/* Navbar: the floating .tp-nav bar is already dark in light mode, so it is
+   deliberately left alone here (overrides would break its transparent strip). */
 
 /* ---- Generic surfaces / cards ---- */
 html.dark-mode .card,
@@ -111,7 +99,8 @@ html.dark-mode .text-muted { color: #9a9aa2 !important; }
 html.dark-mode .text-dark { color: #e9e9ec !important; }
 html.dark-mode h1, html.dark-mode h2, html.dark-mode h3,
 html.dark-mode h4, html.dark-mode h5, html.dark-mode h6 { color: #f2f2f4; }
-html.dark-mode a { color: #d8c49a; }
+/* Only unstyled links — classed links (buttons, cards, nav) keep their own colours */
+html.dark-mode a:not([class]) { color: #d8c49a; }
 html.dark-mode hr, html.dark-mode .dropdown-divider { border-color: #33333c !important; }
 
 /* ---- Forms ---- */
@@ -158,10 +147,17 @@ html.dark-mode .table-light,
 html.dark-mode .table thead th { background-color: #24242c !important; color: #e9e9ec !important; }
 
 /* ---- Buttons (keep them visible on dark) ---- */
-html.dark-mode .btn-dark,
+/* Near-black buttons invert to near-white (same hierarchy as light mode) */
+html.dark-mode .btn-dark {
+    background: #ecebe8 !important;
+    color: #16171a !important;
+    border-color: #ecebe8 !important;
+}
+html.dark-mode .btn-dark:hover { background: #ffffff !important; color: #16171a !important; }
+/* (.btn-pay is left out on purpose: it stays green in both themes, like
+   "Proceed to Payment" on the summary page.) */
 html.dark-mode .btn-hero,
-html.dark-mode .btn-submit-design,
-html.dark-mode .btn-pay {
+html.dark-mode .btn-submit-design {
     background: var(--accent, #c8a96e) !important;
     color: #1a1a1a !important;
     border-color: var(--accent, #c8a96e) !important;
@@ -183,6 +179,7 @@ html.dark-mode .btn-hero-outline {
 
 /* ---- Breadcrumb ---- */
 html.dark-mode .breadcrumb { background: transparent !important; }
+html.dark-mode .breadcrumb a { color: #d8c49a !important; }
 html.dark-mode .breadcrumb-item,
 html.dark-mode .breadcrumb-item.active { color: #9a9aa2 !important; }
 
@@ -199,10 +196,10 @@ html.dark-mode footer a:hover { color: var(--accent, #c8a96e) !important; }
 .theme-toggle { cursor: pointer; }
 .theme-toggle i { transition: transform 0.3s ease; }
 .theme-toggle:hover i { transform: rotate(20deg); }
-html.dark-mode .theme-toggle i { color: var(--accent, #c8a96e) !important; }
+html.dark-mode .theme-toggle i,
+html.dark-mode .tp-nav.cafe-navbar .nav-link.theme-toggle i { color: var(--accent, #c8a96e) !important; }
 
 /* ---- Emphasis text that used --primary as a TEXT colour (now dark-on-dark) → gold ---- */
-html.dark-mode .cafe-navbar .nav-link.active,
 html.dark-mode .discount-rate,
 html.dark-mode .discount-section h6,
 html.dark-mode .text-accent-green,
@@ -535,4 +532,421 @@ html.dark-mode input:-webkit-autofill:focus {
     -webkit-box-shadow: 0 0 0 1000px #1d1d24 inset !important;
     -webkit-text-fill-color: #e9e9ec !important;
     caret-color: #e9e9ec;
+}
+
+/* ============================================================
+   THEME TOGGLE — storefront navbar button + admin sidebar button.
+   Shows the moon in light mode and the sun in dark mode.
+   ============================================================ */
+.theme-toggle { border: 0; background: transparent; font: inherit; }
+.theme-toggle .theme-icon-sun,
+.theme-toggle .theme-label-light { display: none; }
+html.dark-mode .theme-toggle .theme-icon-moon,
+html.dark-mode .theme-toggle .theme-label-dark { display: none; }
+html.dark-mode .theme-toggle .theme-icon-sun { display: inline-block; }
+html.dark-mode .theme-toggle .theme-label-light { display: inline; }
+/* Logo swap (navbar, footer, admin sidebar): both <img>s are in the markup and
+   only one is ever displayed, so the right logo shows on first paint and the
+   toggle needs no JS. Both files download once, then come from the browser
+   cache. The white logo is drawn on white, so its tile is white. */
+html:not(.dark-mode) .logo-dark,
+html.dark-mode .logo-light { display: none !important; }
+html.dark-mode img.logo-dark { background: #fff !important; }
+
+body.admin-page .ad-side-link.theme-toggle { width: 100%; text-align: left; }
+body.admin-page .ad-side-link.theme-toggle i { width: 16px; text-align: center; font-size: 14px; }
+
+/* ============================================================
+   ADMIN SHELL (admin-modern.css) — flip its own design tokens.
+   --ad-ink is only ever used as a TEXT colour there, so it is safe to flip.
+   ============================================================ */
+html.dark-mode body.admin-page {
+    --ad-page:   #121216;
+    --ad-card:   #1d1d24;
+    --ad-line:   #2e2e36;
+    --ad-ink:    #ecebe8;
+    --ad-muted:  #aaa69e;
+    --ad-faint:  #86827b;
+    --ad-ok-bg:   #173022;  --ad-ok-fg:   #7fd49b;
+    --ad-warn-bg: #332a12;  --ad-warn-fg: #e7c66a;
+    --ad-info-bg: #33261a;  --ad-info-fg: #eaa86a;
+}
+html.dark-mode body.admin-page .ad-trend.down { background: #3a1c1c; color: #f1a0a0; }
+html.dark-mode body.admin-page .ad-trend.flat { background: #26262e; }
+html.dark-mode body.admin-page .ad-bar { background: #2a2a32; }
+html.dark-mode body.admin-page .ad-alert { background: #24211c; border-color: #3a3328; }
+html.dark-mode body.admin-page .ad-btn-dark { background: var(--ad-amber-grad); color: #1b1206; }
+html.dark-mode body.admin-page .ad-btn-dark:hover { background: var(--ad-amber-lite); color: #1b1206; }
+html.dark-mode body.admin-page .ad-legend-revenue { background: #e9e6e0 !important; }
+
+html.dark-mode body.admin-page .ad-table td { border-bottom-color: #2a2a32; }
+html.dark-mode body.admin-page .ad-table tbody tr:hover,
+html.dark-mode body.admin-page .ad-table tbody tr:hover td { background: #24242c !important; }
+
+/* White controls: selects, outline/ghost/row-action buttons, bell, burger */
+html.dark-mode body.admin-page .ad-select,
+html.dark-mode body.admin-page .ad-btn-out,
+html.dark-mode body.admin-page .ad-btn-ghost,
+html.dark-mode body.admin-page .ad-act,
+html.dark-mode body.admin-page #adminNotifBtn,
+html.dark-mode body.admin-page .sidebar-toggle {
+    background-color: #1d1d24;
+    border-color: #3a3a44;
+    color: var(--ad-ink);
+}
+html.dark-mode body.admin-page .ad-btn-out:hover,
+html.dark-mode body.admin-page .ad-btn-ghost:hover,
+html.dark-mode body.admin-page .ad-act:hover,
+html.dark-mode body.admin-page .ad-act:focus,
+html.dark-mode body.admin-page #adminNotifBtn:hover { background-color: #26262e; color: var(--ad-ink); }
+html.dark-mode body.admin-page .ad-act-warn { color: #e7c66a; background: #2a2414; border-color: #4a3f22; }
+html.dark-mode body.admin-page .ad-act-ok { color: #7fd49b; background: #16271d; border-color: #2c4a38; }
+html.dark-mode body.admin-page .ad-act-danger { color: #f1a0a0; background: #2c1818; border-color: #4f2a2a; }
+html.dark-mode body.admin-page .ad-act-warn:hover,
+html.dark-mode body.admin-page .ad-act-warn:focus { color: #e7c66a; background: #332c18; border-color: #5c4e2a; }
+html.dark-mode body.admin-page .ad-act-ok:hover,
+html.dark-mode body.admin-page .ad-act-ok:focus { color: #7fd49b; background: #1c3124; border-color: #36593f; }
+html.dark-mode body.admin-page .ad-act-danger:hover,
+html.dark-mode body.admin-page .ad-act-danger:focus { color: #f1a0a0; background: #351c1c; border-color: #5e3232; }
+html.dark-mode body.admin-page .admin-container .alert-danger { background: #2c1818; border-color: #4f2a2a; color: #f1a0a0; }
+html.dark-mode body.admin-page .ad-stock-note.warn { color: #e7c66a; }
+html.dark-mode body.admin-page .ad-stock-note.out { color: #f1a0a0; }
+
+/* Notification dropdown (its rows are inline-styled with dark text) */
+html.dark-mode body.admin-page #adminNotifPanel {
+    background: #1d1d24;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+html.dark-mode #adminNotifList a { color: #e9e9ec !important; border-bottom-color: #2e2e36 !important; }
+html.dark-mode #adminNotifList a:hover { background: #24242c; }
+
+/* Admin page-local cards/modals that were hardcoded white */
+html.dark-mode .faq-item,
+html.dark-mode .design-modal-content,
+html.dark-mode .co-modal-content {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .faq-answer { color: #b6b6bd !important; }
+html.dark-mode .badge-category { background: #26262e !important; color: #c2c2c9 !important; }
+html.dark-mode .co-modal-close { background: #26262e !important; color: #e9e9ec !important; }
+html.dark-mode .co-thumb { background: #24242c !important; border-color: #33333c !important; }
+html.dark-mode .co-filter-tab:hover,
+html.dark-mode .filter-tab:hover { color: #e9e9ec !important; }
+html.dark-mode .stat-number { color: #f2f2f4; }
+
+/* ============================================================
+   PRODUCT PAGE + SHOP CARDS (product-modern.css) — flip tokens.
+   --pd-ink doubles as a BACKGROUND on the selected size + primary
+   button, so those two are repainted gold explicitly below.
+   ============================================================ */
+html.dark-mode {
+    --pd-ink:   #ecebe8;
+    --pd-muted: #aaa69e;
+    --pd-faint: #86827b;
+    --pd-line:  #2e2e36;
+    --pd-card:  #1d1d24;
+}
+html.dark-mode .pd-media,
+html.dark-mode .pd-related-card img { background: #24242c; }
+html.dark-mode .pd-size,
+html.dark-mode .pd-qty button,
+html.dark-mode .pd-btn-ghost,
+html.dark-mode .pd-input { background: #1d1d24; color: var(--pd-ink); }
+html.dark-mode .pd-qty button:hover,
+html.dark-mode .pd-btn-ghost:hover { background: #26262e; color: var(--pd-ink); }
+html.dark-mode .pd-size.selected,
+html.dark-mode .pd-btn-primary,
+html.dark-mode .pd-btn-primary:hover { color: #16171a; }
+html.dark-mode .pd-swatch.selected { box-shadow: 0 0 0 2px #1d1d24, 0 0 0 4px var(--pd-gold); }
+html.dark-mode .pd-stock.ok { color: #7fd49b; }
+html.dark-mode .pd-stock.low { color: #e7c66a; }
+html.dark-mode .pd-stock.out { color: #f1a0a0; }
+html.dark-mode .pd-rv-bar u { background: #2a2a32; }
+html.dark-mode .pd-rv-form,
+html.dark-mode .pd-rv-note { background: #1a1a20; }
+html.dark-mode .pd-rv-verified { background: #173022; color: #7fd49b; }
+html.dark-mode .pd-alert.ok { background: #173022; border-color: #2c4a38; color: #7fd49b; }
+html.dark-mode .pd-alert.err { background: #2c1818; border-color: #4f2a2a; color: #f1a0a0; }
+html.dark-mode .pd-related-card:hover { box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5); }
+
+/* ============================================================
+   REMAINING STOREFRONT SURFACES (style.css + page <style> blocks)
+   ============================================================ */
+html.dark-mode .search-overlay,
+html.dark-mode .btn-google,
+html.dark-mode .shop-view-toggle button,
+html.dark-mode .quick-reply-btn,
+html.dark-mode .support-widget-conv-item,
+html.dark-mode .support-chat-wrapper,
+html.dark-mode .summary-card,
+html.dark-mode .qr-card,
+html.dark-mode .chat-history-page .chat-content,
+html.dark-mode .canvas-action-btn,
+html.dark-mode .preview-3d-controls button {
+    background: #1d1d24 !important;
+    border-color: #2e2e36 !important;
+    color: #e9e9ec !important;
+}
+html.dark-mode .ai-chip { background: #24242c !important; color: #d0d0d6 !important; border-color: #3a3a44 !important; }
+html.dark-mode .summary-card-header { background: #202028 !important; border-color: #2e2e36 !important; color: #f2f2f4 !important; }
+html.dark-mode .canvas-action-btn:hover,
+html.dark-mode .preview-3d-controls button:hover,
+html.dark-mode .layer-actions button:hover,
+html.dark-mode .quick-reply-btn:hover { background: #26262e !important; color: #e9e9ec !important; }
+/* QR codes must stay dark-on-white to scan */
+html.dark-mode .qr-img { background: #fff; }
+
+/* Page-local text hardcoded near-black (#222/#333) on now-dark cards */
+html.dark-mode .design-details-list .value,
+html.dark-mode .timeline-content h6,
+html.dark-mode .order-info-list .value,
+html.dark-mode .layer-label,
+html.dark-mode .design-price,
+html.dark-mode .channel-option,
+html.dark-mode .btn-back:hover,
+html.dark-mode .btn-track-outline:hover,
+html.dark-mode .chat-history-page .message-content { color: #e9e9ec !important; }
+html.dark-mode .channel-option { border-color: #3a3a44 !important; }
+html.dark-mode .chat-history-page .user-message { background: #1c2533 !important; }
+html.dark-mode .chat-history-page .bot-message { background: #26262e !important; }
+html.dark-mode .chat-history-page .message-item { border-color: #2e2e36 !important; }
+html.dark-mode .order-step .step-num,
+html.dark-mode .step-connector:not(.completed) { background: #2e2e36; }
+
+/* Emphasis text drawn with --primary / --accent-green (near-black, which is
+   kept dark because it is also a background token) → gold so it stays visible. */
+html.dark-mode .apparel-type-btn.active,
+html.dark-mode .price-row.total,
+html.dark-mode .price-breakdown li.total-row,
+html.dark-mode .order-step.active,
+html.dark-mode .order-mini-price,
+html.dark-mode .payment-instructions h6,
+html.dark-mode .custom-order-price,
+html.dark-mode .ai-chip:hover,
+html.dark-mode .channel-option.selected,
+html.dark-mode .chat-attach-btn:hover,
+html.dark-mode .support-attach-btn:hover { color: var(--accent, #c8a96e) !important; }
+html.dark-mode .apparel-type-btn.active,
+html.dark-mode .channel-option.selected {
+    background: #2a2620 !important;
+    border-color: var(--accent, #c8a96e) !important;
+}
+
+/* Inline-styled text/icons using the dark tokens or dark greens.
+   :not([style*="background"]) leaves filled chips/buttons untouched. */
+html.dark-mode [style*="color: var(--primary)"]:not([style*="background"]),
+html.dark-mode [style*="color:var(--primary"]:not([style*="background"]),
+html.dark-mode [style*="color: var(--accent-green"]:not([style*="background"]),
+html.dark-mode [style*="color:var(--accent-green"]:not([style*="background"]) {
+    color: var(--accent, #c8a96e) !important;
+}
+html.dark-mode [style*="color:#2d6a4f"]:not([style*="background"]),
+html.dark-mode [style*="color: #2d6a4f"]:not([style*="background"]),
+html.dark-mode [style*="color:#2c6e3f"]:not([style*="background"]),
+html.dark-mode [style*="color: #2c6e3f"]:not([style*="background"]) { color: #7fd49b !important; }
+
+/* Filled controls painted with --primary (near-black) disappear on dark cards
+   → gold fill + dark text, matching the site accent. */
+html.dark-mode .btn-primary,
+html.dark-mode .btn-primary:hover,
+html.dark-mode .btn-primary:focus,
+html.dark-mode .btn-outline-primary:hover,
+html.dark-mode .product-action-btn:hover,
+html.dark-mode .filter-link.active,
+html.dark-mode .size-filter-btn.active,
+html.dark-mode .size-option.selected,
+html.dark-mode .shop-view-toggle button:hover,
+html.dark-mode .shop-view-toggle button.active,
+html.dark-mode .search-bar button,
+html.dark-mode .chat-send-btn,
+html.dark-mode .support-send-btn,
+html.dark-mode .support-msg-user .support-msg-bubble {
+    background: var(--accent, #c8a96e) !important;
+    border-color: var(--accent, #c8a96e) !important;
+    color: #16140f !important;
+}
+html.dark-mode .btn-primary:hover { background: var(--accent-hover, #b89555) !important; }
+html.dark-mode .form-check-input:checked { background-color: var(--accent, #c8a96e); border-color: var(--accent, #c8a96e); }
+
+/* Bootstrap contextual alerts (light pastel boxes) → tinted dark */
+html.dark-mode .alert-success { background-color: #16271d !important; color: #8fdcaa !important; border-color: #2c4a38 !important; }
+html.dark-mode .alert-danger  { background-color: #2c1818 !important; color: #f1a0a0 !important; border-color: #4f2a2a !important; }
+html.dark-mode .alert-warning { background-color: #2a2414 !important; color: #ebcd7a !important; border-color: #4a3f22 !important; }
+html.dark-mode .alert-info    { background-color: #172234 !important; color: #9cc3f5 !important; border-color: #2b3f5e !important; }
+html.dark-mode .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+
+/* Remaining Bootstrap components */
+html.dark-mode .modal-header,
+html.dark-mode .modal-footer,
+html.dark-mode .nav-tabs { border-color: #2e2e36 !important; }
+html.dark-mode .nav-tabs .nav-link.active { background: #1d1d24 !important; color: #e9e9ec !important; border-color: #2e2e36 #2e2e36 #1d1d24 !important; }
+html.dark-mode .page-link { background: #1d1d24 !important; color: #e9e9ec !important; border-color: #2e2e36 !important; }
+html.dark-mode .page-item.active .page-link { background: var(--accent, #c8a96e) !important; color: #16140f !important; border-color: var(--accent, #c8a96e) !important; }
+html.dark-mode .input-group-text { background: #24242c !important; color: #c2c2c9 !important; border-color: #33333c !important; }
+/* Bootstrap's own neutral tokens (.border, .text-body-secondary, …); coloured
+   variants like .border-danger keep their colours. */
+html.dark-mode {
+    --bs-body-color: #e9e9ec;
+    --bs-body-bg: #15151a;
+    --bs-border-color: #2e2e36;
+    --bs-secondary-color: rgba(233, 233, 236, 0.7);
+    --bs-tertiary-bg: #24242c;
+    --bs-secondary-bg: #24242c;
+}
+
+/* ============================================================
+   ADMIN POLISH — status chips, filter tabs, placeholders.
+   Pastel light chips glare on dark cards → same hue, dark tint.
+   ============================================================ */
+html.dark-mode body.admin-page .ad-pill.s-other { background: #2a2a32; color: #b6b2aa; }
+
+/* Yellow / pending family */
+html.dark-mode .design-badge.pending,
+html.dark-mode .co-badge.warning,
+html.dark-mode .status-badge.warning,
+html.dark-mode .design-status-badge.pending,
+html.dark-mode .payment-info-badge.pending,
+html.dark-mode .badge-priority-high,
+html.dark-mode .status-pending {
+    background: #332a12 !important; color: #ebcd7a !important;
+}
+/* Green / approved family */
+html.dark-mode .design-badge.approved,
+html.dark-mode .co-badge.success,
+html.dark-mode .status-badge.success,
+html.dark-mode .design-status-badge.approved,
+html.dark-mode .payment-info-badge.verified,
+html.dark-mode .badge-responded,
+html.dark-mode .status-completed,
+html.dark-mode .btn-verify {
+    background: #173022 !important; color: #8fdcaa !important;
+}
+/* Red / rejected family */
+html.dark-mode .design-badge.revision,
+html.dark-mode .co-badge.danger,
+html.dark-mode .status-badge.danger,
+html.dark-mode .design-status-badge.revision,
+html.dark-mode .payment-info-badge.rejected,
+html.dark-mode .badge-priority-urgent,
+html.dark-mode .status-cancelled,
+html.dark-mode .btn-reject {
+    background: #3a1c1c !important; color: #f1a0a0 !important;
+}
+/* Blue / teal / neutral family */
+html.dark-mode .co-badge.primary,
+html.dark-mode .status-badge.primary { background: #172234 !important; color: #9cc3f5 !important; }
+html.dark-mode .co-badge.teal,
+html.dark-mode .status-badge.info { background: #132a2e !important; color: #8fd3de !important; }
+html.dark-mode .design-badge.completed,
+html.dark-mode .design-status-badge.completed { background: #132a2e !important; color: #8fd3de !important; }
+html.dark-mode .design-badge.cancelled,
+html.dark-mode .design-status-badge.cancelled,
+html.dark-mode .badge-read,
+html.dark-mode .badge-closed { background: #2a2a32 !important; color: #c2c2c9 !important; }
+
+/* Own chat bubbles: a solid gold fill made the small name/time text inside
+   unreadable → deep gold tint with light text instead. */
+html.dark-mode .support-msg-user .support-msg-bubble {
+    background: #3a3222 !important;
+    border: 1px solid #5a4a2c !important;
+    color: #f2ead8 !important;
+}
+html.dark-mode .btn-verify:hover { background: #1c3a29 !important; }
+html.dark-mode .btn-reject:hover { background: #452222 !important; }
+
+/* Contact page: remaining chips + the card's near-black accent stripe */
+html.dark-mode .badge-new { background: #172234 !important; color: #9cc3f5 !important; }
+html.dark-mode .badge-priority-normal { background: #132a2e !important; color: #8fd3de !important; }
+html.dark-mode .badge-priority-low { background: #2a2a32 !important; color: #c2c2c9 !important; }
+html.dark-mode .message-card { border-left-color: var(--accent, #c8a96e) !important; }
+html.dark-mode .message-card:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important; }
+
+/* Active filter tab was near-black on a near-black page → gold */
+html.dark-mode .filter-tab.active,
+html.dark-mode .co-filter-tab.active {
+    background: var(--accent, #c8a96e) !important;
+    border-color: var(--accent, #c8a96e) !important;
+    color: #16140f !important;
+}
+html.dark-mode .filter-tab:not(.active),
+html.dark-mode .co-filter-tab:not(.active) {
+    background: transparent !important;
+    border-color: #3a3a44 !important;
+    color: #b6b6bd !important;
+}
+
+/* Broken-image placeholder (light grey placehold.co tile) + product thumbs */
+html.dark-mode img[src*="placehold.co"] { filter: invert(0.88) hue-rotate(180deg); }
+
+/* Bootstrap solid badges used in admin tables stay legible */
+html.dark-mode .badge.bg-warning.text-dark { color: #1a1a1a !important; }
+
+/* Modals (edit user / edit product / design preview) */
+html.dark-mode .modal-title,
+html.dark-mode .modal-body { color: #e9e9ec; }
+html.dark-mode .modal-backdrop.show { opacity: 0.7; }
+
+/* ============================================================
+   CUSTOM ORDER SUMMARY + CUSTOM PAYMENT
+   ============================================================ */
+/* "Back to …" buttons (summary: page CSS; payment: inline styles) */
+html.dark-mode .btn-back {
+    background: #1d1d24 !important;
+    color: #c2c2c9 !important;
+    border-color: #3a3a44 !important;
+}
+html.dark-mode .btn-back:hover {
+    border-color: var(--accent, #c8a96e) !important;
+    color: #f2f2f4 !important;
+}
+
+/* Summary: detail rows + price breakdown (hardcoded #555/#666 text, #f0f0f0 lines) */
+html.dark-mode .design-details-list li { border-bottom-color: #2e2e36 !important; }
+html.dark-mode .design-details-list .label { color: #9a9aa2 !important; }
+html.dark-mode .design-preview-img { border-color: #2e2e36 !important; }
+html.dark-mode .price-breakdown li { color: #c2c2c9 !important; }
+html.dark-mode .price-breakdown li.discount { color: #7fd49b !important; }
+html.dark-mode .price-breakdown li.total-row { border-top-color: var(--accent, #c8a96e) !important; }
+
+/* Payment: order strip at the top (was light grey with light heading text) */
+html.dark-mode .order-mini-summary { background: #1d1d24 !important; border: 1px solid #2e2e36; }
+html.dark-mode .order-mini-img { border-color: #33333c !important; }
+html.dark-mode .order-mini-info p { color: #9a9aa2 !important; }
+
+/* Payment: method options + the sections that open after choosing one */
+html.dark-mode .payment-method-option,
+html.dark-mode .channel-option { border-color: #3a3a44 !important; }
+html.dark-mode .payment-proof-section {
+    background: #1a1a20 !important;
+    border-color: #2e2e36 !important;
+}
+html.dark-mode .upload-proof-area {
+    background: #1d1d24 !important;
+    border-color: #3a3a44 !important;
+}
+html.dark-mode .upload-proof-area:hover { border-color: var(--accent, #c8a96e) !important; }
+html.dark-mode .upload-proof-area i { color: #6a6a72 !important; }
+html.dark-mode .upload-proof-area p { color: #9a9aa2 !important; }
+/* Instructions boxes: pale green (class) and pale yellow COD (inline) gradients
+   carried light text in dark mode → unreadable. Same hue, dark tint. */
+html.dark-mode .payment-instructions {
+    background: linear-gradient(135deg, #16271d, #14221a) !important;
+    border: 1px solid #2c4a38;
+    color: #d6e9dc !important;
+}
+html.dark-mode .payment-instructions[style*="#fff8e1"] {
+    background: linear-gradient(135deg, #2a2414, #262012) !important;
+    border-color: #4a3f22;
+    color: #efe3c4 !important;
+}
+
+/* Smooth fade while toggling (the class is added for ~400ms by the toggle script) */
+@media (prefers-reduced-motion: no-preference) {
+    html.theme-anim *,
+    html.theme-anim *::before,
+    html.theme-anim *::after {
+        transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+    }
 }

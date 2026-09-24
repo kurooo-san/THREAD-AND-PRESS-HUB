@@ -10,17 +10,33 @@ $assetBase   = $isAdminPage ? '../' : '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($pageTitle) ? htmlspecialchars($pageTitle) . ' - Thread & Press Hub' : 'Thread & Press Hub'; ?></title>
+    <link rel="icon" type="image/png" href="<?php echo $assetBase; ?>images/logo/logo_sm.png">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../css/style.css' : 'css/style.css'; ?>" rel="stylesheet">
+    <link href="<?php echo $assetBase; ?>css/style.css?v=<?php echo @filemtime(__DIR__ . '/../../css/style.css'); ?>" rel="stylesheet">
     <!-- Loaded last on purpose: the modern navbar rules must win over style.css. -->
     <?php if (!$isAdminPage): ?>
-    <link href="css/navbar-modern.css" rel="stylesheet">
+    <link href="css/navbar-modern.css?v=<?php echo @filemtime(__DIR__ . '/../../css/navbar-modern.css'); ?>" rel="stylesheet">
     <?php else: ?>
-    <link href="../css/admin-modern.css" rel="stylesheet">
+    <link href="../css/admin-modern.css?v=<?php echo @filemtime(__DIR__ . '/../../css/admin-modern.css'); ?>" rel="stylesheet">
     <?php endif; ?>
+    <!-- Dark mode: every rule is scoped under html.dark-mode, so it is inert in light mode. -->
+    <!-- ?v= busts the browser cache whenever the file changes (an older copy of this file was cached). -->
+    <link href="<?php echo $assetBase; ?>css/dark-mode.css?v=<?php echo @filemtime(__DIR__ . '/../../css/dark-mode.css'); ?>" rel="stylesheet">
+    <script>
+        // Runs before first paint so a dark-mode page never flashes white.
+        try { if (localStorage.getItem('tph-theme') === 'dark') document.documentElement.classList.add('dark-mode'); } catch (e) {}
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('[data-theme-toggle]')) return;
+            var root = document.documentElement;
+            root.classList.add('theme-anim');
+            setTimeout(function () { root.classList.remove('theme-anim'); }, 400);
+            var dark = root.classList.toggle('dark-mode');
+            try { localStorage.setItem('tph-theme', dark ? 'dark' : 'light'); } catch (err) {}
+        });
+    </script>
 </head>
 <?php
 $bodyClasses = [];
@@ -61,7 +77,8 @@ if ($navFirstName === false || $navFirstName === '') {
     <nav class="navbar navbar-expand-lg cafe-navbar tp-nav sticky-top">
         <div class="container tp-nav-shell">
             <a class="navbar-brand" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../index.php' : 'index.php'; ?>">
-                <span class="brand-logo">TP</span>
+                <img class="brand-logo logo-light" src="<?php echo $assetBase; ?>images/logo/logo_sm.png" alt="Thread &amp; Press Hub logo">
+                <img class="brand-logo logo-dark" src="<?php echo $assetBase; ?>images/logo/logo_white_sm.png" alt="Thread &amp; Press Hub logo">
                 <span class="brand-text">
                     <span class="brand-name">Thread &amp; Press</span>
                     <span class="brand-sub">HUB</span>
@@ -106,6 +123,11 @@ if ($navFirstName === false || $navFirstName === '') {
                         </a>
                     </li>
                     <li class="tp-nav-divider" aria-hidden="true"></li>
+                    <li class="nav-item">
+                        <button type="button" class="nav-link tp-icon-btn theme-toggle" data-theme-toggle aria-label="Toggle dark mode" title="Toggle dark mode">
+                            <i class="fas fa-moon theme-icon-moon"></i><i class="fas fa-sun theme-icon-sun"></i>
+                        </button>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link tp-icon-btn" href="cart.php" aria-label="Cart">
                             <svg class="tp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -205,8 +227,7 @@ if ($navFirstName === false || $navFirstName === '') {
 
     <script>
         /* Navbar scrolled state — adds .is-scrolled past 24px so the bar turns
-           translucent + blurred. Separate from animations.js's .navbar-scrolled
-           (different class, different threshold); the two do not interact. */
+           translucent + blurred. */
         (function () {
             var nav = document.querySelector('.tp-nav');
             if (!nav) return;

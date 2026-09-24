@@ -274,7 +274,7 @@ function adStatusPill(string $status): string
                     <p><?php echo htmlspecialchars($chart_range); ?></p>
                 </div>
                 <div class="ad-legend">
-                    <span><i style="background:#17181b;"></i>Revenue</span>
+                    <span><i class="ad-legend-revenue" style="background:#17181b;"></i>Revenue</span>
                     <span><i style="background:#d9884c;"></i>Orders</span>
                 </div>
             </div>
@@ -347,7 +347,7 @@ function adStatusPill(string $status): string
                         <td><?php echo htmlspecialchars($order['fullname']); ?></td>
                         <td>₱<?php echo number_format($order['total'], 2); ?></td>
                         <td><span class="ad-pill <?php echo adStatusPill($order['status']); ?>"><?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $order['status']))); ?></span></td>
-                        <td><?php echo htmlspecialchars(strtoupper($order['payment_method'] ?? '')); ?></td>
+                        <td><?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'] ?? '')); ?></td>
                         <td><?php echo date('M d, Y', strtotime($order['created_at'])); ?></td>
                         <td style="text-align:right;"><a href="order_details.php?id=<?php echo (int)$order['id']; ?>" class="ad-btn-out">View</a></td>
                     </tr>
@@ -426,6 +426,10 @@ function adStatusPill(string $status): string
 
     const FONT = "'Instrument Sans', Helvetica, Arial, sans-serif";
     const peso = (v) => '₱' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v));
+    // Near-black bars/labels vanish on the dark-mode card, so both follow the theme.
+    const isDark = () => document.documentElement.classList.contains('dark-mode');
+    const barColor = () => isDark() ? '#e9e6e0' : '#17181b';
+    const labelColor = () => isDark() ? '#b6b2aa' : '#6f6b63';
 
     // Draws the value above each revenue bar; Chart.js has no built-in for this
     // and the datalabels plugin is not loaded.
@@ -437,7 +441,7 @@ function adStatusPill(string $status): string
             const { ctx: c } = chart;
             c.save();
             c.font = '600 11px ' + FONT;
-            c.fillStyle = '#6f6b63';
+            c.fillStyle = labelColor();
             c.textAlign = 'center';
             c.textBaseline = 'bottom';
             meta.data.forEach((bar, i) => {
@@ -449,7 +453,7 @@ function adStatusPill(string $status): string
         }
     };
 
-    new Chart(ctx, {
+    const chart = new Chart(ctx, {
         type: 'bar',
         plugins: [valueLabels],
         data: {
@@ -458,7 +462,7 @@ function adStatusPill(string $status): string
                 {
                     label: 'Revenue',
                     data: <?php echo $chart_revenue; ?>,
-                    backgroundColor: '#17181b',
+                    backgroundColor: barColor(),
                     borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
                     borderSkipped: false,
                     barPercentage: 0.62,
@@ -500,13 +504,20 @@ function adStatusPill(string $status): string
                 x: {
                     grid: { display: false },
                     border: { display: false },
-                    ticks: { font: { family: FONT, size: 12 }, color: '#6f6b63' }
+                    ticks: { font: { family: FONT, size: 12 }, color: labelColor() }
                 },
                 y:  { display: false, beginAtZero: true },
                 y1: { display: false, beginAtZero: true }
             }
         }
     });
+
+    // Recolour in place when the theme toggle flips html.dark-mode.
+    new MutationObserver(() => {
+        chart.data.datasets[0].backgroundColor = barColor();
+        chart.options.scales.x.ticks.color = labelColor();
+        chart.update('none');
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 })();
 </script>
 

@@ -59,7 +59,7 @@ RUN { \
         echo '    AllowOverride All'; \
         echo '    Require all granted'; \
         echo '</Directory>'; \
-        echo '<DirectoryMatch "/var/www/html/(storage|vendor|tests|scripts)/">'; \
+        echo '<DirectoryMatch "/var/www/html/(storage|vendor|tests|scripts|docker)/">'; \
         echo '    Require all denied'; \
         echo '</DirectoryMatch>'; \
         echo '<FilesMatch "\.(sql|env|md|lock|bak)$">'; \
@@ -68,6 +68,17 @@ RUN { \
         echo 'ServerTokens Prod'; \
         echo 'ServerSignature Off'; \
         echo 'ServerName localhost'; \
+        echo '# TLS ends at the Railway proxy; tell PHP the request was https'; \
+        echo '# so FORCE_HTTPS does not redirect-loop and cookies stay Secure.'; \
+        echo 'SetEnvIf X-Forwarded-Proto "^https$" HTTPS=on'; \
+        echo '# Small worker pool: the free plan caps RAM at ~0.5 GB.'; \
+        echo '<IfModule mpm_prefork_module>'; \
+        echo '    StartServers 2'; \
+        echo '    MinSpareServers 2'; \
+        echo '    MaxSpareServers 4'; \
+        echo '    MaxRequestWorkers 10'; \
+        echo '    MaxConnectionsPerChild 1000'; \
+        echo '</IfModule>'; \
     } > /etc/apache2/conf-available/zz-app.conf \
     && a2enconf zz-app
 
@@ -82,18 +93,19 @@ RUN composer install --no-dev --no-interaction --prefer-dist \
 # ---- Application ---------------------------------------------------
 COPY . .
 
-# Writable trees. Mount a Railway volume over /var/www/html/uploads or
-# these are wiped on every redeploy.
+# Writable trees. docker/start.sh moves them onto the Railway volume
+# (mount it at /data) so uploads survive redeploys.
 RUN mkdir -p \
         uploads/payments uploads/tryon uploads/designs \
         uploads/design_assets uploads/support \
         storage/payment-proofs storage/payment-config \
-        images/products \
-    && chown -R www-data:www-data uploads storage images/products \
-    && chmod -R 775 uploads storage images/products
+        images/products images/payment-qr \
+    && chown -R www-data:www-data uploads storage images/products images/payment-qr \
+    && chmod -R 775 uploads storage images/products images/payment-qr \
+    && sed -i 's/\r$//' docker/start.sh \
+    && chmod +x docker/start.sh
 
 EXPOSE 8080
 
-# Railway injects $PORT at runtime, so Apache is pointed at it on start
-# rather than baked to 80.
-CMD ["sh", "-c", "sed -ri \"s/^Listen 80$/Listen ${PORT:-8080}/\" /etc/apache2/ports.conf && sed -ri \"s/:80>/:${PORT:-8080}>/\" /etc/apache2/sites-available/000-default.conf && exec apache2-foreground"]
+# Railway injects $PORT at runtime; start.sh points Apache at it.
+CMD ["/var/www/html/docker/start.sh"]

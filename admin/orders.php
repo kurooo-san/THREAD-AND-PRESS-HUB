@@ -1,5 +1,6 @@
 <?php
 require '../includes/config.php';
+require_once '../includes/payment-config.php';   // paymentMethodLabel()
 
 // Check if user is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
@@ -126,7 +127,7 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                         </td>
                         <td>₱<?php echo number_format($order['total'], 2); ?></td>
                         <td>
-                            <?php echo ucfirst(str_replace('_', ' ', $order['payment_method'])); ?>
+                            <?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'])); ?>
                             <?php if (!empty($order['payment_reference'])): ?>
                                 <br><small class="text-muted">Ref: <?php echo htmlspecialchars($order['payment_reference']); ?></small>
                             <?php endif; ?>
@@ -138,7 +139,8 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                                 $psBadge = ['unpaid'=>'secondary','pending_verification'=>'warning text-dark','verified'=>'success','rejected'=>'danger'][$ps] ?? 'secondary';
                             ?>
                             <span class="badge bg-<?php echo $psBadge; ?>"><?php echo ucfirst(str_replace('_',' ',$ps)); ?></span>
-                            <?php if ($ps === 'pending_verification' && in_array($order['payment_method'],['gcash','maya'])): ?>
+                            <?php // Any non-cash channel can land here (e-wallet, InstaPay, bank transfer). ?>
+                            <?php if ($ps === 'pending_verification' && $order['payment_method'] !== 'cod'): ?>
                                 <div class="btn-group btn-group-sm mt-1" role="group">
                                     <form method="POST" class="d-inline" onsubmit="return confirm('Verify this payment?');">
                                         <?php echo csrfTokenField(); ?>

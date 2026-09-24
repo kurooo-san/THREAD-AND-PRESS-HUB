@@ -39,8 +39,7 @@ $orders_result = $stmt->get_result();
                                 <small class="text-muted d-block mt-2">
                                     <i class="fas fa-<?php echo $order['payment_method'] === 'cod' ? 'money-bill' : 'mobile-alt'; ?>"></i>
                                     <?php 
-                                        $payLabels = ['gcash' => 'GCash', 'maya' => 'Maya', 'cod' => 'Cash on Delivery'];
-                                        echo $payLabels[$order['payment_method']] ?? ucfirst($order['payment_method']);
+                                        echo htmlspecialchars(paymentMethodLabel($order['payment_method']));
                                     ?>
                                 </small>
                             </div>

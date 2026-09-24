@@ -57,12 +57,23 @@ $successFlash = takePaymentSuccessFlash($orderId);
 
 <?php
 if ($successFlash !== null) {
-    $isCod = ($successFlash['kind'] ?? '') === 'custom_cod';
+    $flashKind = $successFlash['kind'] ?? '';
+    $isCod     = $flashKind === 'custom_cod';
+    // A PayMongo payment is already confirmed by the gateway — no proof to review.
+    $isGateway = $flashKind === 'custom_paymongo';
+    if ($isGateway) {
+        $title   = 'Payment Successful!';
+        $message = 'Your payment went through. We will start printing your design shortly.';
+    } elseif ($isCod) {
+        $title   = 'Order Placed!';
+        $message = 'Cash on Delivery — please prepare the exact amount when you receive your custom apparel.';
+    } else {
+        $title   = 'Payment Submitted!';
+        $message = 'We received your proof of payment. We will verify it shortly and start printing your design.';
+    }
     renderPaymentSuccess([
-        'title'   => $isCod ? 'Order Placed!' : 'Payment Submitted!',
-        'message' => $isCod
-            ? 'Cash on Delivery — please prepare the exact amount when you receive your custom apparel.'
-            : 'We received your proof of payment. We will verify it shortly and start printing your design.',
+        'title'   => $title,
+        'message' => $message,
         'badge'   => 'Custom Order #' . (int) $orderId,
         'amount'  => $successFlash['total'] ?? null,
     ]);
@@ -347,7 +358,7 @@ if ($successFlash !== null) {
                         <?php if ($payment): ?>
                         <li>
                             <span class="label">Payment Method</span>
-                            <span class="value"><?php echo strtoupper(htmlspecialchars($payment['payment_method'])); ?></span>
+                            <span class="value"><?php echo htmlspecialchars(paymentMethodLabel($payment['payment_method'])); ?></span>
                         </li>
                         <li>
                             <span class="label">Payment Status</span>

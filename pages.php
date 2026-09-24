@@ -1,5 +1,6 @@
 <?php
 require 'includes/config.php';
+require_once 'includes/delivery-zones.php';   // DELIVERY_ZONES — the same table checkout charges from
 $pageTitle = 'Pages';
 ?>
 
@@ -116,34 +117,43 @@ $pageTitle = 'Pages';
 
     <div id="shipping" class="mb-5">
         <h3 style="font-weight: 700; margin-bottom: 1.5rem;">Shipping Information</h3>
-        <p>We partner with reliable logistics companies to ensure your orders arrive safely and on time.</p>
+        <p>We partner with reliable logistics companies to ensure your orders arrive safely and on time. The shipping fee depends on the delivery area and is shown as its own line at checkout.</p>
         <table class="table">
             <thead>
                 <tr>
                     <th>Delivery Area</th>
                     <th>Shipping Time</th>
-                    <th>Cost</th>
+                    <th>Shipping Fee</th>
                 </tr>
             </thead>
             <tbody>
+                <?php
+                // Estimated transit time per zone. The FEE is never written here
+                // — it comes from DELIVERY_ZONES, the same table checkout charges
+                // from, so this page cannot quote a price the cart disagrees with.
+                $shippingEta = [
+                    'rizal'    => '1-2 business days',
+                    'ncr'      => '1-2 business days',
+                    'nearby'   => '2-3 business days',
+                    'luzon'    => '3-5 business days',
+                    'visayas'  => '3-5 business days',
+                    'mindanao' => '3-5 business days',
+                ];
+                foreach (DELIVERY_ZONES as $zoneKey => $zone): ?>
                 <tr>
-                    <td>Metro Manila</td>
-                    <td>1-2 business days</td>
-                    <td>₱50 (Free over ₱1,500)</td>
+                    <td><?php echo htmlspecialchars($zone['label']); ?></td>
+                    <td><?php echo htmlspecialchars($shippingEta[$zoneKey] ?? '3-5 business days'); ?></td>
+                    <td>₱<?php echo number_format((float) $zone['fee'], 2); ?></td>
                 </tr>
+                <?php endforeach; ?>
                 <tr>
-                    <td>Provincial (Nearby)</td>
-                    <td>2-3 business days</td>
-                    <td>₱100 (Free over ₱1,500)</td>
-                </tr>
-                <tr>
-                    <td>Provincial (Remote)</td>
-                    <td>3-5 business days</td>
-                    <td>₱150 (Free over ₱2,000)</td>
+                    <td><strong>Store Pickup</strong></td>
+                    <td>Ready for pickup once confirmed</td>
+                    <td><strong>Free</strong></td>
                 </tr>
             </tbody>
         </table>
-        <p class="text-muted small"><strong>Note:</strong> All shipping times are estimates. Delays may occur due to weather, holidays, or logistics issues.</p>
+        <p class="text-muted small"><strong>Note:</strong> All shipping times are estimates. Delays may occur due to weather, holidays, or logistics issues. Store Pickup is settled in cash at the counter.</p>
     </div>
 
     <div id="returns" class="mb-5">
@@ -153,7 +163,7 @@ $pageTitle = 'Pages';
         <ul>
             <li>Items must be unworn, unwashed, and in original condition</li>
             <li>Include original packaging and tags</li>
-            <li>Return shipping is free for orders over ₱1,500</li>
+            <li>Return shipping is arranged with our support team</li>
             <li>Refunds are processed within 7-10 days after receipt</li>
             <li>Clearance items are final sale and cannot be returned</li>
         </ul>

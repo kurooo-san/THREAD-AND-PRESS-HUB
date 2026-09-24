@@ -12,6 +12,9 @@
  *   MAIL_FROM_NAME=Thread & Press Hub
  */
 
+// paymentMethodLabel() - so emails name the channel the same way the site does.
+require_once __DIR__ . '/payment-config.php';
+
 if (!defined('MAIL_FROM')) define('MAIL_FROM', getenv('MAIL_FROM') ?: 'noreply@threadandpress.com');
 if (!defined('MAIL_FROM_NAME')) define('MAIL_FROM_NAME', getenv('MAIL_FROM_NAME') ?: 'Thread & Press Hub');
 if (!defined('SMTP_HOST')) define('SMTP_HOST', getenv('SMTP_HOST') ?: '');
@@ -166,7 +169,7 @@ function sendOrderConfirmationEmail($conn, $orderId) {
 
     <div style="background:#f9f9f9;border-radius:8px;padding:15px;margin:15px 0;">
         <p style="margin:5px 0;font-size:14px;"><strong>Order #' . $orderId . '</strong></p>
-        <p style="margin:5px 0;font-size:13px;color:#666;">Payment: ' . strtoupper($order['payment_method']) . '</p>
+        <p style="margin:5px 0;font-size:13px;color:#666;">Payment: ' . paymentMethodLabel($order['payment_method']) . '</p>
         <p style="margin:5px 0;font-size:13px;color:#666;">Delivery: ' . htmlspecialchars($order['delivery_address']) . '</p>
     </div>
 
@@ -240,6 +243,11 @@ function sendOrderStatusEmail($conn, $orderId, $newStatus) {
  * Get the base URL of the application
  */
 function getBaseUrl() {
+    // APP_URL (set on Railway) wins; the request-derived fallback is for XAMPP.
+    $configured = trim((string) (getenv('APP_URL') ?: ''));
+    if ($configured !== '') {
+        return rtrim($configured, '/');
+    }
     $allowedHosts = ['localhost', '127.0.0.1'];
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     // Strip port for validation
@@ -382,7 +390,7 @@ function sendCustomOrderConfirmationEmail($conn, $customOrderId) {
 
     $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
     $typeName = $typeNames[$order['product_type']] ?? ucfirst($order['product_type']);
-    $paymentLabel = strtoupper($order['payment_method'] ?? 'PENDING');
+    $paymentLabel = paymentMethodLabel($order['payment_method'] ?? '');
 
     $content = '
     <p style="color:#555;line-height:1.6;">Hi ' . htmlspecialchars($order['fullname']) . ',</p>

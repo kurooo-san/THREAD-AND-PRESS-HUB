@@ -82,8 +82,8 @@ try {
             $response .= "Status: {$emoji} {$statusDisplay}\n";
             $response .= "Items: " . $order['item_count'] . " product(s)\n";
             $response .= "Total: ₱" . number_format($order['total'], 2) . "\n";
-            $payLookup = ['gcash' => '💳 GCash', 'maya' => '💳 Maya', 'cod' => '💵 Cash on Delivery'];
-            $response .= "Payment: " . ($payLookup[$order['payment_method']] ?? ucfirst($order['payment_method'])) . "\n";
+            $payIcon = ($order['payment_method'] === 'cod') ? "💵" : "💳";
+            $response .= "Payment: {$payIcon} " . paymentMethodLabel($order['payment_method']) . "\n";
             $response .= "Order Date: " . date('F d, Y H:i A', strtotime($order['created_at'])) . "\n";
             
             if ($order['status'] !== 'completed' && $order['status'] !== 'cancelled') {

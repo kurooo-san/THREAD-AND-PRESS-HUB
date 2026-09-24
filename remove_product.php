@@ -1,5 +1,11 @@
 <?php
+/**
+ * One-shot cleanup script. GUARDED: it runs a DELETE, and was reachable over
+ * HTTP by anyone.
+ */
 require 'includes/config.php';
+require_once __DIR__ . '/includes/maintenance-guard.php';
+requireCli('remove_product.php');
 
 // Delete Men's Leather Belt
 $query = "DELETE FROM products WHERE name = 'Men\\'s Leather Belt'";

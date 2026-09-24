@@ -1,5 +1,14 @@
 <?php
+/**
+ * One-shot sample catalogue seeder.
+ *
+ * GUARDED: this used to be reachable over HTTP with no checks, so every
+ * request — including automated ones — inserted all 20 products again. That
+ * is how the catalogue ended up with seven copies of everything.
+ */
 require 'includes/config.php';
+require_once __DIR__ . '/includes/maintenance-guard.php';
+requireCli('insert_sample_products.php');
 
 $products = [
     // 5 womens
@@ -29,11 +38,25 @@ $products = [
     ['name'=>'Kids Swim Trunks','description'=>'Bright swim trunks perfect for pool days.','price'=>499.00,'category'=>'pants','image'=>'kids_swim_trunks.jpg','gender'=>'kids','available_colors'=>'Blue,Green','available_sizes'=>'XS,S,M,L'],
 ];
 
+// Belt and braces: even from the command line, skip any product whose name is
+// already in the catalogue. Re-running this must never create a second copy.
+$look = $conn->prepare("SELECT id FROM products WHERE name = ? LIMIT 1");
 $stmt = $conn->prepare("INSERT INTO products (name, description, price, category, image, status, gender, available_colors, available_sizes) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)");
 $stmt->bind_param('ssdsssss', $name, $desc, $price, $cat, $img, $gender, $colors, $sizes);
 
+$added = 0;
+$skipped = 0;
+
 foreach ($products as $p) {
     $name = $p['name'];
+
+    $look->bind_param('s', $name);
+    $look->execute();
+    if ($look->get_result()->num_rows > 0) {
+        $skipped++;
+        continue;
+    }
+
     $desc = $p['description'];
     $price = $p['price'];
     $cat = $p['category'];
@@ -42,9 +65,12 @@ foreach ($products as $p) {
     $colors = $p['available_colors'];
     $sizes = $p['available_sizes'];
     $stmt->execute();
+    $added++;
 }
 
 $stmt->close();
+$look->close();
 
-echo "Sample products inserted successfully.";
+echo "Sample products: {$added} inserted, {$skipped} already present (skipped).
+";
 ?>

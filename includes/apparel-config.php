@@ -128,3 +128,72 @@ function getApparelTypeKeys()
 {
     return array_keys(getApparelConfig());
 }
+
+/**
+ * Print-size surcharges, in PHP pesos.
+ *
+ * Kept beside the base prices so a price change means editing one file.
+ */
+function getPrintSizePrices()
+{
+    return ['small' => 50, 'medium' => 100, 'large' => 180, 'full' => 300];
+}
+
+/** Human labels for the print sizes. */
+function getPrintSizeLabels()
+{
+    return [
+        'small'  => 'Small (4x4")',
+        'medium' => 'Medium (8x8")',
+        'large'  => 'Large (12x12")',
+        'full'   => 'Full Print',
+    ];
+}
+
+/**
+ * Price one custom-design order.
+ *
+ * The ONE place custom-design pricing is worked out, so the estimate on a
+ * "My Designs" card and the figure on the order page cannot drift apart.
+ * Base prices come from getApparelConfig(), which also means an apparel type
+ * that is not a t-shirt/hoodie/polo is priced correctly instead of falling
+ * back to a placeholder.
+ *
+ * Every input is clamped here, so callers may pass raw request values.
+ *
+ * @return array{base:float, print:float, color:float, unit:float,
+ *               quantity:int, subtotal:float, discountRate:float,
+ *               discount:float, total:float, colorsUsed:int}
+ */
+function customDesignPrice(string $apparelType, string $printSize, int $quantity, int $colorsUsed, string $discountType)
+{
+    $cfg    = getApparelConfig();
+    $prints = getPrintSizePrices();
+
+    $base  = isset($cfg[$apparelType]) ? (float) $cfg[$apparelType]['base'] : 0.0;
+    $print = $prints[$printSize] ?? $prints['medium'];
+
+    // The first colour is included; each extra one costs P25.
+    $colorsUsed = max(1, $colorsUsed);
+    $color      = ($colorsUsed - 1) * 25;
+
+    $quantity = max(1, min(100, $quantity));
+    $unit     = $base + $print + $color;
+    $subtotal = $unit * $quantity;
+
+    $rate     = in_array($discountType, ['pwd', 'senior'], true) ? 0.20 : 0.0;
+    $discount = round($subtotal * $rate, 2);
+
+    return [
+        'base'         => $base,
+        'print'        => (float) $print,
+        'color'        => (float) $color,
+        'unit'         => $unit,
+        'quantity'     => $quantity,
+        'subtotal'     => $subtotal,
+        'discountRate' => $rate,
+        'discount'     => $discount,
+        'total'        => $subtotal - $discount,
+        'colorsUsed'   => $colorsUsed,
+    ];
+}

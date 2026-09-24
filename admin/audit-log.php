@@ -174,5 +174,8 @@ $totalPages = ceil($totalLogs / $perPage);
     </div>
     <?php endif; ?>
 </div>
+    </div><!-- /admin-main-content -->
+</div><!-- /admin-layout -->
+<script src="../js/admin-sidebar.js"></script>
 
 <?php include '../includes/footer/footer.php'; ?>

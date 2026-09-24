@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../includes/config.php';
 require __DIR__ . '/../includes/payment-proof-handler.php'; // -> payment-config.php
+require_once __DIR__ . '/../includes/paymongo.php';         // gateway payments
 
 // --- Admin gate --------------------------------------------------------
 if (!isset($_SESSION['user_id']) || ($_SESSION['user_type'] ?? '') !== 'admin') {
@@ -212,17 +213,108 @@ include __DIR__ . '/../includes/admin-sidebar.php';
 <div class="admin-container">
   <div class="mb-4">
     <h1 class="text-coffee-dark mb-2" style="font-size:2rem; font-weight:800;">
-      <i class="fas fa-money-check-dollar"></i> Payment Verification
+      <i class="fas fa-money-check-dollar"></i> Payments
     </h1>
-    <p class="text-muted mb-0">Review manual QR payment proofs and approve or reject each one.</p>
+    <p class="text-muted mb-0">
+      Online payments are collected and confirmed by PayMongo. The manual proof queue below is kept
+      for orders taken before the switch.
+    </p>
   </div>
 
   <?php if ($error): ?>   <div class="alert alert-danger"><?php   echo htmlspecialchars($error, ENT_QUOTES); ?></div><?php endif; ?>
   <?php if ($warning): ?> <div class="alert alert-warning"><?php  echo $warning; /* pre-escaped */ ?></div><?php endif; ?>
   <?php if ($success): ?> <div class="alert alert-success"><?php  echo htmlspecialchars($success, ENT_QUOTES); ?></div><?php endif; ?>
 
+  <?php
+  // Gateway payments. Read-only on purpose: PayMongo already confirmed the
+  // money, so there is nothing here for an admin to approve or reject — this
+  // is for reconciliation and for chasing a payment that got stuck.
+  $pmRows = null;
+  if (paymongoTableExists()) {
+      $pmRows = $conn->query(
+          "SELECT s.session_id, s.order_kind, s.order_id, s.amount, s.status,
+                  s.payment_id, s.payment_method_used, s.created_at,
+                  u.fullname, u.email
+             FROM paymongo_sessions s
+             LEFT JOIN users u ON u.id = s.user_id
+            ORDER BY s.id DESC
+            LIMIT 25"
+      );
+  }
+  ?>
+  <div class="admin-card mb-4">
+    <h2 class="h5 mb-3">
+      PayMongo payments
+      <?php if (paymongoIsConfigured() && paymongoIsTestMode()): ?>
+        <span class="badge bg-warning text-dark" title="A sk_test_ key is configured">Sandbox</span>
+      <?php elseif (!paymongoIsConfigured()): ?>
+        <span class="badge bg-secondary" title="No PAYMONGO_SECRET_KEY in .env">Not configured</span>
+      <?php endif; ?>
+    </h2>
+
+    <?php if (!paymongoTableExists()): ?>
+      <p class="text-muted mb-0">Run <code>migrate_paymongo.sql</code> to enable the gateway.</p>
+    <?php elseif (!$pmRows || $pmRows->num_rows === 0): ?>
+      <p class="text-muted mb-0">No online payments yet.</p>
+    <?php else: ?>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Order</th><th>Customer</th><th>Amount</th>
+              <th>Channel</th><th>Status</th><th>Reference</th><th>Started</th>
+            </tr>
+          </thead>
+          <tbody>
+          <?php while ($pm = $pmRows->fetch_assoc()):
+              $badge = [
+                  'paid'    => 'success',
+                  'created' => 'secondary',
+                  'failed'  => 'danger',
+                  'expired' => 'dark',
+              ][$pm['status']] ?? 'secondary';
+              $isCustom = $pm['order_kind'] === 'custom';
+              $link = $isCustom
+                  ? '../custom-order-tracking.php?order_id=' . (int)$pm['order_id']
+                  : 'order_details.php?id=' . (int)$pm['order_id'];
+          ?>
+            <tr>
+              <td>
+                <a href="<?php echo htmlspecialchars($link, ENT_QUOTES); ?>">#<?php echo (int)$pm['order_id']; ?></a>
+                <?php if ($isCustom): ?><br><small class="text-muted">custom</small><?php endif; ?>
+              </td>
+              <td>
+                <?php echo htmlspecialchars((string)($pm['fullname'] ?? '—'), ENT_QUOTES); ?>
+                <br><small class="text-muted"><?php echo htmlspecialchars((string)($pm['email'] ?? ''), ENT_QUOTES); ?></small>
+              </td>
+              <td>&#8369;<?php echo number_format((float)$pm['amount'], 2); ?></td>
+              <td>
+                <?php $ch = (string)($pm['payment_method_used'] ?? ''); ?>
+                <?php echo $ch !== '' ? htmlspecialchars(strtoupper($ch), ENT_QUOTES) : '<span class="text-muted">—</span>'; ?>
+              </td>
+              <td><span class="badge bg-<?php echo $badge; ?>"><?php echo htmlspecialchars(ucfirst((string)$pm['status']), ENT_QUOTES); ?></span></td>
+              <td>
+                <small class="text-muted"><?php
+                  // The payment id is what to quote to PayMongo support; the
+                  // session id only matters while the payment is unfinished.
+                  echo htmlspecialchars((string)($pm['payment_id'] ?: $pm['session_id']), ENT_QUOTES);
+                ?></small>
+              </td>
+              <td><small><?php echo htmlspecialchars(date('M d, H:i', strtotime((string)$pm['created_at'])), ENT_QUOTES); ?></small></td>
+            </tr>
+          <?php endwhile; ?>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-muted small mb-0 mt-2">
+        Read-only — PayMongo confirms these automatically. A row stuck on
+        <strong>Created</strong> means the customer opened the payment page but never finished.
+      </p>
+    <?php endif; ?>
+  </div>
+
   <div class="admin-card">
-    <h2 class="h5 mb-3">Awaiting verification
+    <h2 class="h5 mb-3">Manual proofs awaiting verification
       <span class="badge bg-warning text-dark"><?php echo $pending ? (int)$pending->num_rows : 0; ?></span>
     </h2>
 

@@ -358,6 +358,48 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
 
                     <!-- Download -->
                     <div class="text-center">
+                        <?php
+                        // Two different things, and mixing them up wastes a print run:
+                        //   mockup     = garment + artwork flattened (for reference)
+                        //   print file = artwork alone, transparent (what production uses)
+                        $printFront = trim((string)($design['print_front'] ?? ''));
+                        $printBack  = trim((string)($design['print_back'] ?? ''));
+                        $hasPrintFront = $printFront !== '' && is_file(__DIR__ . '/../' . $printFront);
+                        $hasPrintBack  = $printBack  !== '' && is_file(__DIR__ . '/../' . $printBack);
+                        ?>
+
+                        <?php if ($hasPrintFront || $hasPrintBack): ?>
+                        <div class="mb-2">
+                            <div style="font-size:0.68rem; font-weight:700; letter-spacing:0.06em; color:#2d6a4f; text-transform:uppercase; margin-bottom:0.25rem;">
+                                Ready to print
+                            </div>
+                            <?php if ($hasPrintFront): ?>
+                            <a href="../<?php echo htmlspecialchars($printFront); ?>"
+                               download="print_<?php echo (int)$design['id']; ?>_front.png"
+                               class="btn btn-sm btn-success mb-1 w-100" style="border-radius:8px;"
+                               title="Artwork only, transparent background — send this to the printer">
+                                <i class="fas fa-file-arrow-down me-1"></i> Print file · Front
+                            </a>
+                            <?php endif; ?>
+                            <?php if ($hasPrintBack): ?>
+                            <a href="../<?php echo htmlspecialchars($printBack); ?>"
+                               download="print_<?php echo (int)$design['id']; ?>_back.png"
+                               class="btn btn-sm btn-success mb-1 w-100" style="border-radius:8px;"
+                               title="Artwork only, transparent background — send this to the printer">
+                                <i class="fas fa-file-arrow-down me-1"></i> Print file · Back
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                        <?php else: ?>
+                        <div class="mb-2" style="font-size:0.7rem; color:#8a6d3b; background:#fff8e6; border:1px solid #f0e0b8; border-radius:8px; padding:0.35rem 0.5rem;">
+                            No print file — this design predates the print-file feature.
+                            Use the mockup below as reference.
+                        </div>
+                        <?php endif; ?>
+
+                        <div style="font-size:0.68rem; font-weight:700; letter-spacing:0.06em; color:#999; text-transform:uppercase; margin-bottom:0.25rem;">
+                            Mockup
+                        </div>
                         <a href="../<?php echo htmlspecialchars($design['design_image']); ?>" 
                            download="design_<?php echo (int)$design['id']; ?>_front.png" 
                            class="btn btn-sm btn-outline-primary mb-2" style="border-radius:8px;">

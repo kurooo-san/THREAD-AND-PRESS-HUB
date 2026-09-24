@@ -272,7 +272,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
                     <div>
                         <?php if ($o['payment_method']): ?>
                             <div class="co-payment-section">
-                                <p style="font-size:0.78rem; margin:0 0 0.3rem; font-weight:700;"><?php echo strtoupper(htmlspecialchars($o['payment_method'])); ?></p>
+                                <p style="font-size:0.78rem; margin:0 0 0.3rem; font-weight:700;"><?php echo htmlspecialchars(paymentMethodLabel($o['payment_method'])); ?></p>
                                 <span class="co-badge <?php echo $o['payment_status'] === 'verified' ? 'success' : ($o['payment_status'] === 'rejected' ? 'danger' : 'warning'); ?>">
                                     <?php echo htmlspecialchars($o['payment_status']); ?>
                                 </span>

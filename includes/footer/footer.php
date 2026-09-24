@@ -9,7 +9,7 @@
                         <div class="feature-icon"><i class="fas fa-truck"></i></div>
                         <div>
                             <h6>Nationwide Delivery</h6>
-                            <p>Flat ₱50 shipping fee</p>
+                            <p>Shipping fee by area, from ₱50</p>
                         </div>
                     </div>
                 </div>
@@ -51,7 +51,7 @@
                 <!-- Brand Column -->
                 <div class="col-lg-3 col-md-6 mb-4">
                     <div class="footer-brand">
-                        <span class="brand-logo">TP</span> Thread &amp; Press Hub
+                        <img class="brand-logo logo-light" src="<?php echo $assetBase ?? ''; ?>images/logo/logo_sm.png" alt=""><img class="brand-logo logo-dark" src="<?php echo $assetBase ?? ''; ?>images/logo/logo_white_sm.png" alt=""> Thread &amp; Press Hub
                     </div>
                     <p>Your destination for quality apparel and accessories. We combine style, comfort, and sustainability in every piece we create.</p>
 
@@ -121,8 +121,8 @@
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../js/animations.js' : 'js/animations.js'; ?>"></script>
-    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../js/enhancements.js' : 'js/enhancements.js'; ?>"></script>
+    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../js/animations.js' : 'js/animations.js'; ?>?v=<?php echo @filemtime(__DIR__ . '/../../js/animations.js'); ?>"></script>
+    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../js/enhancements.js' : 'js/enhancements.js'; ?>?v=<?php echo @filemtime(__DIR__ . '/../../js/enhancements.js'); ?>"></script>
     <script>
         function showToast(message, type = 'info') {
             const toastHtml = `
@@ -178,6 +178,8 @@
                 <button class="chat-quick-action" onclick="sendQuickChat('Find Products')"><i class="fas fa-search"></i> Find Products</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('Style Advice')"><i class="fas fa-magic"></i> Style Advice</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('Order Help')"><i class="fas fa-box"></i> Order Help</button>
+                <button class="chat-quick-action" onclick="sendQuickChat('What payment options do you have?')"><i class="fas fa-credit-card"></i> Payment Options</button>
+                <button class="chat-quick-action" onclick="sendQuickChat('How do I order a custom design?')"><i class="fas fa-palette"></i> Custom Design</button>
             </div>
             <div id="chat-messages" class="chat-messages">
                 <div class="chat-message bot-message">
@@ -290,7 +292,7 @@
             });
         }
     </script>
-    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../js/chatbot.js' : 'js/chatbot.js'; ?>"></script>
+    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../js/chatbot.js' : 'js/chatbot.js'; ?>?v=<?php echo @filemtime(__DIR__ . '/../../js/chatbot.js'); ?>"></script>
     <?php endif; ?>
 
     <?php if (strpos($_SERVER['PHP_SELF'], '/admin/') === false): ?>

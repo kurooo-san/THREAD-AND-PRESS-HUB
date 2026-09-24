@@ -205,7 +205,7 @@ $users = $conn->query("SELECT $selectCols FROM users WHERE user_type != 'admin' 
                         <td><?php echo date('M d, Y', strtotime($user['created_at'])); ?></td>
                         <td class="text-end">
                             <div class="ad-actions">
-                            <button type="button" class="ad-act"
+                            <button type="button" class="ad-act" title="Edit user"
                                     data-bs-toggle="modal"
                                     data-bs-target="#editUserModal"
                                     data-id="<?php echo (int)$user['id']; ?>"

@@ -33,7 +33,12 @@ if (!$design) {
 }
 
 // Get parameters from URL
-$apparelType = in_array($_GET['type'] ?? '', ['tshirt', 'hoodie', 'polo']) ? $_GET['type'] : $design['product_type'];
+// Validate against every configured apparel type, not just three of them.
+require_once __DIR__ . '/includes/apparel-config.php';
+$validApparelTypes = getApparelTypeKeys();
+$apparelType = in_array($_GET['type'] ?? '', $validApparelTypes, true)
+    ? $_GET['type']
+    : (in_array($design['product_type'], $validApparelTypes, true) ? $design['product_type'] : 'tshirt');
 $apparelColor = preg_match('/^#[0-9A-Fa-f]{6}$/', $_GET['color'] ?? '') ? $_GET['color'] : '#FFFFFF';
 $size = in_array($_GET['size'] ?? '', ['XS', 'S', 'M', 'L', 'XL', '2XL']) ? $_GET['size'] : 'M';
 $quantity = max(1, min(100, intval($_GET['qty'] ?? 1)));
@@ -52,28 +57,24 @@ if ($discountType !== 'regular' && $discountType !== $actual_user_type) {
     $discountType = 'regular';
 }
 
-// Pricing calculation
-$basePrices = ['tshirt' => 850, 'hoodie' => 1250, 'polo' => 1150];
-$printSizePrices = ['small' => 50, 'medium' => 100, 'large' => 180, 'full' => 300];
+// Pricing — worked out by the shared helper so this page and the estimate on
+// the "My Designs" card always agree. It also prices apparel types beyond
+// t-shirt/hoodie/polo properly instead of falling back to a placeholder.
+require_once __DIR__ . '/includes/apparel-config.php';
 
-$basePrice = $basePrices[$apparelType] ?? 350;
-$printCost = $printSizePrices[$printSize] ?? 100;
-
-// Parse design data for color count
 $designData = json_decode($design['design_data'] ?? '{}', true);
 $colorsUsed = max(1, intval($designData['colorsUsed'] ?? 1));
-$colorCost = max(0, ($colorsUsed - 1)) * 25;
 
-$unitPrice = $basePrice + $printCost + $colorCost;
-$subtotal = $unitPrice * $quantity;
+$price = customDesignPrice($apparelType, $printSize, $quantity, $colorsUsed, $discountType);
 
-// Discount calculation
-$discountPercent = 0;
-if ($discountType === 'senior' || $discountType === 'pwd') {
-    $discountPercent = 0.20;
-}
-$discountAmount = $subtotal * $discountPercent;
-$totalPrice = $subtotal - $discountAmount;
+$basePrice       = $price['base'];
+$printCost       = $price['print'];
+$colorCost       = $price['color'];
+$unitPrice       = $price['unit'];
+$subtotal        = $price['subtotal'];
+$discountPercent = $price['discountRate'];
+$discountAmount  = $price['discount'];
+$totalPrice      = $price['total'];
 
 $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
 $typeName = $typeNames[$apparelType] ?? 'T-Shirt';
@@ -223,7 +224,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order'])) {
     display: block;
     width: 100%;
     padding: 1rem;
-    background: var(--accent-green, #2d6a4f);
+    /* Explicit green: var(--accent-green) is aliased to near-black in
+       style.css, so the #2d6a4f fallback was never used. */
+    background: #2d6a4f;
     color: #fff;
     border: none;
     border-radius: 12px;

@@ -14,7 +14,7 @@ declare(strict_types=1);
  */
 
 require __DIR__ . '/../includes/config.php';
-require __DIR__ . '/../includes/payment-config.php';
+require_once __DIR__ . '/../includes/payment-config.php';
 
 // --- Admin gate --------------------------------------------------------
 if (!isset($_SESSION['user_id']) || ($_SESSION['user_type'] ?? '') !== 'admin') {
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $updated = $channels;
         foreach (PAYMENT_CHANNELS as $key) {
             $updated[$key]['enabled']      = isset($_POST['enabled'][$key]);
-            $updated[$key]['display_name'] = trim((string)($_POST['display_name'][$key] ?? '')) ?: ucfirst($key);
+            $updated[$key]['display_name'] = trim((string)($_POST['display_name'][$key] ?? '')) ?: paymentChannelTitle($key);
             $updated[$key]['account_name'] = trim((string)($_POST['account_name'][$key] ?? ''));
             $updated[$key]['account_no']   = trim((string)($_POST['account_no'][$key] ?? ''));
 
@@ -136,7 +136,7 @@ include __DIR__ . '/../includes/admin-sidebar.php';
       <div class="col-md-4">
         <div class="admin-card h-100">
           <h2 class="h5 d-flex justify-content-between align-items-center">
-            <?php echo htmlspecialchars(ucfirst($key), ENT_QUOTES); ?>
+            <?php echo htmlspecialchars(paymentChannelTitle($key), ENT_QUOTES); ?>
             <span class="form-check form-switch mb-0">
               <input class="form-check-input" type="checkbox" name="enabled[<?php echo $key; ?>]"
                      id="en_<?php echo $key; ?>" <?php echo !empty($ch['enabled']) ? 'checked' : ''; ?>>
@@ -163,16 +163,22 @@ include __DIR__ . '/../includes/admin-sidebar.php';
                    value="<?php echo htmlspecialchars((string)$ch['account_no'], ENT_QUOTES); ?>">
           </div>
 
+          <?php // A bank settles by account transfer, so "no QR" is normal there,
+                // not a missing setting. Say so instead of flagging it. ?>
           <div class="mb-2 text-center">
             <?php if ($imgUrl !== ''): ?>
-              <img src="<?php echo htmlspecialchars($imgUrl, ENT_QUOTES); ?>" alt="<?php echo htmlspecialchars(ucfirst($key) . ' current QR', ENT_QUOTES); ?>"
+              <img src="<?php echo htmlspecialchars($imgUrl, ENT_QUOTES); ?>" alt="<?php echo htmlspecialchars(paymentChannelTitle($key) . ' current QR', ENT_QUOTES); ?>"
                    style="max-width:140px; border:1px solid #eee; border-radius:8px;">
+            <?php elseif (paymentChannelIsBank($key)): ?>
+              <div class="text-muted small py-3">Customers transfer to the account number above — no QR needed.</div>
             <?php else: ?>
               <div class="text-muted small py-3">No QR image set</div>
             <?php endif; ?>
           </div>
           <div>
-            <label class="form-label small" for="qr_<?php echo $key; ?>">Replace QR image</label>
+            <label class="form-label small" for="qr_<?php echo $key; ?>">
+              <?php echo paymentChannelIsBank($key) ? 'QR image (optional)' : 'Replace QR image'; ?>
+            </label>
             <input class="form-control form-control-sm" type="file" id="qr_<?php echo $key; ?>"
                    name="qr_image[<?php echo $key; ?>]" accept="image/png,image/jpeg,image/webp">
             <small class="text-muted">PNG/JPG/WEBP, max 3&nbsp;MB.</small>

@@ -12,6 +12,8 @@
  *   3. Smooth-scrolls "back to top" style jumps and same-page anchors that
  *      aren't already handled elsewhere.
  *   4. Honors the OS "reduce motion" accessibility setting globally.
+ *   5. Opens chat images (support chat + chat widget) in an in-page lightbox
+ *      instead of a new tab.
  *
  * Intentionally NOT included (to avoid breaking anything):
  *   - Link prefetch / prerender — some links have side effects (logout, cart,
@@ -41,6 +43,48 @@
                 imgs[i].decoding = 'async';
             }
         }
+
+        // --- 4) Chat image lightbox --------------------------------------------
+        // Images in the support chat (customer + admin) and the chat widget used
+        // to open in a new tab. They now open over the page in a native <dialog>
+        // (Esc, focus and backdrop handled by the browser). The links keep their
+        // href, so without this script they still open as before.
+        var ZOOM_LINKS = '.support-msg-image a[href], a.chat-img-link[href]';
+        var lightbox = null;
+
+        function openLightbox(src, alt) {
+            if (!lightbox) {
+                lightbox = document.createElement('dialog');
+                lightbox.className = 'tp-lightbox';
+                lightbox.setAttribute('aria-label', 'Image preview');
+                lightbox.innerHTML =
+                    '<button type="button" class="tp-lightbox-close" aria-label="Close preview">&times;</button>' +
+                    '<img alt="">';
+                // Close on the × button or a click on the dark backdrop (not the image).
+                lightbox.addEventListener('click', function (e) {
+                    if (e.target === lightbox || e.target.classList.contains('tp-lightbox-close')) lightbox.close();
+                });
+                // Free the (possibly large) image once closed.
+                lightbox.addEventListener('close', function () {
+                    lightbox.querySelector('img').removeAttribute('src');
+                });
+                document.body.appendChild(lightbox);
+            }
+            var img = lightbox.querySelector('img');
+            img.src = src;
+            img.alt = alt || 'Shared image';
+            lightbox.showModal();
+        }
+
+        document.addEventListener('click', function (e) {
+            // Let Ctrl/Cmd/Shift/middle-click keep opening a new tab on purpose.
+            if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            var link = e.target.closest ? e.target.closest(ZOOM_LINKS) : null;
+            if (!link || typeof HTMLDialogElement === 'undefined') return;
+            e.preventDefault();
+            var thumb = link.querySelector('img');
+            openLightbox(link.href, thumb ? thumb.alt : '');
+        });
 
         // --- 3) Global reduce-motion guard -----------------------------------
         var rm = document.createElement('style');

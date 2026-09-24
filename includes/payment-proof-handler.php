@@ -104,9 +104,14 @@ function storePaymentProof(array $file, int $orderId): array
  */
 function paymentDecodeImage(string $path, string $mime)
 {
+    // Every arm is guarded. Without the guard, a server with GD disabled
+    // raises "Call to undefined function imagecreatefrompng()" — an Error,
+    // which @ does not suppress — and the upload dies with an uncaught
+    // fatal that prints the stack trace and server paths to the customer.
+    // The webp arm was already guarded; jpeg and png were not.
     $image = match ($mime) {
-        'image/jpeg' => @imagecreatefromjpeg($path),
-        'image/png'  => @imagecreatefrompng($path),
+        'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($path) : false,
+        'image/png'  => function_exists('imagecreatefrompng')  ? @imagecreatefrompng($path)  : false,
         'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
         default      => false,
     };

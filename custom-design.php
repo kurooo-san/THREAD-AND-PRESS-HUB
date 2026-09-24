@@ -1140,6 +1140,43 @@ if ($tableCheck->num_rows === 0) {
 }
 .ai-generate-btn:hover:not(:disabled) { box-shadow: 0 12px 28px rgba(200,169,110,0.5) !important; }
 
+/* Saved-design card: spec line, price and blocked-state styles. */
+.design-spec {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem;
+    font-size: 0.76rem; color: #666; margin-top: 0.35rem;
+}
+.design-swatch {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.25); display: inline-block; flex: none;
+}
+.design-note { font-size: 0.78rem; color: #888; margin: 0.35rem 0 0; }
+.design-price-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e8e8e8;
+}
+.design-price-label { font-size: 0.74rem; color: #777; }
+.design-price-label em { font-style: normal; color: #16a34a; font-weight: 600; }
+.design-price { font-size: 1rem; font-weight: 700; color: #1a1a1a; }
+.design-date { display: block; font-size: 0.72rem; color: #9a9a9a; margin-top: 0.2rem; }
+.design-order-btn {
+    background: var(--accent-green); color: #fff; border-radius: 8px;
+    font-size: 0.78rem; font-weight: 600;
+}
+.design-order-btn:hover { color: #fff; filter: brightness(1.06); }
+/* Shown instead of the button when a design cannot be ordered. */
+.design-blocked {
+    font-size: 0.74rem; color: #8a6d3b; background: #fff8e6;
+    border: 1px solid #f0e0b8; border-radius: 8px; padding: 0.45rem 0.6rem;
+    text-align: center;
+}
+/* Stands in for artwork whose file is no longer on disk. */
+.design-card-missing {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.35rem; background: #f7f7f7; color: #a0a0a0;
+    font-size: 0.76rem; text-align: center;
+}
+.design-card-missing i { font-size: 1.4rem; opacity: 0.65; }
+
 /* My Designs cards — premium hover */
 .design-card {
     border-radius: 16px !important;
@@ -2886,6 +2923,10 @@ function submitDesign() {
     generateSideImage('front', function(frontImageData) {
         // Generate back image
         generateSideImage('back', function(backImageData) {
+        // ...then the print-ready artwork for each side: the design on its own,
+        // on transparency, which is the file production actually needs.
+        generatePrintArtwork('front', function(printFrontData) {
+        generatePrintArtwork('back', function(printBackData) {
             const notes = document.getElementById('designNotes').value.trim();
             
             const formData = new FormData();
@@ -2893,6 +2934,8 @@ function submitDesign() {
             formData.append('product_type', state.apparelType);
             formData.append('design_image', frontImageData);
             formData.append('design_image_back', backImageData);
+            formData.append('print_front', printFrontData);
+            formData.append('print_back', printBackData);
             formData.append('notes', notes);
             const priceData = {
                 apparelColor: state.apparelColor,
@@ -2942,6 +2985,8 @@ function submitDesign() {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit & Proceed to Order';
             });
+        });
+        });
         });
     });
 }
@@ -3003,6 +3048,88 @@ function generateSideImage(side, callback) {
     svgImg.src = svgUrl;
 }
 
+/**
+ * Scale factor for the print file.
+ *
+ * The freehand drawing layer is a raster the size of the design area (about
+ * 140x180), so it can only be upscaled. Text and images are re-drawn from
+ * source at this scale, which is what actually matters: AI artwork and
+ * uploaded logos come out crisp rather than blocky.
+ */
+const PRINT_SCALE = 4;
+
+/**
+ * Render the ARTWORK ONLY -- no garment, no background -- cropped to the
+ * printable area, on transparency.
+ *
+ * design_image is a mockup: garment plus artwork flattened together. Sending
+ * that to a printer would print the drawing of the t-shirt too. This produces
+ * the file that actually goes to DTG/screen printing.
+ *
+ * Elements are positioned in mockup coordinates (the 400x500 space), so the
+ * context is translated by the design area's origin to crop to it. Anything
+ * outside the printable area falls off the canvas, which is correct.
+ */
+function generatePrintArtwork(side, callback) {
+    const area = designAreas[state.apparelType];
+    if (!area) { callback(''); return; }
+
+    const out = document.createElement('canvas');
+    out.width  = Math.round(area.w * PRINT_SCALE);
+    out.height = Math.round(area.h * PRINT_SCALE);
+    const octx = out.getContext('2d');
+
+    // No fill: the canvas starts transparent, which is what printing needs.
+    octx.setTransform(PRINT_SCALE, 0, 0, PRINT_SCALE, -area.x * PRINT_SCALE, -area.y * PRINT_SCALE);
+
+    const finish = () => {
+        octx.setTransform(1, 0, 0, 1, 0, 0);
+        // A blank print file is worse than none: the admin would download an
+        // empty PNG and think the artwork was lost.
+        callback(printCanvasHasInk(out) ? out.toDataURL('image/png') : '');
+    };
+
+    const drawLayerThen = (next) => {
+        const savedData = side === 'front' ? state.frontCanvasData : state.backCanvasData;
+        if (side === state.currentSide) {
+            octx.drawImage(canvas, area.x, area.y, area.w, area.h);
+            next();
+        } else if (savedData) {
+            const img = new Image();
+            img.onload  = function () { octx.drawImage(img, area.x, area.y, area.w, area.h); next(); };
+            img.onerror = function () { next(); };
+            img.src = savedData;
+        } else {
+            next();
+        }
+    };
+
+    drawLayerThen(function () {
+        const els = side === state.currentSide
+            ? state.elements
+            : (side === 'front' ? state.frontElements : state.backElements);
+        if (els && els.length) {
+            els.forEach(el => drawDesignElement(octx, el));
+        }
+        finish();
+    });
+}
+
+/** True when at least one pixel is not fully transparent. */
+function printCanvasHasInk(cv) {
+    try {
+        const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+        for (let i = 3; i < d.length; i += 4) {
+            if (d[i] !== 0) { return true; }
+        }
+    } catch (e) {
+        // Tainted canvas (a cross-origin image): assume there is artwork
+        // rather than silently discarding it.
+        return true;
+    }
+    return false;
+}
+
 // Builds an 800×500 side-by-side image of Partner A + Partner B for a given side.
 function generateCoupleSideImage(side, callback) {
     saveCurrentSideData();
@@ -3030,25 +3157,10 @@ function loadMyDesigns() {
     .then(data => {
         const grid = document.getElementById('myDesignsGrid');
         const noMsg = document.getElementById('noDesignsMsg');
-        
+
         if (data.success && data.designs.length > 0) {
             if (noMsg) noMsg.style.display = 'none';
-            grid.innerHTML = data.designs.map(d => `
-                <div class="design-card">
-                    <img src="${escapeHtml(d.design_image)}" class="design-card-img" alt="Design" onerror="this.src='https://placehold.co/300x300/f0f0f0/999?text=Design'">
-                    <div class="design-card-body">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <h6>${escapeHtml(d.product_type.charAt(0).toUpperCase() + d.product_type.slice(1))}</h6>
-                            <span class="design-status-badge ${escapeHtml(d.status)}">${escapeHtml(d.status)}</span>
-                        </div>
-                        ${d.notes ? `<p style="font-size:0.78rem; color:#888; margin:0.25rem 0 0;">${escapeHtml(d.notes.substring(0, 60))}${d.notes.length > 60 ? '...' : ''}</p>` : ''}
-                        <small>${new Date(d.created_at).toLocaleDateString()}</small>
-                        <a href="custom-order-summary.php?design_id=${d.id}&type=${encodeURIComponent(d.product_type)}&color=%23FFFFFF&size=M&qty=1&print_size=medium&discount=regular" class="btn btn-sm w-100 mt-2" style="background:var(--accent-green);color:#fff;border-radius:8px;font-size:0.78rem;font-weight:600;">
-                            <i class="fas fa-shopping-cart"></i> Order Now
-                        </a>
-                    </div>
-                </div>
-            `).join('');
+            grid.innerHTML = data.designs.map(renderDesignCard).join('');
         } else {
             grid.innerHTML = '';
             if (noMsg) {
@@ -3058,6 +3170,91 @@ function loadMyDesigns() {
         }
     })
     .catch(err => console.error('Failed to load designs:', err));
+}
+
+/** Peso formatting that matches the rest of the site. */
+function pesos(n) {
+    return '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const PRINT_SIZE_LABELS = { small: 'Small 4×4"', medium: 'Medium 8×8"', large: 'Large 12×12"', full: 'Full Print' };
+
+/**
+ * One saved design.
+ *
+ * The card carries the configuration the customer actually saved -- colour,
+ * size, print size and quantity -- and hands those to the order page. It used
+ * to send a fixed white / M / qty 1 / medium, so a black hoodie was re-ordered
+ * as a white t-shirt-sized print.
+ */
+function renderDesignCard(d) {
+    const type  = escapeHtml(d.product_type.charAt(0).toUpperCase() + d.product_type.slice(1));
+    const st    = String(d.status || '').toLowerCase();
+
+    // Which statuses may still be ordered. 'cancelled' and 'revision' may not:
+    // one is dead, the other is waiting on changes.
+    const orderable = (st === 'pending' || st === 'approved' || st === 'completed');
+    const actionLabel = st === 'completed' ? 'Order again' : 'Order Now';
+
+    const orderUrl = 'custom-order-summary.php'
+        + '?design_id=' + encodeURIComponent(d.id)
+        + '&type='       + encodeURIComponent(d.product_type)
+        + '&color='      + encodeURIComponent(d.apparel_color || '#FFFFFF')
+        + '&size='       + encodeURIComponent(d.size || 'M')
+        + '&qty='        + encodeURIComponent(d.quantity || 1)
+        + '&print_size=' + encodeURIComponent(d.print_size || 'medium')
+        + '&discount='   + encodeURIComponent(d.discount_type || 'regular');
+
+    // A missing file is stated plainly instead of showing a stock placeholder
+    // that could be mistaken for the customer's own artwork.
+    const preview = d.image_missing
+        ? `<div class="design-card-img design-card-missing">
+               <i class="fas fa-triangle-exclamation"></i>
+               <span>Preview unavailable</span>
+           </div>`
+        : `<img src="${escapeHtml(d.design_image)}" class="design-card-img" alt="${type} design"
+                onerror="this.outerHTML='&lt;div class=\\'design-card-img design-card-missing\\'&gt;&lt;i class=\\'fas fa-triangle-exclamation\\'&gt;&lt;/i&gt;&lt;span&gt;Preview unavailable&lt;/span&gt;&lt;/div&gt;'">`;
+
+    const swatch = `<span class="design-swatch" style="background:${escapeHtml(d.apparel_color || '#FFFFFF')}"></span>`;
+
+    return `
+        <div class="design-card">
+            ${preview}
+            <div class="design-card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h6>${type}</h6>
+                    <span class="design-status-badge ${escapeHtml(st)}">${escapeHtml(st)}</span>
+                </div>
+
+                <div class="design-spec">
+                    ${swatch}
+                    <span>Size ${escapeHtml(d.size || 'M')}</span>
+                    <span>&middot;</span>
+                    <span>${escapeHtml(PRINT_SIZE_LABELS[d.print_size] || 'Medium')}</span>
+                    <span>&middot;</span>
+                    <span>Qty ${parseInt(d.quantity, 10) || 1}</span>
+                </div>
+
+                ${d.notes ? `<p class="design-note">${escapeHtml(d.notes.substring(0, 60))}${d.notes.length > 60 ? '...' : ''}</p>` : ''}
+
+                <div class="design-price-row">
+                    <span class="design-price-label">
+                        Estimated${(d.discount_type && d.discount_type !== 'regular') ? ` <em>(${escapeHtml(d.discount_type.toUpperCase())} -20%)</em>` : ''}
+                    </span>
+                    <span class="design-price">${pesos(d.price_total)}</span>
+                </div>
+                <small class="design-date">Saved ${new Date(d.created_at).toLocaleDateString()}</small>
+
+                ${orderable
+                    ? `<a href="${orderUrl}" class="btn btn-sm w-100 mt-2 design-order-btn">
+                           <i class="fas fa-shopping-cart"></i> ${actionLabel}
+                       </a>`
+                    : `<div class="design-blocked mt-2">${st === 'cancelled'
+                            ? 'This design was cancelled and can no longer be ordered.'
+                            : 'Waiting for changes before this can be ordered.'}</div>`}
+            </div>
+        </div>
+    `;
 }
 
 // ===== Utilities =====

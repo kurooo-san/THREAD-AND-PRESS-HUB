@@ -284,11 +284,29 @@ function handleSave($conn, $userId) {
         }
     }
 
+    // Print-ready artwork: the design on its own, transparent, cropped to the
+    // printable area. design_image is a MOCKUP (garment + artwork flattened)
+    // and cannot be sent to a printer. Optional -- a design with no artwork on
+    // a side simply has no print file for it.
+    $printFrontPath = '';
+    $printBackPath  = '';
+    $printFrontRaw = $_POST['print_front'] ?? '';
+    $printBackRaw  = $_POST['print_back'] ?? '';
+    if (!empty($printFrontRaw) && strpos($printFrontRaw, 'data:image/') === 0) {
+        $printFrontPath = saveDesignImage($printFrontRaw, $uploadDir, $userId, 'print-front') ?: '';
+    }
+    if (!empty($printBackRaw) && strpos($printBackRaw, 'data:image/') === 0) {
+        $printBackPath = saveDesignImage($printBackRaw, $uploadDir, $userId, 'print-back') ?: '';
+    }
+
     // Add design_image_back column if it doesn't exist
     $conn->query("ALTER TABLE custom_designs ADD COLUMN IF NOT EXISTS design_image_back LONGTEXT DEFAULT NULL AFTER design_image");
+    // Same for the print files, so a missed migration does not break saving.
+    $conn->query("ALTER TABLE custom_designs ADD COLUMN IF NOT EXISTS print_front VARCHAR(255) DEFAULT NULL AFTER design_image_back");
+    $conn->query("ALTER TABLE custom_designs ADD COLUMN IF NOT EXISTS print_back VARCHAR(255) DEFAULT NULL AFTER print_front");
 
-    $stmt = $conn->prepare("INSERT INTO custom_designs (user_id, product_type, design_image, design_image_back, design_data, notes, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
-    $stmt->bind_param("isssss", $userId, $productType, $dbImagePath, $dbImageBackPath, $designData, $notes);
+    $stmt = $conn->prepare("INSERT INTO custom_designs (user_id, product_type, design_image, design_image_back, print_front, print_back, design_data, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+    $stmt->bind_param("isssssss", $userId, $productType, $dbImagePath, $dbImageBackPath, $printFrontPath, $printBackPath, $designData, $notes);
 
     if ($stmt->execute()) {
         $designId = $conn->insert_id;
@@ -301,6 +319,8 @@ function handleSave($conn, $userId) {
         // Clean up uploaded files on DB failure
         @unlink($uploadDir . basename($dbImagePath));
         if ($dbImageBackPath) @unlink($uploadDir . basename($dbImageBackPath));
+        if ($printFrontPath)  @unlink($uploadDir . basename($printFrontPath));
+        if ($printBackPath)   @unlink($uploadDir . basename($printBackPath));
         echo json_encode(['success' => false, 'message' => 'Failed to save design. Please try again.']);
     }
     $stmt->close();
@@ -326,13 +346,60 @@ function saveDesignImage($imageDataUri, $uploadDir, $userId, $side) {
 }
 
 function handleList($conn, $userId) {
-    $stmt = $conn->prepare("SELECT id, product_type, design_image, notes, status, created_at FROM custom_designs WHERE user_id = ? ORDER BY created_at DESC");
+    // design_data is included so a card can show the colour, size, print size
+    // and quantity the customer actually chose -- and carry them into the
+    // order instead of silently resetting everything to white / M / 1.
+    $stmt = $conn->prepare("SELECT id, product_type, design_image, design_data, notes, status, created_at FROM custom_designs WHERE user_id = ? ORDER BY created_at DESC");
     $stmt->bind_param("i", $userId);
     $stmt->execute();
     $result = $stmt->get_result();
 
+    // The account type decides the discount; a card must never take it from
+    // the browser, same rule the order page applies.
+    $accountType = 'regular';
+    $uStmt = $conn->prepare("SELECT user_type FROM users WHERE id = ?");
+    if ($uStmt) {
+        $uStmt->bind_param('i', $userId);
+        $uStmt->execute();
+        if ($u = $uStmt->get_result()->fetch_assoc()) {
+            $accountType = (string) $u['user_type'];
+        }
+        $uStmt->close();
+    }
+    $discountType = in_array($accountType, ['pwd', 'senior'], true) ? $accountType : 'regular';
+
+    $root = dirname(__DIR__);
+
     $designs = [];
     while ($row = $result->fetch_assoc()) {
+        $data = json_decode((string) ($row['design_data'] ?? ''), true);
+        if (!is_array($data)) { $data = []; }
+
+        $row['apparel_color'] = isset($data['apparelColor']) && preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $data['apparelColor'])
+            ? (string) $data['apparelColor'] : '#FFFFFF';
+        $row['size']       = in_array($data['size'] ?? '', ['XS','S','M','L','XL','2XL'], true) ? (string) $data['size'] : 'M';
+        $row['print_size'] = in_array($data['printSize'] ?? '', ['small','medium','large','full'], true) ? (string) $data['printSize'] : 'medium';
+        $row['quantity']   = max(1, min(100, (int) ($data['quantity'] ?? 1)));
+        $row['elements']   = (int) ($data['elementsCount'] ?? 0);
+
+        $price = customDesignPrice(
+            (string) $row['product_type'],
+            $row['print_size'],
+            $row['quantity'],
+            (int) ($data['colorsUsed'] ?? 1),
+            $discountType
+        );
+        $row['price_total']    = $price['total'];
+        $row['price_unit']     = $price['unit'];
+        $row['discount_type']  = $discountType;
+        $row['colors_used']    = $price['colorsUsed'];
+
+        // Tell the page up front whether the artwork file is still on disk, so
+        // it can say "preview unavailable" rather than showing a placeholder
+        // that looks like a design in its own right.
+        $img = (string) ($row['design_image'] ?? '');
+        $row['image_missing'] = ($img === '' || !is_file($root . DIRECTORY_SEPARATOR . $img));
+
         $designs[] = $row;
     }
     $stmt->close();

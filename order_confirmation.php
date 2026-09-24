@@ -37,9 +37,14 @@ $successFlash = takePaymentSuccessFlash($order_id);
 
 <?php
 if ($successFlash !== null) {
+    // PayMongo has already collected the money, so that ending must not be
+    // told to "prepare the exact amount" like a COD order.
+    $paidOnline = ($successFlash['kind'] ?? '') === 'order_paymongo';
     renderPaymentSuccess([
-        'title'   => 'Order Confirmed!',
-        'message' => 'Cash on Delivery — please prepare the exact amount when your parcel arrives.',
+        'title'   => $paidOnline ? 'Payment Successful!' : 'Order Confirmed!',
+        'message' => $paidOnline
+            ? 'Your payment went through and your order is confirmed. A receipt has been sent to your email.'
+            : 'Cash on Delivery — please prepare the exact amount when your parcel arrives.',
         'badge'   => 'Order #' . $order['id'],
         'amount'  => $order['total'] ?? null,
     ]);
@@ -135,8 +140,7 @@ if ($successFlash !== null) {
                             <p style="color: var(--coffee-dark); font-weight: 600;">
                                 <i class="fas fa-<?php echo $order['payment_method'] === 'cod' ? 'money-bill' : 'mobile-alt'; ?>"></i>
                                 <?php 
-                                    $payLabels = ['gcash' => 'GCash Payment', 'maya' => 'Maya Payment', 'cod' => 'Cash on Delivery'];
-                                    echo $payLabels[$order['payment_method']] ?? ucfirst($order['payment_method']);
+                                    echo htmlspecialchars(paymentMethodLabel($order['payment_method']));
                                 ?>
                             </p>
                         </div>
@@ -213,10 +217,35 @@ if ($successFlash !== null) {
 </div>
 
 <script>
-// Clear localStorage cart after successful order
-localStorage.removeItem('cart');
-localStorage.removeItem('subtotal');
-localStorage.removeItem('total');
+// Clear only what this order used. A Buy Now order must NOT wipe the basket
+// the customer still has waiting.
+<?php $lastMode = $_SESSION['last_order_mode'] ?? 'cart'; unset($_SESSION['last_order_mode']); ?>
+if (<?php echo json_encode($lastMode); ?> === 'buynow') {
+    localStorage.removeItem('buyNow');
+    localStorage.removeItem('buyNowSubtotal');
+} else {
+    // Remove ONLY the lines that were part of this order. Items the customer
+    // left unticked in the cart must still be there afterwards.
+    try {
+        var ordered = JSON.parse(localStorage.getItem('cartSelection')) || [];
+        var cart    = JSON.parse(localStorage.getItem('cart')) || [];
+        if (ordered.length && cart.length) {
+            var key = function (i) { return [i.id, i.color || '', i.size || ''].join('|'); };
+            var done = ordered.map(key);
+            var left = cart.filter(function (i) { return done.indexOf(key(i)) === -1; });
+            if (left.length) { localStorage.setItem('cart', JSON.stringify(left)); }
+            else { localStorage.removeItem('cart'); }
+        } else {
+            localStorage.removeItem('cart');
+        }
+    } catch (e) {
+        localStorage.removeItem('cart');
+    }
+    localStorage.removeItem('cartSelection');
+    localStorage.removeItem('cartDeselected');
+    localStorage.removeItem('subtotal');
+    localStorage.removeItem('total');
+}
 // Reset cart badge in header
 var navBadge = document.getElementById('navCartCount');
 if (navBadge) { navBadge.style.display = 'none'; navBadge.textContent = '0'; }

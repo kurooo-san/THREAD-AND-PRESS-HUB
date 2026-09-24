@@ -66,6 +66,13 @@ if (!empty($params)) {
 $stmt->execute();
 $products_result = $stmt->get_result();
 
+// Materialised so the star ratings can be fetched in ONE grouped query.
+// Looking them up inside the render loop would be a round trip per card,
+// and this grid renders 35+ of them.
+require_once 'includes/reviews.php';
+$products_list   = $products_result->fetch_all(MYSQLI_ASSOC);
+$rating_summary  = reviewSummaries(array_column($products_list, 'id'));
+
 // Get unique colors and sizes for filters
 $colors_result = $conn->query("SELECT DISTINCT available_colors FROM products WHERE status = 'active'");
 $sizes_result = $conn->query("SELECT DISTINCT available_sizes FROM products WHERE status = 'active'");
@@ -99,7 +106,8 @@ $all_sizes = array_values(array_merge($clothing_sizes, $numeric_sizes));
 
 <?php include 'includes/header/header.php'; ?>
 
-<link rel="stylesheet" href="css/shop-modern.css">
+<link rel="stylesheet" href="css/shop-modern.css?v=<?php echo @filemtime(__DIR__ . '/css/shop-modern.css'); ?>">
+<link rel="stylesheet" href="css/product-modern.css?v=<?php echo @filemtime(__DIR__ . '/css/product-modern.css'); ?>"><!-- star rating styles on the cards -->
 
 <?php
 // Count total products for display
@@ -237,15 +245,17 @@ $count_stmt->close();
 
             <!-- Product Grid -->
             <div class="row g-3">
-                <?php if ($products_result && $products_result->num_rows > 0): ?>
-                    <?php while ($product = $products_result->fetch_assoc()): ?>
+                <?php if (!empty($products_list)): ?>
+                    <?php foreach ($products_list as $product): ?>
                         <div class="col-lg-4 col-md-6 col-6">
                             <div class="product-card">
                                 <div class="product-image-wrapper">
+                                    <a href="product.php?id=<?php echo (int)$product['id']; ?>" aria-label="View <?php echo htmlspecialchars($product['name'], ENT_QUOTES); ?>" style="display:block;">
                                     <img src="images/products/<?php echo htmlspecialchars($product['image']); ?>"
                                          alt="<?php echo htmlspecialchars($product['name']); ?>"
                                          class="product-image"
                                          onerror="this.src='https://placehold.co/300x380/f0f0f0/999?text=<?php echo urlencode($product['name']); ?>'">
+                                    </a>
                                     <div class="product-actions">
                                         <button class="product-action-btn" title="Quick Add" 
                                                 onclick="quickAddModal(<?php echo (int)$product['id']; ?>, '<?php echo htmlspecialchars(addslashes($product['name']), ENT_QUOTES); ?>', <?php echo (float)$product['price']; ?>, '<?php echo htmlspecialchars(addslashes($product['available_colors']), ENT_QUOTES); ?>', '<?php echo htmlspecialchars(addslashes($product['available_sizes']), ENT_QUOTES); ?>')">
@@ -254,8 +264,15 @@ $count_stmt->close();
                                     </div>
                                 </div>
                                 <div class="product-body">
-                                    <h5 class="product-name"><?php echo htmlspecialchars($product['name']); ?></h5>
+                                    <h5 class="product-name">
+                                        <a href="product.php?id=<?php echo (int)$product['id']; ?>" style="color:inherit; text-decoration:none;"><?php echo htmlspecialchars($product['name']); ?></a>
+                                    </h5>
                                     <div class="product-price">₱<?php echo number_format($product['price'], 2); ?></div>
+                                    <?php $rs = $rating_summary[(int)$product['id']] ?? null; ?>
+                                    <a class="rv-card-rating" href="product.php?id=<?php echo (int)$product['id']; ?>#reviews" style="text-decoration:none;">
+                                        <?php echo renderStars($rs ? (float)$rs['avg'] : 0.0, 13); ?>
+                                        <small><?php echo $rs ? '(' . (int)$rs['count'] . ')' : 'No reviews'; ?></small>
+                                    </a>
                                     <?php
                                         $stockVal = isset($product['stock']) ? (int)$product['stock'] : null;
                                         if ($stockVal !== null) {
@@ -292,17 +309,31 @@ $count_stmt->close();
                                     </div>
                                     
                                     <div class="mt-2">
-                                        <?php $isOOS = isset($product['stock']) && (int)$product['stock'] <= 0; ?>
+                                        <?php
+                                        $isOOS = isset($product['stock']) && (int)$product['stock'] <= 0;
+                                        // Built once and reused by both buttons so they always act on the
+                                        // same product id, name and price.
+                                        $pArgs = (int)$product['id'] . ", '"
+                                               . htmlspecialchars(addslashes($product['name']), ENT_QUOTES)
+                                               . "', " . (float)$product['price'] . ", 1";
+                                        ?>
                                         <button type="button" class="btn btn-dark btn-sm w-100" style="border-radius:8px; font-size:0.8rem;<?php echo $isOOS ? ' opacity:0.5; cursor:not-allowed;' : ''; ?>"
                                                 <?php echo $isOOS ? 'disabled' : ''; ?>
-                                                onclick="<?php echo $isOOS ? "showToast('Out of stock','error')" : "addToCart(".(int)$product['id'].", '".htmlspecialchars(addslashes($product['name']), ENT_QUOTES)."', ".(float)$product['price'].", 1)"; ?>">
+                                                onclick="<?php echo $isOOS ? "showToast('Out of stock','error')" : "addToCart($pArgs)"; ?>">
                                             <i class="fas fa-shopping-bag me-1"></i> <?php echo $isOOS ? 'Out of Stock' : 'Add to Cart'; ?>
                                         </button>
+                                        <?php if (!$isOOS): ?>
+                                        <button type="button" class="btn btn-sm w-100 mt-1"
+                                                style="border-radius:8px; font-size:0.8rem; font-weight:600; background:var(--accent, #c8a96e); border:1px solid var(--accent, #c8a96e); color:#16140f;"
+                                                onclick="buyNowFromCard(<?php echo $pArgs; ?>)">
+                                            <i class="fas fa-bolt me-1"></i> Buy Now
+                                        </button>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
                     <div class="col-12">
                         <div class="empty-state">
@@ -318,6 +349,7 @@ $count_stmt->close();
     </div>
 </div>
 
+<script src="js/buy-now.js"></script>
 <script>
 // Fallback showToast function in case footer hasn't loaded
 if (typeof showToast === 'undefined') {
@@ -429,39 +461,88 @@ function initOptionSelection() {
     });
 }
 
+/**
+ * Put one card's colour/size back to unselected.
+ *
+ * The click handlers paint the highlight with INLINE styles (border and
+ * transform on the swatch, background/colour/weight on the size), so those
+ * are reset here too -- removing the .selected class on its own would leave
+ * the highlight painted on screen.
+ */
+function clearCardSelection(productId) {
+    document.querySelectorAll(`.color-option[data-product="${productId}"]`).forEach(el => {
+        el.classList.remove('selected');
+        // #e0e0e0 is what the markup paints an untouched swatch. (The older
+        // deselect-by-clicking path uses #999, which leaves the card looking
+        // subtly darker than its neighbours.)
+        el.style.border = '2px solid #e0e0e0';
+        el.style.transform = 'scale(1)';
+    });
+    document.querySelectorAll(`.size-option[data-product="${productId}"]`).forEach(el => {
+        el.classList.remove('selected');
+        el.style.backgroundColor = '#f0f0f0';
+        el.style.color = '#000';
+        el.style.fontWeight = 'normal';
+    });
+}
+
+/**
+ * Read and validate the colour/size a card has selected.
+ *
+ * Shared by Add to Cart and Buy Now so the two can never disagree about what
+ * the customer has to choose before they can buy.
+ *
+ * @returns {{ok: boolean, color: string, size: string}}
+ */
+function readCardSelection(productId) {
+    const colorEl = document.querySelector(`.color-option[data-product="${productId}"].selected`);
+    const sizeEl  = document.querySelector(`.size-option[data-product="${productId}"].selected`);
+
+    let color = colorEl ? colorEl.dataset.color : '';
+    let size  = sizeEl ? sizeEl.dataset.size : '';
+
+    const hasSizes  = document.querySelectorAll(`.size-option[data-product="${productId}"]`).length > 0;
+    const hasColors = document.querySelectorAll(`.color-option[data-product="${productId}"]`).length > 0;
+
+    const missing = [];
+    if (hasColors && !color) missing.push('color');
+    if (hasSizes && !size)   missing.push('size');
+    if (missing.length) {
+        showToast(`Please select ${missing.join(' and ')}`, 'error');
+        return { ok: false, color: '', size: '' };
+    }
+
+    return { ok: true, color: color || 'Default', size: hasSizes ? size : 'N/A' };
+}
+
+/** Straight to checkout with just this item; the cart is left alone. */
+function buyNowFromCard(productId, productName, price, quantity) {
+    quantity = parseInt(quantity) || 1;
+    const pick = readCardSelection(productId);
+    if (!pick.ok) return;
+
+    buyNowCheckout({
+        id: productId,
+        name: productName,
+        price: parseFloat(price),
+        quantity: quantity,
+        color: pick.color,
+        size: pick.size
+    });
+}
+
 function addToCart(productId, productName, price, quantity) {
     try {
-        console.log('Adding to cart:', { productId, productName, price, quantity });
-        
         quantity = parseInt(quantity) || 1;
         if (quantity < 1) {
             showToast('Please select a valid quantity', 'error');
             return;
         }
 
-        // read selected options
-        let colorEl = document.querySelector(`.color-option[data-product="${productId}"].selected`);
-        let sizeEl = document.querySelector(`.size-option[data-product="${productId}"].selected`);
-        
-        console.log('Selected elements:', { colorEl, sizeEl });
-        
-        let color = colorEl ? colorEl.dataset.color : '';
-        let size = sizeEl ? sizeEl.dataset.size : '';
-
-        // Check if product has size options available
-        let hasSizes = document.querySelectorAll(`.size-option[data-product="${productId}"]`).length > 0;
-
-        console.log('Selected color and size:', { color, size, hasSizes });
-
-        if (!color || (!size && hasSizes)) {
-            let missingItems = [];
-            if (!color) missingItems.push('color');
-            if (!size && hasSizes) missingItems.push('size');
-            showToast(`Please select ${missingItems.join(' and ')}`, 'error');
-            return;
-        }
-
-        if (!hasSizes) size = 'N/A';
+        const pick = readCardSelection(productId);
+        if (!pick.ok) return;
+        let color = pick.color;
+        let size  = pick.size;
 
         // Using localStorage to store cart data
         let cart = JSON.parse(localStorage.getItem('cart')) || [];
@@ -485,8 +566,12 @@ function addToCart(productId, productName, price, quantity) {
         }
         
         localStorage.setItem('cart', JSON.stringify(cart));
-        console.log('Cart updated:', cart);
-        
+
+        // The item is in the cart now, so reset the card ready for the next
+        // pick. Only on success: a failed add returns earlier and keeps the
+        // customer's half-finished selection.
+        clearCardSelection(productId);
+
         // Update cart count in navbar
         updateCartCount();
         
@@ -528,6 +613,9 @@ updateCartCount();
 </script>
 
 <?php 
+// Canonical copy now lives in includes/config.php so product.php can use it
+// too. Guarded rather than deleted, so this file still works standalone.
+if (!function_exists('getColorCode')) {
 function getColorCode($colorName) {
     $colors = [
         'Black' => '#000000',
@@ -547,6 +635,7 @@ function getColorCode($colorName) {
         'Orange' => '#FF7F00'
     ];
     return $colors[$colorName] ?? '#999999';
+}
 }
 ?>
 

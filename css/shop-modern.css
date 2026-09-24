@@ -65,7 +65,9 @@
     to   { opacity: 1; transform: translateY(0); }
 }
 .product-card {
-    animation: shopCardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    /* `backwards`, not `both`: a forwards fill kept transform pinned after the
+       entrance, which silently cancelled the hover lift below. */
+    animation: shopCardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 /* stagger the first two rows; anything later just uses the base delay */
 .col-lg-4:nth-child(1) .product-card { animation-delay: 0.05s; }

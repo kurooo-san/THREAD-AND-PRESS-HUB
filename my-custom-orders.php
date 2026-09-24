@@ -179,7 +179,7 @@ $statusLabels = [
                         <p>Order #<?php echo (int)$o['id']; ?> · Size: <?php echo htmlspecialchars($o['size']); ?> · Qty: <?php echo (int)$o['quantity']; ?></p>
                         <p><?php echo date('M d, Y h:i A', strtotime($o['created_at'])); ?>
                             <?php if ($o['payment_method']): ?>
-                                · <?php echo strtoupper(htmlspecialchars($o['payment_method'])); ?>
+                                · <?php echo htmlspecialchars(paymentMethodLabel($o['payment_method'])); ?>
                             <?php endif; ?>
                         </p>
                     </div>

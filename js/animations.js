@@ -1,138 +1,77 @@
-// Simplified UI Animations for Thread and Press Hub Fashion Store
-// Focus: Clean, fast animations for better browsing
+/**
+ * Thread & Press Hub — motion layer (storefront).
+ *
+ * Scroll reveal: cards and section headings fade + rise into place as they
+ * scroll into view, staggered when several arrive together.
+ *
+ * Safe by design:
+ *   - Only elements that start BELOW the fold are hidden, so nothing the
+ *     visitor can already see ever flickers.
+ *   - The hidden state is a class this script adds; if the script never runs,
+ *     everything is simply visible.
+ *   - Elements that already animate (the Shop grid's CSS entrance, the home
+ *     page's own .reveal) are left alone.
+ *   - The reveal class is removed once the animation ends, so hover effects
+ *     (card lift, image zoom) work exactly as before.
+ *   - Skipped entirely for "reduce motion" users and on admin pages.
+ *
+ * Styles live in css/style.css under "Motion".
+ * Page-to-page transitions are pure CSS (@view-transition) in the same place.
+ */
+(function () {
+    'use strict';
 
-class SmoothUIAnimations {
-    constructor() {
-        this.navbar = document.querySelector('.cafe-navbar');
-        this.init();
-    }
+    try {
+        if (document.body.classList.contains('admin-page')) return;
+        if (!('IntersectionObserver' in window)) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    init() {
-        this.setupIntersectionObserver();
-        this.setupNavbarShrink();
-        this.setupSmoothScrolling();
-    }
+        var TARGETS = [
+            '.product-card', '.category-card', '.feature-item', '.home-surface',
+            '.discount-card', '.pd-related-card', '.pd-rv-item', '.pd-rv-summary',
+            '.custom-order-card', '.order-card', '.tracking-card', '.summary-card',
+            '.section-heading', '.shop-sidebar'
+        ].join(',');
+        var STAGGER_MS = 70;
+        var MAX_STAGGER_STEPS = 6;
 
-    // Simple fade-in on scroll
-    setupIntersectionObserver() {
-        const options = {
-            threshold: 0.05,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, options);
-
-        // Only observe major sections (lighter than before)
-        document.querySelectorAll('section, .product-card, .card').forEach(el => {
-            el.style.opacity = '0.95';
-            observer.observe(el);
+        var viewportBottom = window.innerHeight;
+        var candidates = Array.prototype.filter.call(document.querySelectorAll(TARGETS), function (el) {
+            if (el.closest('.reveal')) return false;                        // home page's own reveal
+            if (el.parentElement && el.parentElement.closest(TARGETS)) return false; // outermost target only
+            if (getComputedStyle(el).animationName !== 'none') return false;  // already animated by CSS
+            if (el.getClientRects().length === 0) return false;               // hidden (display:none)
+            return el.getBoundingClientRect().top > viewportBottom;           // below the fold only
         });
-    }
+        if (!candidates.length) return;
 
-    // Navbar shrink effect on scroll
-    setupNavbarShrink() {
-        window.addEventListener('scroll', () => {
-            if (this.navbar && window.scrollY > 50) {
-                this.navbar.classList.add('navbar-scrolled');
-            } else if (this.navbar) {
-                this.navbar.classList.remove('navbar-scrolled');
-            }
-        }, { passive: true });
-    }
+        candidates.forEach(function (el) { el.classList.add('tp-reveal-pending'); });
 
-    // Smooth scrolling for anchor links
-    setupSmoothScrolling() {
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', (e) => {
-                const href = anchor.getAttribute('href');
-                
-                // Skip if it's just '#'
-                if (href === '#') return;
+        function finish(e) {
+            if (e.target !== this) return; // ignore animations bubbling up from children
+            this.classList.remove('tp-reveal-in');
+            this.style.animationDelay = '';
+            this.removeEventListener('animationend', finish);
+        }
 
-                const target = document.querySelector(href);
-                
-                if (target) {
-                    e.preventDefault();
-                    const offsetTop = target.offsetTop - 80; // Account for navbar height
-
-                    window.scrollTo({
-                        top: offsetTop,
-                        behavior: 'smooth'
-                    });
-                }
+        var io = new IntersectionObserver(function (entries) {
+            var step = 0;
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                var el = entry.target;
+                io.unobserve(el);
+                el.style.animationDelay = Math.min(step, MAX_STAGGER_STEPS) * STAGGER_MS + 'ms';
+                step++;
+                el.addEventListener('animationend', finish);
+                el.classList.remove('tp-reveal-pending');
+                el.classList.add('tp-reveal-in');
             });
-        });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
 
-        // Smooth scroll for "Shop Now" and similar buttons
-        document.querySelectorAll('a[href="shop.php"], .btn-hero, [class*="shop-now"]').forEach(link => {
-            link.addEventListener('click', (e) => {
-                if (link.getAttribute('href') === 'shop.php') {
-                    // Standard navigation with smooth scroll
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            });
-        });
+        candidates.forEach(function (el) { io.observe(el); });
+    } catch (e) {
+        // Motion is decoration: on any error, make sure nothing stays hidden.
+        var stuck = document.querySelectorAll('.tp-reveal-pending');
+        for (var i = 0; i < stuck.length; i++) stuck[i].classList.remove('tp-reveal-pending');
     }
-
-    // Scroll-triggered animations for elements
-    setupScrollAnimations() {
-        const observerOptions = {
-            threshold: 0.15,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const scrollObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Add animation classes
-                    entry.target.classList.add('animate-in');
-
-                    // Stagger child elements
-                    const children = entry.target.querySelectorAll('.product-card, .card, .stat-card, [class*="col"]');
-                    if (children.length > 0) {
-                        children.forEach((child, index) => {
-                            child.style.animationDelay = `${index * 0.1}s`;
-                            child.classList.add('stagger-animate');
-                        });
-                    }
-                }
-            });
-        }, observerOptions);
-
-        // Observe all major sections
-        document.querySelectorAll('section, .row, .admin-container').forEach(el => {
-            if (el.children.length > 0) {
-                scrollObserver.observe(el);
-            }
-        });
-    }
-
-    // Animate buttons on hover
-    animateButtons() {
-        const buttons = document.querySelectorAll('.btn, button');
-        buttons.forEach(btn => {
-            btn.addEventListener('mouseenter', () => {
-                btn.style.transform = 'translateY(-3px)';
-            });
-            btn.addEventListener('mouseleave', () => {
-                btn.style.transform = 'translateY(0)';
-            });
-        });
-    }
-}
-
-// Initialize animations when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        new SmoothUIAnimations();
-    });
-} else {
-    new SmoothUIAnimations();
-}
+})();

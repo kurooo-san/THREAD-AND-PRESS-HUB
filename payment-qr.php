@@ -4,16 +4,30 @@ declare(strict_types=1);
 /**
  * Manual QR Payment — customer checkout / proof-of-payment page (Part 1).
  *
- * Shows the exact amount due, the merchant QR for the chosen channel, clear
- * pay-and-upload instructions, and collects a screenshot + reference number.
- * On submit it records a payment submission and moves the order to
- * "Awaiting Verification".
+ * RETIRED as the customer-facing online payment route: online payment now
+ * goes through PayMongo's hosted checkout (paymongo-checkout.php). This file
+ * is kept, not deleted, because orders taken before the switch still carry
+ * manual proofs that admin/payment-verification.php reads.
+ *
+ * Anyone landing here with an unpaid order is forwarded to the gateway, so a
+ * bookmarked or emailed link keeps working instead of dead-ending.
  */
 
 require __DIR__ . '/includes/config.php';
 require __DIR__ . '/includes/payment-proof-handler.php'; // pulls in payment-config.php
 require_once __DIR__ . '/includes/payment-success.php';
+require_once __DIR__ . '/includes/paymongo.php';
 redirectToLogin();
+
+// Forward to the gateway unless it is unavailable, in which case the old
+// manual page below is still a working fallback rather than a dead end.
+if (paymongoIsConfigured() && paymongoTableExists()) {
+    $forwardId = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
+    if ($forwardId > 0 && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header('Location: paymongo-checkout.php?order_id=' . $forwardId);
+        exit;
+    }
+}
 
 $pageTitle = 'Pay for your order';
 $userId    = (int)$_SESSION['user_id'];
@@ -112,14 +126,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ins->execute();
                     $ins->close();
 
+                    // Record the channel actually paid through. Checkout only
+                    // knows "online", so without this an order settled by BDO
+                    // stays labelled with whatever the checkout radio sent.
                     $upd = $conn->prepare(
                         "UPDATE orders
                             SET payment_status = 'pending_verification',
+                                payment_method = ?,
                                 payment_reference = ?,
                                 payment_proof = ?
                           WHERE id = ? AND user_id = ?"
                     );
-                    $upd->bind_param('ssii', $reference, $stored['path'], $orderId, $userId);
+                    $upd->bind_param('sssii', $channel, $reference, $stored['path'], $orderId, $userId);
                     $upd->execute();
                     $upd->close();
 
@@ -270,47 +288,71 @@ include __DIR__ . '/includes/header/header.php';
 
           <!-- Per-channel QR + account details + how-to-pay steps -->
           <fieldset class="mb-4">
-            <legend class="h6"><?php echo $multiChannel ? '2.' : '1.'; ?> Pay via QR</legend>
+            <legend class="h6"><?php echo $multiChannel ? '2.' : '1.'; ?> How to pay</legend>
             <?php $first = true; foreach ($enabledChannels as $key => $ch):
-                $img    = trim((string)($ch['qr_image'] ?? ''));
-                $imgUrl = $img !== '' ? PAYMENT_QR_IMAGE_URLBASE . rawurlencode($img) : '';
+                $img     = trim((string)($ch['qr_image'] ?? ''));
+                $imgUrl  = $img !== '' ? PAYMENT_QR_IMAGE_URLBASE . rawurlencode($img) : '';
                 // Treat blank or the "—" placeholder as "no account number".
                 $acctNo  = trim((string)($ch['account_no'] ?? ''));
                 $hasAcct = $acctNo !== '' && $acctNo !== '—';
+                // A bank settles by account transfer, so a missing QR is normal
+                // there and the steps must not tell the customer to scan one.
+                $isBank  = paymentChannelIsBank($key);
             ?>
               <div class="channel-panel" data-channel="<?php echo htmlspecialchars($key, ENT_QUOTES); ?>"
                    <?php echo $first ? '' : 'hidden'; ?>>
                 <div class="card" style="border:1px solid var(--border-light, #e5e5e5); border-radius:12px;">
                   <div class="card-body p-4 text-center">
                     <div class="fw-bold mb-2"><?php echo htmlspecialchars((string)$ch['display_name'], ENT_QUOTES); ?></div>
+
                     <?php if ($imgUrl !== ''): ?>
                       <img src="<?php echo htmlspecialchars($imgUrl, ENT_QUOTES); ?>"
                            alt="<?php echo htmlspecialchars((string)$ch['display_name'] . ' payment QR code', ENT_QUOTES); ?>"
                            style="max-width:260px; width:100%; height:auto; border:1px solid #eee; border-radius:8px;">
-                    <?php else: ?>
+                    <?php elseif (!$isBank): ?>
                       <div class="alert alert-secondary mb-3">QR image not set for this channel — use the account details below.</div>
                     <?php endif; ?>
-                    <div class="mt-3">
-                      <?php if ((string)$ch['account_name'] !== ''): ?>
-                        <div><strong>Account name:</strong> <?php echo htmlspecialchars((string)$ch['account_name'], ENT_QUOTES); ?></div>
-                      <?php endif; ?>
-                      <?php if ($hasAcct): ?>
-                        <div class="text-muted">…or send to <strong><?php echo htmlspecialchars($acctNo, ENT_QUOTES); ?></strong></div>
-                      <?php endif; ?>
-                    </div>
+
+                    <?php if ($isBank && $hasAcct): ?>
+                      <div style="background:#f6f4f0; border:1px solid #e5e0d6; border-radius:12px; padding:1rem 1.25rem; display:inline-block; min-width:min(100%, 320px);">
+                        <div class="text-muted" style="font-size:.78rem; letter-spacing:.08em; text-transform:uppercase;">Account number</div>
+                        <div style="font-size:1.35rem; font-weight:700; letter-spacing:.04em; font-variant-numeric:tabular-nums;"><?php echo htmlspecialchars($acctNo, ENT_QUOTES); ?></div>
+                        <?php if ((string)$ch['account_name'] !== ''): ?>
+                          <div class="mt-1" style="font-size:.9rem;"><?php echo htmlspecialchars((string)$ch['account_name'], ENT_QUOTES); ?></div>
+                        <?php endif; ?>
+                      </div>
+                    <?php else: ?>
+                      <div class="mt-3">
+                        <?php if ((string)$ch['account_name'] !== ''): ?>
+                          <div><strong>Account name:</strong> <?php echo htmlspecialchars((string)$ch['account_name'], ENT_QUOTES); ?></div>
+                        <?php endif; ?>
+                        <?php if ($hasAcct): ?>
+                          <div class="text-muted">…or send to <strong><?php echo htmlspecialchars($acctNo, ENT_QUOTES); ?></strong></div>
+                        <?php endif; ?>
+                      </div>
+                    <?php endif; ?>
                   </div>
                 </div>
+
+                <?php // Steps live inside the panel so they switch with the channel. ?>
+                <ol class="mt-3 mb-0" style="font-size:.95rem;">
+                  <?php if ($isBank): ?>
+                    <li>Open your <?php echo htmlspecialchars(paymentChannelTitle($key), ENT_QUOTES); ?> app or visit a branch.</li>
+                    <li>Transfer to the account number above.</li>
+                    <li>Send the <strong>exact</strong> amount: <?php echo htmlspecialchars(paymentFormatPeso($amountDue), ENT_QUOTES); ?></li>
+                    <li>Save the transfer confirmation or take a screenshot of the receipt.</li>
+                    <li>Upload it and enter the reference number below.</li>
+                  <?php else: ?>
+                    <li>Open your e-wallet or banking app.</li>
+                    <li>Scan the QR code above<?php echo $hasAcct ? ', or send to the number shown' : ''; ?>.</li>
+                    <li>Enter the <strong>exact</strong> amount: <?php echo htmlspecialchars(paymentFormatPeso($amountDue), ENT_QUOTES); ?>
+                        <small class="text-muted">(this static QR doesn't pre-fill the amount).</small></li>
+                    <li>Complete the payment and take a screenshot of the receipt.</li>
+                    <li>Upload the screenshot and enter the reference number below.</li>
+                  <?php endif; ?>
+                </ol>
               </div>
             <?php $first = false; endforeach; ?>
-
-            <ol class="mt-3 mb-0" style="font-size:.95rem;">
-              <li>Open your e-wallet or banking app.</li>
-              <li>Scan the QR code above.</li>
-              <li>Enter the <strong>exact</strong> amount: <?php echo htmlspecialchars(paymentFormatPeso($amountDue), ENT_QUOTES); ?>
-                  <small class="text-muted">(this static QR doesn't pre-fill the amount).</small></li>
-              <li>Complete the payment and take a screenshot of the receipt.</li>
-              <li>Upload the screenshot and enter the reference number below.</li>
-            </ol>
           </fieldset>
 
           <!-- Proof + reference -->

@@ -258,3 +258,44 @@
     .ai-spotlight { border-radius: 0; padding: 4rem 0; }
     .ai-viewfinder { margin-top: 2.5rem; }
 }
+
+/* =========================================================
+   Spotlight width — line the try-on card up with the navbar.
+
+   The floating navbar shell (navbar-modern.css) is exactly
+   `width: calc(100% - 32px); max-width: 1440px` centred, so the card
+   copies that box and the two edges meet. The Bootstrap .container
+   around it is flattened first, otherwise its 12px gutters would
+   leave the card 24px narrower than the bar.
+
+   Desktop only: below 992px the wrapper is left as a plain
+   .container, so the stacked layout is untouched.
+   ========================================================= */
+@media (min-width: 992px) {
+    .ai-spotlight-wrap {
+        max-width: none;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .ai-spotlight-wrap > .ai-spotlight {
+        width: calc(100% - 32px);
+        max-width: 1440px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* The inner .container would otherwise stop at Bootstrap's 1320px and
+       the copy + viewfinder would gain nothing but a wider dark frame. */
+    .ai-spotlight-wrap > .ai-spotlight > .container {
+        max-width: none;
+        padding-left: 3.5rem;
+        padding-right: 3.5rem;
+    }
+
+    /* Each column gains ~60px; let the viewfinder take its share instead of
+       leaving it as dead space either side. */
+    .ai-spotlight-wrap .ai-viewfinder {
+        max-width: 480px;
+    }
+}

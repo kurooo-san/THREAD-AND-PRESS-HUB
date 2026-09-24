@@ -1,7 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 require 'includes/config.php';
 $pageTitle = 'Home';
 $bodyClass = 'home-page';
@@ -42,7 +39,7 @@ include 'includes/header/header.php';
                             <div class="feature-icon"><i class="fas fa-truck"></i></div>
                             <div>
                                 <h6>Nationwide Delivery</h6>
-                                <p>Flat ₱50 shipping fee</p>
+                                <p>Shipping fee by area, from ₱50</p>
                             </div>
                         </div>
                     </div>
@@ -80,7 +77,7 @@ include 'includes/header/header.php';
 
     <!-- AI Virtual Try-On Spotlight -->
     <section class="home-section">
-        <div class="container">
+        <div class="container ai-spotlight-wrap">
             <div class="ai-spotlight" id="ai-tryon">
                 <div class="ai-spotlight-glow ai-glow-1"></div>
                 <div class="ai-spotlight-glow ai-glow-2"></div>

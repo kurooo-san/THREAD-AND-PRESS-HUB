@@ -74,6 +74,7 @@ function adminIcon(string $name): string
         'print'     => '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
         'close'     => '<path d="M18 6 6 18M6 6l12 12"/>',
         'menu'      => '<path d="M3 6h18M3 12h18M3 18h18"/>',
+        'chevrons'  => '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>',
     ];
     $d = $paths[$name] ?? '';
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $d . '</svg>';
@@ -93,11 +94,16 @@ function adminNavLink(string $href, string $icon, string $label, $match, string 
     echo '</a>';
 }
 ?>
+<script>
+// Restore the desktop collapsed state before the sidebar paints (no flash).
+try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.documentElement.classList.add('ad-collapsed'); } catch (e) {}
+</script>
 <div class="admin-layout" style="display:flex;">
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="adminSidebar">
         <div class="ad-side-head">
-            <span class="ad-logo">TP</span>
+            <img class="ad-logo logo-light" src="../images/logo/logo_sm.png" alt="Thread &amp; Press logo">
+            <img class="ad-logo logo-dark" src="../images/logo/logo_white_sm.png" alt="Thread &amp; Press logo">
             <span class="ad-wordmark">
                 <b>Thread &amp; Press</b>
                 <span>Admin</span>
@@ -113,8 +119,11 @@ function adminNavLink(string $href, string $icon, string $label, $match, string 
             adminNavLink('products.php', 'products', 'Products', 'products.php', $currentPage);
             adminNavLink('orders.php', 'orders', 'Orders', ['orders.php', 'order_details.php'], $currentPage);
             adminNavLink('users.php', 'users', 'Users', 'users.php', $currentPage);
+            // Online payment is handled by PayMongo now, so 'Payment Settings'
+            // (the manual QR / bank-transfer channel config) no longer changes
+            // anything a customer can reach. The page still exists for the
+            // historical proofs, it is just not advertised in the nav.
             adminNavLink('payment-verification.php', 'payments', 'Payments', 'payment-verification.php', $currentPage, (int)$pending_payment_verifications);
-            adminNavLink('payment-settings.php', 'qr', 'Payment Settings', 'payment-settings.php', $currentPage);
             adminNavLink('custom-designs.php', 'designs', 'Custom Designs', 'custom-designs.php', $currentPage, (int)$pending_designs_count);
             adminNavLink('custom-orders.php', 'custom', 'Custom Orders', 'custom-orders.php', $currentPage, (int)$pending_custom_orders);
             ?>
@@ -128,6 +137,13 @@ function adminNavLink(string $href, string $icon, string $label, $match, string 
         </nav>
 
         <div class="ad-side-foot">
+            <button type="button" class="ad-side-link ad-collapse-btn d-none d-lg-flex" id="sidebarCollapse" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="adminSidebar">
+                <?php echo adminIcon('chevrons'); ?><span>Collapse</span>
+            </button>
+            <button type="button" class="ad-side-link theme-toggle" data-theme-toggle aria-label="Toggle dark mode">
+                <i class="fas fa-moon theme-icon-moon"></i><i class="fas fa-sun theme-icon-sun"></i>
+                <span class="theme-label-dark">Dark mode</span><span class="theme-label-light">Light mode</span>
+            </button>
             <a href="../index.php" class="ad-side-link"><?php echo adminIcon('store'); ?><span>View Store</span></a>
             <div class="ad-user-chip">
                 <a href="profile.php" class="ad-avatar" aria-label="My profile"><?php echo htmlspecialchars($navInitials); ?></a>
@@ -139,6 +155,61 @@ function adminNavLink(string $href, string $icon, string $label, $match, string 
             </div>
         </div>
     </aside>
+    <script>
+    // Desktop collapse / expand + hover tooltips while collapsed.
+    (function () {
+        var root = document.documentElement;
+        var side = document.getElementById('adminSidebar');
+        var btn  = document.getElementById('sidebarCollapse');
+        if (!side || !btn) return;
+
+        function isCollapsed() { return root.classList.contains('ad-collapsed'); }
+        function sync() {
+            var c = isCollapsed();
+            btn.setAttribute('aria-expanded', String(!c));
+            btn.setAttribute('aria-label', c ? 'Expand sidebar' : 'Collapse sidebar');
+            btn.querySelector('span').textContent = c ? 'Expand' : 'Collapse';
+        }
+
+        var tip = document.createElement('div');
+        tip.className = 'ad-side-tip';
+        tip.setAttribute('role', 'tooltip');
+        document.body.appendChild(tip);
+
+        function hide() { tip.classList.remove('show'); }
+        function show(el) {
+            if (!isCollapsed() || window.innerWidth < 992) return hide();
+            var label = el.getAttribute('aria-label') || (el.querySelector('span') || {}).textContent || '';
+            var badge = el.querySelector('.ad-side-badge');
+            tip.textContent = label.trim() + (badge ? ' (' + badge.textContent + ')' : '');
+            var r = el.getBoundingClientRect();
+            tip.style.left = (side.getBoundingClientRect().right + 10) + 'px';
+            tip.style.top  = (r.top + r.height / 2) + 'px';
+            tip.classList.add('show');
+        }
+        function onTarget(e) {
+            var el = e.target.closest('.ad-side-link, .ad-avatar');
+            el ? show(el) : hide();
+        }
+
+        btn.addEventListener('click', function () {
+            var c = root.classList.toggle('ad-collapsed');
+            try { localStorage.setItem('tph_admin_sidebar', c ? 'collapsed' : 'expanded'); } catch (e) {}
+            sync();
+            hide();
+        });
+        side.addEventListener('mouseover', onTarget);
+        side.addEventListener('focusin', onTarget);
+        side.addEventListener('mouseleave', hide);
+        side.addEventListener('focusout', hide);
+        side.querySelector('.ad-side-nav').addEventListener('scroll', hide);
+        // Let width-aware widgets (charts, tables) re-measure once the slide ends.
+        side.addEventListener('transitionend', function (e) {
+            if (e.target === side && e.propertyName === 'width') window.dispatchEvent(new Event('resize'));
+        });
+        sync();
+    })();
+    </script>
 
     <!-- Sidebar overlay for mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>

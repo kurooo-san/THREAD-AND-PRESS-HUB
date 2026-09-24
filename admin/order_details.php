@@ -169,8 +169,7 @@ $items_result = $items_stmt->get_result();
                 <p style="color: var(--coffee-dark); font-weight: 600; margin-bottom: 1.5rem;">
                     <i class="fas fa-<?php echo $order['payment_method'] === 'cod' ? 'money-bill' : 'mobile-alt'; ?>"></i>
                     <?php 
-                        $payLabels = ['gcash' => 'GCash Payment', 'maya' => 'Maya Payment', 'cod' => 'Cash on Delivery'];
-                        echo $payLabels[$order['payment_method']] ?? ucfirst($order['payment_method']);
+                        echo htmlspecialchars(paymentMethodLabel($order['payment_method']));
                     ?>
                 </p>
                 <?php if ($order['payment_reference']): ?>

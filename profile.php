@@ -1,5 +1,6 @@
 <?php
 require 'includes/config.php';
+require_once 'includes/addresses.php';   // saved delivery addresses (max 3)
 redirectToLogin();
 
 $pageTitle = 'My Profile';
@@ -13,15 +14,65 @@ $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
+// ---------------------------------------------------------------------
+// Saved addresses. These live in their own <form>s (HTML forbids nesting),
+// so they are handled first and the profile branch below is skipped.
+// ---------------------------------------------------------------------
+$addrError = '';
+$addrSuccess = '';
+$editingId = isset($_GET['edit']) ? (int) $_GET['edit'] : 0;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['address_action'])) {
+    $uid = (int) $_SESSION['user_id'];
+    if (!verifyCsrfToken()) {
+        $addrError = 'Invalid form submission. Please try again.';
+    } else {
+        $fields = [
+            'label'          => sanitizeInput($_POST['label'] ?? ''),
+            'street_address' => sanitizeInput($_POST['street_address'] ?? ''),
+            'barangay'       => sanitizeInput($_POST['barangay'] ?? ''),
+            'city'           => sanitizeInput($_POST['city'] ?? ''),
+            'province'       => sanitizeInput($_POST['province'] ?? ''),
+            'zipcode'        => sanitizeInput($_POST['zipcode'] ?? ''),
+        ];
+        $targetId = (int) ($_POST['address_id'] ?? 0);
+
+        switch ($_POST['address_action']) {
+            case 'add':
+                $r = addressAdd($uid, $fields);
+                $addrError = $r['ok'] ? '' : $r['error'];
+                $addrSuccess = $r['ok'] ? 'Address saved.' : '';
+                break;
+            case 'update':
+                $r = addressUpdate($uid, $targetId, $fields);
+                $addrError = $r['ok'] ? '' : $r['error'];
+                $addrSuccess = $r['ok'] ? 'Address updated.' : '';
+                if ($r['ok']) { $editingId = 0; }
+                break;
+            case 'delete':
+                $r = addressDelete($uid, $targetId);
+                $addrError = $r['ok'] ? '' : $r['error'];
+                $addrSuccess = $r['ok'] ? 'Address removed.' : '';
+                break;
+            case 'default':
+                $r = addressSetDefault($uid, $targetId);
+                $addrError = $r['ok'] ? '' : $r['error'];
+                $addrSuccess = $r['ok'] ? 'Default address updated.' : '';
+                break;
+        }
+        // users.* mirrors the default address, so re-read the row the page prints.
+        $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->bind_param("i", $uid);
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    }
+}
+
 // Handle profile update
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['address_action'])) {
     $fullname = sanitizeInput($_POST['fullname'] ?? '');
     $phone = sanitizeInput($_POST['phone'] ?? '');
-    $street_address = sanitizeInput($_POST['street_address'] ?? '');
-    $barangay = sanitizeInput($_POST['barangay'] ?? '');
-    $city = sanitizeInput($_POST['city'] ?? '');
-    $province = sanitizeInput($_POST['province'] ?? '');
-    $zipcode = sanitizeInput($_POST['zipcode'] ?? '');
     $current_password = $_POST['current_password'] ?? '';
     $new_password = $_POST['new_password'] ?? '';
 
@@ -30,8 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (empty($fullname)) {
         $error = 'Full name cannot be empty!';
     } else {
-        $update_stmt = $conn->prepare("UPDATE users SET fullname = ?, phone = ?, street_address = ?, barangay = ?, city = ?, province = ?, zipcode = ? WHERE id = ?");
-        $update_stmt->bind_param("sssssssi", $fullname, $phone, $street_address, $barangay, $city, $province, $zipcode, $_SESSION['user_id']);
+        // Address columns are NOT touched here: they mirror the default saved
+        // address and are managed by the address cards below. Including them
+        // would wipe the saved address every time the profile is saved.
+        $update_stmt = $conn->prepare("UPDATE users SET fullname = ?, phone = ? WHERE id = ?");
+        $update_stmt->bind_param("ssi", $fullname, $phone, $_SESSION['user_id']);
         
         if ($update_stmt->execute()) {
             $_SESSION['user_name'] = $fullname;
@@ -117,37 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <hr style="border-color:var(--border-light);">
 
-                        <h6 style="font-weight:700; margin-bottom:0.5rem;"><i class="fas fa-map-marker-alt me-1" style="color:var(--accent-green, #2d6a4f);"></i> Delivery Address</h6>
-                        <p style="font-size:0.78rem; color:#888; margin-bottom:1rem;">This address will be pre-filled during checkout for delivery orders.</p>
-
-                        <div class="form-group mb-3">
-                            <label class="form-label" style="font-size:0.82rem; font-weight:600;">Street Address</label>
-                            <input type="text" class="form-control" name="street_address" placeholder="House/Unit No., Street Name" value="<?php echo htmlspecialchars($user['street_address'] ?? ''); ?>">
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label class="form-label" style="font-size:0.82rem; font-weight:600;">Barangay</label>
-                            <input type="text" class="form-control" name="barangay" placeholder="Barangay" value="<?php echo htmlspecialchars($user['barangay'] ?? ''); ?>">
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label" style="font-size:0.82rem; font-weight:600;">City</label>
-                                <input type="text" class="form-control" name="city" placeholder="City" value="<?php echo htmlspecialchars($user['city'] ?? ''); ?>">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" style="font-size:0.82rem; font-weight:600;">Province</label>
-                                <input type="text" class="form-control" name="province" placeholder="Province" value="<?php echo htmlspecialchars($user['province'] ?? ''); ?>">
-                            </div>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label class="form-label" style="font-size:0.82rem; font-weight:600;">Zip Code</label>
-                            <input type="text" class="form-control" name="zipcode" placeholder="Zip Code" maxlength="10" style="max-width:200px;" value="<?php echo htmlspecialchars($user['zipcode'] ?? ''); ?>">
-                        </div>
-
-                        <hr style="border-color:var(--border-light);">
-
                         <h6 style="font-weight:700; margin-bottom:1rem;">Change Password</h6>
 
                         <div class="form-group mb-3">
@@ -165,6 +188,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             Save Changes
                         </button>
                     </form>
+                </div>
+            </div>
+
+            <?php
+            $myAddresses = addressList((int) $_SESSION['user_id']);
+            $canAddMore  = addressCanAdd((int) $_SESSION['user_id']);
+            $editing     = $editingId > 0 ? addressGet((int) $_SESSION['user_id'], $editingId) : null;
+            ?>
+            <div class="card border-0 mt-3" id="addresses" style="border:1px solid var(--border-light); border-radius:var(--radius-lg);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
+                        <h6 style="font-weight:700; margin:0;">
+                            <i class="fas fa-map-marker-alt me-1" style="color:var(--accent-green, #2d6a4f);"></i>
+                            Delivery Addresses
+                        </h6>
+                        <span class="badge" style="background:var(--bg-light); color:var(--text-dark); font-weight:600;">
+                            <?php echo count($myAddresses); ?> of <?php echo ADDRESS_MAX_PER_USER; ?>
+                        </span>
+                    </div>
+                    <p style="font-size:0.78rem; color:#888; margin-bottom:1rem;">
+                        Save up to <?php echo ADDRESS_MAX_PER_USER; ?>. You choose which one to ship to at checkout,
+                        and the shipping fee follows the address you pick.
+                    </p>
+
+                    <?php if ($addrError): ?>
+                        <div class="alert alert-danger py-2" style="font-size:0.85rem;"><?php echo htmlspecialchars($addrError, ENT_QUOTES); ?></div>
+                    <?php endif; ?>
+                    <?php if ($addrSuccess): ?>
+                        <div class="alert alert-success py-2" style="font-size:0.85rem;"><?php echo htmlspecialchars($addrSuccess, ENT_QUOTES); ?></div>
+                    <?php endif; ?>
+
+                    <?php if ($myAddresses === []): ?>
+                        <p class="text-muted" style="font-size:0.88rem;">No saved addresses yet. Add one below.</p>
+                    <?php endif; ?>
+
+                    <?php foreach ($myAddresses as $addr): ?>
+                        <?php $isDef = !empty($addr['is_default']); ?>
+                        <div style="border:1px solid <?php echo $isDef ? 'var(--accent-green, #2d6a4f)' : 'var(--border-light, #e9ecef)'; ?>; border-radius:12px; padding:1rem; margin-bottom:0.75rem;">
+                            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                <div>
+                                    <strong style="font-size:0.9rem;"><?php echo htmlspecialchars((string) $addr['label']); ?></strong>
+                                    <?php if ($isDef): ?>
+                                        <span class="badge bg-success" style="font-size:0.68rem;">Default</span>
+                                    <?php endif; ?>
+                                    <p style="margin:0.3rem 0 0; font-size:0.85rem; color:#555;">
+                                        <?php echo htmlspecialchars(addressFormat($addr)); ?>
+                                    </p>
+                                </div>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <a class="btn btn-sm btn-outline-dark" style="border-radius:8px; font-size:0.75rem;"
+                                       href="profile.php?edit=<?php echo (int) $addr['id']; ?>#addresses">Edit</a>
+                                    <?php if (!$isDef): ?>
+                                        <form method="POST" class="d-inline">
+                                            <?php echo csrfTokenField(); ?>
+                                            <input type="hidden" name="address_action" value="default">
+                                            <input type="hidden" name="address_id" value="<?php echo (int) $addr['id']; ?>">
+                                            <button class="btn btn-sm btn-outline-dark" style="border-radius:8px; font-size:0.75rem;">Make default</button>
+                                        </form>
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Remove this address?');">
+                                            <?php echo csrfTokenField(); ?>
+                                            <input type="hidden" name="address_action" value="delete">
+                                            <input type="hidden" name="address_id" value="<?php echo (int) $addr['id']; ?>">
+                                            <button class="btn btn-sm btn-outline-danger" style="border-radius:8px; font-size:0.75rem;">Delete</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+
+                    <?php // The default has no Delete button on purpose: promote another one first. ?>
+                    <?php if (count($myAddresses) > 1): ?>
+                        <p class="text-muted" style="font-size:0.75rem;">To delete your default address, make another one the default first.</p>
+                    <?php endif; ?>
+
+                    <?php if ($editing !== null): ?>
+                        <hr style="border-color:var(--border-light);">
+                        <h6 style="font-weight:700; margin-bottom:1rem;">Edit address</h6>
+                        <form method="POST">
+                            <?php echo csrfTokenField(); ?>
+                            <input type="hidden" name="address_action" value="update">
+                            <input type="hidden" name="address_id" value="<?php echo (int) $editing['id']; ?>">
+                            <?php $v = $editing; include __DIR__ . '/includes/address-fields.php'; ?>
+                            <button type="submit" class="btn btn-dark" style="border-radius:12px; font-weight:600; padding:0.5rem 1.5rem;">Save address</button>
+                            <a href="profile.php#addresses" class="btn btn-link" style="font-weight:600;">Cancel</a>
+                        </form>
+                    <?php elseif ($canAddMore): ?>
+                        <hr style="border-color:var(--border-light);">
+                        <h6 style="font-weight:700; margin-bottom:1rem;">Add an address</h6>
+                        <form method="POST">
+                            <?php echo csrfTokenField(); ?>
+                            <input type="hidden" name="address_action" value="add">
+                            <?php $v = []; include __DIR__ . '/includes/address-fields.php'; ?>
+                            <button type="submit" class="btn btn-dark" style="border-radius:12px; font-weight:600; padding:0.5rem 1.5rem;">Add address</button>
+                        </form>
+                    <?php else: ?>
+                        <hr style="border-color:var(--border-light);">
+                        <p class="text-muted" style="font-size:0.85rem; margin:0;">
+                            You have reached the limit of <?php echo ADDRESS_MAX_PER_USER; ?> saved addresses. Delete one to add another.
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

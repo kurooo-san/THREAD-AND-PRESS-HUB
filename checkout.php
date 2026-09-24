@@ -1,5 +1,11 @@
 <?php
 require 'includes/config.php';
+require_once 'includes/delivery-zones.php';
+require_once 'includes/paymongo.php';   // online payment runs through the gateway
+require_once 'includes/addresses.php'; // saved delivery addresses (max 3)
+
+// Only offer online payment when the gateway is actually usable.
+$gatewayReady = paymongoIsConfigured() && paymongoTableExists();
 redirectToLogin();
 
 $pageTitle = 'Checkout';
@@ -28,6 +34,15 @@ if ($user_result->num_rows > 0) {
 }
 $user_stmt->close();
 
+// "Buy Now" skips the cart: checkout runs off a single item held in its own
+// localStorage key, so whatever is already in the cart survives untouched.
+$buy_now = !empty($_POST['buy_now']);
+
+// Saved addresses. The default is pre-selected so the common case is one click.
+$saved_addresses = addressList((int) $_SESSION['user_id']);
+$default_address = addressDefault((int) $_SESSION['user_id']);
+$can_save_more   = addressCanAdd((int) $_SESSION['user_id']);
+
 // Check if subtotal exists and is greater than 0
 $subtotal_from_session = floatval($_POST['subtotal'] ?? 0);
 if ($subtotal_from_session <= 0) {
@@ -41,6 +56,32 @@ if ($subtotal_from_session <= 0) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payment_method = sanitizeInput($_POST['payment_method'] ?? '');
     $delivery_address = sanitizeInput($_POST['delivery_address'] ?? '');
+
+    // Which saved address (if any) was picked. 0 means "a new one typed below".
+    // addressGet() scopes by user id, so a forged id simply resolves to null
+    // and we fall through to the typed address instead of leaking someone
+    // else's details or charging their zone.
+    $chosen_address_id = (int) ($_POST['address_id'] ?? 0);
+    $chosen_address    = $chosen_address_id > 0
+        ? addressGet((int) $_SESSION['user_id'], $chosen_address_id)
+        : null;
+
+    // The province that decides the shipping fee. For a saved address it comes
+    // from the stored row. For a one-off address the customer typed, the
+    // structured Province field is used — it is a cleaner signal than guessing
+    // at the free-text street line, and it means shipping a gift to Cebu is
+    // charged the Cebu rate instead of the rate of whatever is on file.
+    $zone_province = $chosen_address['province'] ?? null;
+    if ($chosen_address === null) {
+        $typed_province = sanitizeInput($_POST['new_province'] ?? '');
+        if ($typed_province !== '') {
+            $zone_province = $typed_province;
+        }
+    }
+
+    if ($chosen_address !== null) {
+        $delivery_address = addressFormat($chosen_address);
+    }
     $delivery_method = sanitizeInput($_POST['delivery_method'] ?? 'delivery');
     $notes = sanitizeInput($_POST['notes'] ?? '');
     $discount_type = sanitizeInput($_POST['discount_type'] ?? 'regular');
@@ -50,6 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($discount_type !== 'regular' && $discount_type !== $user_discount) {
         $discount_type = 'regular';
     }
+
+    $delivery_zone = sanitizeInput($_POST['delivery_zone'] ?? DELIVERY_ZONE_DEFAULT);
 
     // For store pickup, set address and zero delivery fee
     if ($delivery_method === 'pickup') {
@@ -61,6 +104,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Your cart is empty! Please add items before checking out.';
     } elseif (empty($payment_method) || ($delivery_method === 'delivery' && empty($delivery_address))) {
         $error = 'Please fill in all required fields!';
+    } elseif ($payment_method === 'paymongo' && !$gatewayReady) {
+        $error = 'Online payment is temporarily unavailable. Please choose Cash on Delivery.';
+    } elseif (!in_array($payment_method, ['cod', 'paymongo'], true)) {
+        // Online payment is PayMongo only. Anything else is a forged value.
+        $error = 'Please choose a valid payment method.';
+    } elseif ($delivery_method === 'pickup' && $payment_method !== 'cod') {
+        // Store pickup is settled in cash at the counter. Enforced here and not
+        // only by hiding the option, or a crafted POST could book a pickup
+        // order against an online channel that will never be reconciled.
+        $error = 'Store pickup is cash only. Please choose Cash on Pickup, or switch to delivery.';
+    } elseif ($delivery_method === 'delivery' && !isDeliveryZone($delivery_zone)) {
+        $error = 'Please choose a delivery area so we can compute the shipping fee.';
     } elseif (!verifyCsrfToken()) {
         $error = 'Invalid form submission. Please try again.';
     } else {
@@ -93,9 +148,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unset($item);
         }
 
-        if ($price_mismatch && empty($error)) {
+        // The subtotal is ALWAYS recomputed from database prices, never taken
+        // from the form. Previously it was only replaced when an individual
+        // item price disagreed, so a request that carried correct item prices
+        // alongside a forged `subtotal` was charged the forged amount — a
+        // ₱499 shirt could be bought for ₱1.
+        if (empty($error) && is_array($items_to_validate) && $items_to_validate !== []) {
             $subtotal = $validated_subtotal;
-            $cart_items_raw = json_encode($items_to_validate);
+            if ($price_mismatch) {
+                $cart_items_raw = json_encode($items_to_validate);
+            }
         }
 
         if (empty($error)) {
@@ -125,7 +187,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $delivery_fee = ($delivery_method === 'pickup') ? 0 : 50;
+        // Priced from includes/delivery-zones.php, never from the posted form —
+        // the browser sends which area was chosen, not what it costs. The
+        // chosen area is then checked against the delivery address, so a
+        // Mindanao order cannot be booked at the Rizal rate.
+        // NO fallback to the profile province: that was overriding a deliberate
+        // "ship somewhere else" with whatever address happened to be on file.
+        // When $zone_province is null the customer's own choice stands, and
+        // resolveDeliveryZone() flags an obvious mismatch for admin review.
+        $zone_result  = resolveDeliveryZone(
+            $delivery_zone,
+            $delivery_address,
+            $delivery_method,
+            $zone_province
+        );
+        $delivery_fee = $zone_result['fee'];
+        $delivery_zone = $zone_result['zone'];
+        if (!empty($zone_result['flag'])) {
+            $notes = trim($notes . "\n[" . $zone_result['flag'] . ']');
+        }
 
         // VAT (12%) — added on top of the discounted goods total (VAT-exclusive
         // pricing). Delivery fee is not VATed.
@@ -298,6 +378,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($tx_ok && $order_id > 0) {
+            // "Save this address" on a typed address, done only after the order
+            // actually succeeded so a failed checkout leaves nothing behind.
+            if ($chosen_address === null
+                && $delivery_method === 'delivery'
+                && !empty($_POST['save_address'])
+                && addressCanAdd((int) $_SESSION['user_id'])) {
+                addressAdd((int) $_SESSION['user_id'], [
+                    'label'          => sanitizeInput($_POST['new_label'] ?? 'New address'),
+                    'street_address' => sanitizeInput($_POST['new_street'] ?? ''),
+                    'barangay'       => sanitizeInput($_POST['new_barangay'] ?? ''),
+                    'city'           => sanitizeInput($_POST['new_city'] ?? ''),
+                    'province'       => sanitizeInput($_POST['new_province'] ?? ''),
+                    'zipcode'        => sanitizeInput($_POST['new_zipcode'] ?? ''),
+                ]);
+            }
+
+            // order_confirmation.php clears localStorage; it must clear the
+            // Buy Now key for a Buy Now order and leave the real cart alone.
+            $_SESSION['last_order_mode'] = $buy_now ? 'buynow' : 'cart';
+
             $_SESSION['last_order_id'] = $order_id;
             $_SESSION['payment_method'] = $payment_method;
             $_SESSION['order_total'] = $final_total;
@@ -311,8 +411,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Redirect to payment or order confirmation.
-            // Online payments (gcash/maya/instapay) go to the unified manual-QR
-            // checkout, which reads channels from admin Payment Settings.
+            // Online payments go to PayMongo's hosted checkout, which handles
+            // GCash / Maya / GrabPay / card on their side.
             if ($payment_method === 'cod') {
                 require_once 'includes/payment-success.php';
                 setPaymentSuccessFlash([
@@ -322,7 +422,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
                 header("Location: order_confirmation.php?order_id=" . $order_id);
             } else {
-                header("Location: payment-qr.php?order_id=" . $order_id);
+                header("Location: paymongo-checkout.php?order_id=" . $order_id);
             }
             exit();
         }
@@ -346,7 +446,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 2rem;">Checkout</h1>
 
     <?php if ($error): ?>
-        <div class="alert alert-danger"><?php echo $error; ?></div>
+        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
     <?php endif; ?>
 
     <form method="POST" id="checkoutForm">
@@ -381,29 +481,148 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-edit me-1"></i> Edit Address
                             </a>
                         </div>
-                        <?php if (!empty($user_address)): ?>
-                            <div style="background: var(--bg-light, #f8f9fa); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; border: 1px solid #e9ecef;">
-                                <div style="display: flex; align-items: start; gap: 0.75rem;">
-                                    <i class="fas fa-home" style="color: var(--accent-green, #2d6a4f); margin-top: 3px;"></i>
-                                    <div>
-                                        <strong style="font-size: 0.9rem;">Saved Address</strong>
-                                        <p style="margin: 0.25rem 0 0; font-size: 0.88rem; color: #555;"><?php echo htmlspecialchars($user_address); ?></p>
+                        <?php
+                        // Each saved address carries the zone its province implies, so picking
+                        // one updates the fee without a round trip. The server recomputes it
+                        // from the stored row anyway — this is only for the on-screen total.
+                        $addressZoneMap = [];
+                        foreach ($saved_addresses as $sa) {
+                            $addressZoneMap[(int) $sa['id']] = guessDeliveryZone($sa['province'] ?? null, $sa['city'] ?? null);
+                        }
+                        $defaultAddressId = $default_address ? (int) $default_address['id'] : 0;
+                        ?>
+
+                        <?php if ($saved_addresses !== []): ?>
+                            <div id="addressChoices" style="margin-bottom: 1rem;">
+                                <?php foreach ($saved_addresses as $sa): $sid = (int) $sa['id']; ?>
+                                <label class="address-option" for="addr<?php echo $sid; ?>"
+                                       style="display:block; border:1px solid #e9ecef; border-radius:10px; padding:0.85rem 1rem; margin-bottom:0.6rem; cursor:pointer;">
+                                    <div style="display:flex; align-items:start; gap:0.65rem;">
+                                        <input class="form-check-input mt-1" type="radio" name="address_id"
+                                               id="addr<?php echo $sid; ?>" value="<?php echo $sid; ?>"
+                                               data-zone="<?php echo htmlspecialchars($addressZoneMap[$sid], ENT_QUOTES); ?>"
+                                               data-address="<?php echo htmlspecialchars(addressFormat($sa), ENT_QUOTES); ?>"
+                                               onchange="onAddressPicked(this)"
+                                               <?php echo $sid === $defaultAddressId ? 'checked' : ''; ?>>
+                                        <div>
+                                            <strong style="font-size:0.88rem;"><?php echo htmlspecialchars((string) $sa['label']); ?></strong>
+                                            <?php if (!empty($sa['is_default'])): ?>
+                                                <span class="badge bg-success" style="font-size:0.65rem;">Default</span>
+                                            <?php endif; ?>
+                                            <p style="margin:0.2rem 0 0; font-size:0.85rem; color:#555;"><?php echo htmlspecialchars(addressFormat($sa)); ?></p>
+                                        </div>
                                     </div>
-                                </div>
+                                </label>
+                                <?php endforeach; ?>
+
+                                <label class="address-option" for="addrNew"
+                                       style="display:block; border:1px dashed #cfcfcf; border-radius:10px; padding:0.85rem 1rem; cursor:pointer;">
+                                    <div style="display:flex; align-items:start; gap:0.65rem;">
+                                        <input class="form-check-input mt-1" type="radio" name="address_id" id="addrNew" value="0"
+                                               data-zone="" data-address="" onchange="onAddressPicked(this)">
+                                        <div>
+                                            <strong style="font-size:0.88rem;">Use a different address</strong>
+                                            <p style="margin:0.2rem 0 0; font-size:0.8rem; color:#777;">Ship this order somewhere else, just once.</p>
+                                        </div>
+                                    </div>
+                                </label>
                             </div>
-                            <input type="hidden" name="delivery_address" id="deliveryAddressInput" value="<?php echo htmlspecialchars($user_address); ?>">
                         <?php else: ?>
                             <div style="background: #fff3cd; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
                                 <p style="margin: 0; font-size: 0.88rem; color: #856404;">
-                                    <i class="fas fa-exclamation-triangle me-1"></i> No saved address found. 
-                                    <a href="profile.php" style="color: #856404; font-weight: 600;">Add one in your profile</a> or enter below.
+                                    <i class="fas fa-exclamation-triangle me-1"></i> No saved address yet — enter one below.
+                                    You can tick &ldquo;save&rdquo; to reuse it next time.
                                 </p>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Full Address *</label>
-                                <textarea class="form-control" name="delivery_address" id="deliveryAddressInput" rows="3" placeholder="Enter your complete delivery address" required></textarea>
-                            </div>
+                            <input type="hidden" name="address_id" id="addrNew" value="0">
                         <?php endif; ?>
+
+                        <?php // Shown only while "use a different address" is selected. ?>
+                        <div id="newAddressPanel" style="<?php echo $saved_addresses !== [] ? 'display:none;' : ''; ?> border:1px solid #e9ecef; border-radius:10px; padding:1rem; margin-bottom:1rem;">
+                            <div class="form-group mb-2">
+                                <label class="form-label" style="font-size:0.82rem; font-weight:600;">Full Address *</label>
+                                <textarea class="form-control" name="delivery_address" id="deliveryAddressInput" rows="2"
+                                          placeholder="House/Unit No., Street, Barangay, City, Province"></textarea>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-size:0.78rem;">City</label>
+                                    <input type="text" class="form-control form-control-sm" name="new_city" id="newCity" placeholder="City">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-size:0.78rem;">Province</label>
+                                    <input type="text" class="form-control form-control-sm" name="new_province" id="newProvince"
+                                           placeholder="Province" onchange="updateOrderSummary()">
+                                </div>
+                            </div>
+                            <?php if ($can_save_more): ?>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" name="save_address" id="saveAddress" value="1">
+                                <label class="form-check-label" for="saveAddress" style="font-size:0.82rem;">
+                                    Save this address to my profile
+                                    (<?php echo count($saved_addresses); ?> of <?php echo ADDRESS_MAX_PER_USER; ?> used)
+                                </label>
+                            </div>
+                            <div id="saveAddressExtra" style="display:none; margin-top:0.5rem;">
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control form-control-sm" name="new_label" placeholder="Label (Home, Dorm…)">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control form-control-sm" name="new_street" placeholder="Street address">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control form-control-sm" name="new_barangay" placeholder="Barangay">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control form-control-sm" name="new_zipcode" placeholder="Zip" maxlength="4">
+                                    </div>
+                                </div>
+                            </div>
+                            <?php else: ?>
+                            <p class="text-muted mt-2" style="font-size:0.78rem;">
+                                You already have <?php echo ADDRESS_MAX_PER_USER; ?> saved addresses, so this one is used for this order only.
+                            </p>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php // Kept for the pickup path, which needs no address panel at all. ?>
+                        <input type="hidden" name="delivery_address" id="deliveryAddressHidden"
+                               value="<?php echo htmlspecialchars($default_address ? addressFormat($default_address) : '', ENT_QUOTES); ?>" disabled>
+
+                        <?php
+                        // The zone follows the SELECTED address. With one picked the dropdown is
+                        // locked, because the server decides the fee from the stored province and
+                        // an editable control would promise a choice that does not exist.
+                        $zoneFromProfile = $default_address
+                            ? detectDeliveryZone($default_address['province'] ?? null)
+                            : detectDeliveryZone($user_data['province'] ?? null);
+                        $zoneLocked      = $saved_addresses !== [] && $zoneFromProfile !== null;
+                        $preselectedZone = $zoneFromProfile ?? DELIVERY_ZONE_DEFAULT;
+                        ?>
+                        <div class="form-group mb-3">
+                            <label class="form-label" for="deliveryZone">Delivery Area *</label>
+                            <select class="form-control" name="delivery_zone" id="deliveryZone"
+                                    onchange="updateOrderSummary()"
+                                    <?php echo $zoneLocked ? 'disabled' : ''; ?>>
+                                <?php foreach (DELIVERY_ZONES as $zoneKey => $zone): ?>
+                                    <option value="<?php echo htmlspecialchars($zoneKey, ENT_QUOTES); ?>"
+                                            <?php echo $zoneKey === $preselectedZone ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($zone['label']); ?> — ₱<?php echo number_format((float)$zone['fee'], 2); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ($zoneLocked): ?>
+                                <?php // A disabled select submits nothing, so the value travels here. ?>
+                                <input type="hidden" name="delivery_zone" id="deliveryZoneLocked" value="<?php echo htmlspecialchars($preselectedZone, ENT_QUOTES); ?>">
+                                <small class="text-muted" style="font-size: 0.78rem;" id="zoneLockedHint">
+                                    Set from the address you picked above.
+                                    Choose <strong>Use a different address</strong> to ship somewhere else.
+                                </small>
+                            <?php else: ?>
+                                <small class="text-muted" style="font-size: 0.78rem;">Shipping is charged by area. Store pickup is free.</small>
+                            <?php endif; ?>
+                        </div>
                         <div class="form-group">
                             <label class="form-label">Special Instructions</label>
                             <textarea class="form-control" name="notes" rows="2" placeholder="Any special requests or instructions"></textarea>
@@ -415,22 +634,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card mb-4" style="border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     <div class="card-body p-4">
                         <h5 class="mb-3" style="font-weight: 600;"><i class="fas fa-wallet" style="margin-right: 0.5rem;"></i> Payment Method</h5>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="payment_method" id="gcash" value="gcash" required>
-                            <label class="form-check-label" for="gcash" style="cursor: pointer;">
+                        <div class="form-check mb-3"<?php echo $gatewayReady ? '' : ' style="display:none;"'; ?>>
+                            <input class="form-check-input" type="radio" name="payment_method" id="paymongo" value="paymongo" <?php echo $gatewayReady ? 'required' : 'disabled'; ?>>
+                            <label class="form-check-label" for="paymongo" style="cursor: pointer;">
                                 <i class="fas fa-wallet" style="color: var(--primary); margin-right: 0.5rem;"></i>
-                                <strong>E-Wallet Pay</strong> - Scan QR with any bank or e-wallet app
+                                <strong>Pay Online</strong> - GCash, Maya, GrabPay, or credit/debit card. You are taken to our secure payment partner to finish.
                             </label>
                         </div>
                         <div class="form-check mb-3" id="codOption">
                             <input class="form-check-input" type="radio" name="payment_method" id="cod" value="cod" required>
                             <label class="form-check-label" for="cod" style="cursor: pointer;">
                                 <i class="fas fa-money-bill-wave" style="color: var(--primary); margin-right: 0.5rem;"></i>
-                                <strong>Cash on Delivery</strong> - Pay when order arrives
+                                <strong id="codLabel">Cash on Delivery</strong> <span id="codHint">- Pay when order arrives</span>
                             </label>
                         </div>
+                        <div id="pickupCashNote" style="display:none; background:#f0f7f2; border:1px solid #cfe4d6; border-radius:10px; padding:0.75rem 1rem;">
+                            <p style="margin:0; font-size:0.85rem; color:#2c6e3f;">
+                                <i class="fas fa-store me-1"></i> Store pickup is settled in cash at the counter, so online payment is unavailable for this option.
+                            </p>
+                        </div>
                         <div class="mt-3" style="background: var(--bg-light); border-radius: var(--radius-sm); padding: 0.75rem 1rem;">
-                            <small class="text-muted"><i class="fas fa-info-circle" style="margin-right: 0.25rem;"></i> E-Wallet payments are confirmed after a quick verification, while COD lets you pay upon delivery.</small>
+                            <small class="text-muted"><i class="fas fa-info-circle" style="margin-right: 0.25rem;"></i>
+                                <?php if ($gatewayReady): ?>
+                                    Online payments are completed on PayMongo's secure page and confirmed automatically — nothing to upload. Cash lets you pay on delivery or at pickup.
+                                <?php else: ?>
+                                    Online payment is temporarily unavailable. You can pay in cash on delivery or at pickup.
+                                <?php endif; ?>
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -504,7 +734,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="summary-row">
                         <span>Delivery Fee:</span>
-                        <span id="summaryDelivery">₱50.00</span>
+                        <span id="summaryDelivery">₱<?php echo number_format(deliveryFee(guessDeliveryZone($user_data['province'] ?? null, $user_data['city'] ?? null)), 2); ?></span>
                     </div>
 
                     <div class="summary-row total">
@@ -514,6 +744,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <input type="hidden" name="subtotal" id="hiddenSubtotal">
                     <input type="hidden" name="cart_items" id="cartItemsInput">
+                    <?php // Carries Buy Now mode through the Place Order POST. Without it the
+                          // order lands as a normal cart order and order_confirmation.php
+                          // wipes the basket the customer still had waiting. ?>
+                    <input type="hidden" name="buy_now" value="<?php echo $buy_now ? '1' : ''; ?>">
 
                     <button type="submit" class="btn btn-dark btn-lg w-100 mt-4" style="border-radius: var(--radius-sm); padding: 0.75rem;">
                         Place Order <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
@@ -529,7 +763,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-const DELIVERY_FEE = 50;
+// Fees come from includes/delivery-zones.php so the summary and the recorded
+// total are computed from one table. The server re-derives the fee on submit;
+// this copy only drives what the customer sees.
+const DELIVERY_ZONE_FEES = <?php echo json_encode(deliveryZonesForJs()); ?>;
+
+/** Fee for the current delivery method and selected area. */
+function currentDeliveryFee() {
+    const method = document.querySelector('input[name="delivery_method"]:checked');
+    if (method && method.value === 'pickup') return 0;
+    const sel = document.getElementById('deliveryZone');
+    const fee = sel ? DELIVERY_ZONE_FEES[sel.value] : undefined;
+    return typeof fee === 'number' ? fee : <?php echo json_encode(deliveryFee(DELIVERY_ZONE_DEFAULT)); ?>;
+}
 const VAT_RATE = 0.12;
 const DISCOUNT_RATES = {
     'regular': 0,
@@ -579,9 +825,22 @@ function validateCouponClient() {
         });
 }
 
+// 'buynow' = a single item bought directly; 'cart' = the normal basket.
+const CHECKOUT_MODE = <?php echo json_encode($buy_now ? 'buynow' : 'cart'); ?>;
+// 'cartSelection' holds only the lines the customer ticked in the cart, so
+// unticked items are left behind instead of being ordered by accident.
+const CART_KEY      = CHECKOUT_MODE === 'buynow' ? 'buyNow' : 'cartSelection';
+const SUBTOTAL_KEY  = CHECKOUT_MODE === 'buynow' ? 'buyNowSubtotal' : 'subtotal';
+
 function loadOrderData() {
-    const cart = JSON.parse(localStorage.getItem('cart')) || [];
-    const subtotal = parseFloat(localStorage.getItem('subtotal')) || 0;
+    let cart = JSON.parse(localStorage.getItem(CART_KEY)) || [];
+    let subtotal = parseFloat(localStorage.getItem(SUBTOTAL_KEY)) || 0;
+    // Fall back to the whole cart if the key is missing (an old form being
+    // re-posted, say) so checkout never renders an empty order.
+    if (cart.length === 0) {
+        cart = JSON.parse(localStorage.getItem('cart')) || [];
+        subtotal = parseFloat(localStorage.getItem('subtotal')) || 0;
+    }
     
     // Display cart items
     let itemsHtml = '';
@@ -606,7 +865,11 @@ function loadOrderData() {
 
 function updateOrderSummary() {
     const subtotal = parseFloat(document.getElementById('hiddenSubtotal').value) || 0;
-    const discountType = document.querySelector('input[name="discount_type"]:checked').value;
+    // No radio is checked when the account type is neither regular, pwd nor
+    // senior (an admin, say). Reading .value off null threw, which aborted the
+    // whole summary and left Subtotal/VAT/Total showing 0.00.
+    const discountPick = document.querySelector('input[name="discount_type"]:checked');
+    const discountType = discountPick ? discountPick.value : 'regular';
     const discountRate = DISCOUNT_RATES[discountType];
     const discountAmount = subtotal * discountRate;
     let discountedTotal = subtotal - discountAmount;
@@ -624,12 +887,13 @@ function updateOrderSummary() {
     }
 
     const vat = discountedTotal * VAT_RATE;
-    const total = discountedTotal + vat + DELIVERY_FEE;
+    const deliveryFee = currentDeliveryFee();
+    const total = discountedTotal + vat + deliveryFee;
 
     document.getElementById('summarySubtotal').textContent = '₱' + subtotal.toFixed(2);
     document.getElementById('summaryDiscount').textContent = '₱' + discountAmount.toFixed(2);
     document.getElementById('summaryVat').textContent = '₱' + vat.toFixed(2);
-    document.getElementById('summaryDelivery').textContent = '₱' + DELIVERY_FEE.toFixed(2);
+    document.getElementById('summaryDelivery').textContent = '₱' + deliveryFee.toFixed(2);
     document.getElementById('summaryTotal').textContent = '₱' + total.toFixed(2);
 
     // Update discount label
@@ -645,6 +909,71 @@ document.querySelectorAll('input[name="discount_type"]').forEach(input => {
 // Load on page load
 loadOrderData();
 
+/**
+ * React to picking a saved address, or "use a different address".
+ *
+ * The fee shown here is only the on-screen figure — checkout.php recomputes it
+ * from the stored province of whichever address id is posted, so nothing here
+ * can talk the server into a cheaper zone.
+ */
+function onAddressPicked(radio) {
+    const panel    = document.getElementById('newAddressPanel');
+    const textarea = document.getElementById('deliveryAddressInput');
+    const zoneSel  = document.getElementById('deliveryZone');
+    const zoneHid  = document.getElementById('deliveryZoneLocked');
+    const hint     = document.getElementById('zoneLockedHint');
+    const usingNew = radio.value === '0';
+
+    if (panel) panel.style.display = usingNew ? 'block' : 'none';
+
+    // A hidden required field blocks submit, so only demand it while visible.
+    if (textarea) {
+        if (usingNew) textarea.setAttribute('required', 'required');
+        else          textarea.removeAttribute('required');
+    }
+
+    if (zoneSel) {
+        if (usingNew) {
+            // No stored province to trust yet — let them choose.
+            zoneSel.disabled = false;
+            if (zoneHid) zoneHid.disabled = true;
+            if (hint) hint.style.display = 'none';
+        } else {
+            const zone = radio.getAttribute('data-zone') || '';
+            if (zone) {
+                zoneSel.value = zone;
+                if (zoneHid) { zoneHid.disabled = false; zoneHid.value = zone; }
+                zoneSel.disabled = true;
+                if (hint) hint.style.display = '';
+            }
+        }
+    }
+
+    // Highlight the chosen card.
+    document.querySelectorAll('.address-option').forEach(function (el) {
+        const input = el.querySelector('input[name="address_id"]');
+        el.style.borderColor = (input && input.checked) ? 'var(--accent-green, #2d6a4f)' : '#e9ecef';
+    });
+
+    updateOrderSummary();
+}
+
+// Reveal the label/street fields only when they actually want it saved.
+(function () {
+    const cb = document.getElementById('saveAddress');
+    const extra = document.getElementById('saveAddressExtra');
+    if (!cb || !extra) return;
+    cb.addEventListener('change', function () {
+        extra.style.display = cb.checked ? 'block' : 'none';
+    });
+})();
+
+// Apply the pre-checked address on first paint.
+(function () {
+    const picked = document.querySelector('input[name="address_id"]:checked');
+    if (picked) onAddressPicked(picked);
+})();
+
 // Toggle delivery address visibility based on delivery method
 function toggleDeliveryAddress() {
     const method = document.querySelector('input[name="delivery_method"]:checked').value;
@@ -653,45 +982,51 @@ function toggleDeliveryAddress() {
     const deliveryFeeEl = document.getElementById('summaryDelivery');
     const codOption = document.getElementById('codOption');
     const codRadio = document.getElementById('cod');
-    const gcashRadio = document.getElementById('gcash');
+    const onlineRadio = document.getElementById('paymongo');
+
+    const onlineOption  = onlineRadio ? onlineRadio.closest('.form-check') : null;
+    const pickupNote    = document.getElementById('pickupCashNote');
+    const codLabel      = document.getElementById('codLabel');
+    const codHint       = document.getElementById('codHint');
 
     if (method === 'pickup') {
         addressCard.style.display = 'none';
-        codOption.style.display = 'none';
-        if (codRadio.checked) {
-            codRadio.checked = false;
-            gcashRadio.checked = true;
-        }
-        if (addressInput) {
-            addressInput.removeAttribute('required');
-            if (addressInput.tagName === 'INPUT') {
-                addressInput.value = 'Store Pickup';
-            }
-        }
+        // Pickup is cash at the counter: show only cash, hide the online
+        // channel. The server rejects the pair anyway; this keeps the form
+        // from offering a combination it will refuse.
+        codOption.style.display = 'block';
+        if (onlineOption) onlineOption.style.display = 'none';
+        if (pickupNote) pickupNote.style.display = 'block';
+        if (codLabel) codLabel.textContent = 'Cash on Pickup';
+        if (codHint) codHint.textContent = '- Pay at the store when you collect';
+        codRadio.checked = true;
+        if (onlineRadio) onlineRadio.checked = false;
+        // Pickup needs no address at all; the server stamps "Store Pickup".
+        if (addressInput) addressInput.removeAttribute('required');
         // Set delivery fee to 0 for pickup
         deliveryFeeEl.textContent = '₱0.00';
         updateOrderSummaryWithPickup();
     } else {
         addressCard.style.display = 'block';
         codOption.style.display = 'block';
-        if (addressInput) {
-            if (addressInput.tagName === 'TEXTAREA') {
-                addressInput.setAttribute('required', 'required');
-            }
-            <?php if (!empty($user_address)): ?>
-            if (addressInput.tagName === 'INPUT') {
-                addressInput.value = <?php echo json_encode($user_address); ?>;
-            }
-            <?php endif; ?>
-        }
-        deliveryFeeEl.textContent = '₱50.00';
+        if (onlineOption) onlineOption.style.display = 'block';
+        if (pickupNote) pickupNote.style.display = 'none';
+        if (codLabel) codLabel.textContent = 'Cash on Delivery';
+        if (codHint) codHint.textContent = '- Pay when order arrives';
+        // Back to delivery: re-apply whatever address is currently picked.
+        const picked = document.querySelector('input[name="address_id"]:checked');
+        if (picked) onAddressPicked(picked);
         updateOrderSummary();
     }
 }
 
 function updateOrderSummaryWithPickup() {
     const subtotal = parseFloat(document.getElementById('hiddenSubtotal').value) || 0;
-    const discountType = document.querySelector('input[name="discount_type"]:checked').value;
+    // No radio is checked when the account type is neither regular, pwd nor
+    // senior (an admin, say). Reading .value off null threw, which aborted the
+    // whole summary and left Subtotal/VAT/Total showing 0.00.
+    const discountPick = document.querySelector('input[name="discount_type"]:checked');
+    const discountType = discountPick ? discountPick.value : 'regular';
     const discountRate = DISCOUNT_RATES[discountType];
     const discountAmount = subtotal * discountRate;
     let discountedTotal = subtotal - discountAmount;

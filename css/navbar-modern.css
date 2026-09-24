@@ -231,6 +231,12 @@ body.admin-page .tp-nav.cafe-navbar { position: relative; }
     transition: transform 0.18s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 .tp-nav .tp-cta i { margin: 0; font-size: 14px; }
+
+/* style.css (from the old LIGHT navbar) forces `.cafe-navbar .nav-link i` to
+   --text-dark (#1a1a1a) !important — invisible on this dark bar. Icons follow
+   their button's colour instead: light on Design Studio / theme toggle,
+   dark on the gold Try-On pill. Higher specificity, so it wins. */
+.tp-nav.cafe-navbar .nav-link i { color: inherit !important; }
 .tp-nav .tp-cta:hover { transform: translateY(-1px); }
 
 .tp-nav .tp-cta-ghost {

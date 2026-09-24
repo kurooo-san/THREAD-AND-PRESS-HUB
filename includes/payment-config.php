@@ -34,8 +34,18 @@ const PAYMENT_PROOF_ALLOWED = [
     'image/webp' => 'webp',
 ];
 
-/** Channels this system understands. Display data comes from the JSON config. */
-const PAYMENT_CHANNELS = ['instapay', 'gcash', 'maya'];
+/**
+ * Channels this system understands. Display data comes from the JSON config.
+ *
+ * Adding a key here surfaces it in admin Payment Settings, on payment-qr.php
+ * and in the custom-order payment page automatically — but the two
+ * payment_method ENUM columns must accept it too, so a new key also needs a
+ * migration (see migrate_bank_transfer.sql).
+ */
+const PAYMENT_CHANNELS = ['instapay', 'gcash', 'maya', 'bdo', 'bpi', 'securitybank', 'rcbc'];
+
+/** Bank channels settle by account transfer, so a QR image is optional for them. */
+const PAYMENT_BANK_CHANNELS = ['bdo', 'bpi', 'securitybank', 'rcbc'];
 
 /** Retention: delete proofs this many days after an order is completed/cancelled. */
 define('PAYMENT_PROOF_RETENTION_DAYS', (int)(getenv('PAYMENT_PROOF_RETENTION_DAYS') ?: 90));
@@ -75,7 +85,90 @@ function paymentDefaultChannels(): array
             'account_no'   => '09XX-XXX-XXXX',
             'qr_image'     => '',
         ],
+        // Bank transfers. Ship disabled with placeholder account numbers so a
+        // channel cannot go live before an admin has entered real details.
+        'bdo' => [
+            'enabled'      => false,
+            'display_name' => 'BDO Bank Transfer',
+            'account_name' => 'Thread & Press Hub',
+            'account_no'   => '0000-0000-0000',
+            'qr_image'     => '',
+        ],
+        'bpi' => [
+            'enabled'      => false,
+            'display_name' => 'BPI Bank Transfer',
+            'account_name' => 'Thread & Press Hub',
+            'account_no'   => '0000-0000-0000',
+            'qr_image'     => '',
+        ],
+        'securitybank' => [
+            'enabled'      => false,
+            'display_name' => 'Security Bank Transfer',
+            'account_name' => 'Thread & Press Hub',
+            'account_no'   => '0000-0000-0000',
+            'qr_image'     => '',
+        ],
+        'rcbc' => [
+            'enabled'      => false,
+            'display_name' => 'RCBC Bank Transfer',
+            'account_name' => 'Thread & Press Hub',
+            'account_no'   => '0000-0000-0000',
+            'qr_image'     => '',
+        ],
     ];
+}
+
+/** True for channels that settle by account transfer rather than by QR scan. */
+function paymentChannelIsBank(string $key): bool
+{
+    return in_array($key, PAYMENT_BANK_CHANNELS, true);
+}
+
+/**
+ * Short title for a channel key, for admin cards and headings.
+ * ucfirst() alone produced "Bdo", "Bpi", "Securitybank", "Rcbc".
+ */
+function paymentChannelTitle(string $key): string
+{
+    $titles = [
+        'instapay'     => 'InstaPay',
+        'gcash'        => 'GCash',
+        'maya'         => 'Maya',
+        'bdo'          => 'BDO',
+        'bpi'          => 'BPI',
+        'securitybank' => 'Security Bank',
+        'rcbc'         => 'RCBC',
+    ];
+    return $titles[$key] ?? ucfirst($key);
+}
+
+/**
+ * Human label for a stored payment_method value.
+ *
+ * Display code used to test `=== 'gcash'` and call everything else Cash on
+ * Delivery, which would mislabel every bank transfer once banks became a
+ * stored value. Resolving through the channel config keeps the label right
+ * for any channel that is ever added.
+ */
+function paymentMethodLabel(?string $method): string
+{
+    $method = (string) $method;
+    if ($method === '' ) {
+        return 'Not specified';
+    }
+    if ($method === 'cod') {
+        return 'Cash on Delivery';
+    }
+    // Settled by the PayMongo gateway. It is not a QR channel, so it has no
+    // display_name in the JSON config and would otherwise print as "Paymongo".
+    if ($method === 'paymongo') {
+        return 'Paid online (PayMongo)';
+    }
+    $channels = paymentGetChannels();
+    if (isset($channels[$method]['display_name']) && $channels[$method]['display_name'] !== '') {
+        return (string) $channels[$method]['display_name'];
+    }
+    return ucfirst(str_replace('_', ' ', $method));
 }
 
 /**

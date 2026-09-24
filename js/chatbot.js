@@ -278,7 +278,8 @@ const SupportWidget = {
             content += '<div style="font-size:0.65rem;opacity:0.7;margin-bottom:2px;"><i class="fas fa-user-shield"></i> ' + this.escapeHtml(msg.sender_name) + ' <span class="badge bg-primary" style="font-size:0.55rem;">Admin</span></div>';
         }
         if (msg.image_path) {
-            content += '<div style="margin-bottom:4px;"><img src="' + this.escapeHtml(msg.image_path) + '" style="max-width:100%;border-radius:6px;cursor:pointer;" onclick="window.open(this.src,\'_blank\')" alt="Image"></div>';
+            // Opens in the in-page lightbox (js/enhancements.js); the href is the fallback.
+            content += '<div style="margin-bottom:4px;"><a class="chat-img-link" href="' + this.escapeHtml(msg.image_path) + '" target="_blank" rel="noopener"><img src="' + this.escapeHtml(msg.image_path) + '" style="max-width:100%;border-radius:6px;cursor:pointer;" alt="Image"></a></div>';
         }
         if (msg.message) {
             content += this.escapeHtml(msg.message).replace(/\n/g, '<br>');

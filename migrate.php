@@ -6,6 +6,8 @@
  */
 
 require 'includes/config.php';
+require_once __DIR__ . '/includes/maintenance-guard.php';
+requireAdminOrCli('migrate.php');
 
 $migration_complete = false;
 $messages = [];

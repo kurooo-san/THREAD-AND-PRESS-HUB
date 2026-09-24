@@ -1,6 +1,7 @@
 <?php
 require 'includes/config.php';
-require_once __DIR__ . '/includes/payment-config.php'; // admin-configured QR channels (same source as the regular order payment)
+require_once __DIR__ . '/includes/payment-config.php'; // paymentMethodLabel()
+require_once __DIR__ . '/includes/paymongo.php';       // hosted online checkout
 require_once __DIR__ . '/includes/payment-success.php';
 redirectToLogin();
 
@@ -44,9 +45,11 @@ $existingPayment->close();
 $error = '';
 $success = '';
 
-// Same source of truth as the regular order payment page: only the channels an
-// admin enabled in Payment Settings appear here (with their QR + account info).
-$enabledChannels = paymentEnabledChannels();
+// Online payment moved to PayMongo's hosted checkout, so the manual QR /
+// bank-transfer channels are no longer offered here. Kept as an empty list so
+// the QR markup below simply renders nothing instead of being deleted.
+$enabledChannels = [];
+$gatewayReady    = paymongoIsConfigured() && paymongoTableExists();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$hasPaid) {
     $channel         = (string)($_POST['payment_method'] ?? '');
@@ -57,6 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$hasPaid) {
         $error = 'Your session expired. Please refresh the page and try again.';
     } elseif ($channel === '') {
         $error = 'Please select a payment method.';
+    } elseif ($channel === 'paymongo') {
+        // Hand off to the gateway. The order stays pending_payment until
+        // PayMongo actually confirms the money (paymongo-fulfil.php).
+        header("Location: paymongo-checkout.php?kind=custom&order_id=" . $orderId);
+        exit();
     } elseif ($channel === 'cod') {
         // Cash on Delivery — no proof needed.
         $stmt = $conn->prepare("INSERT INTO custom_order_payments (custom_order_id, payment_method, amount, payment_status) VALUES (?, 'cod', ?, 'pending')");
@@ -329,7 +337,9 @@ $typeName = $typeNames[$order['product_type']] ?? 'T-Shirt';
     display: block;
     width: 100%;
     padding: 1rem;
-    background: var(--accent-green, #2d6a4f);
+    /* Explicit green, matching "Proceed to Payment" on the summary page:
+       var(--accent-green) is aliased to near-black in style.css. */
+    background: #2d6a4f;
     color: #fff;
     border: none;
     border-radius: 12px;
@@ -437,7 +447,7 @@ $typeName = $typeNames[$order['product_type']] ?? 'T-Shirt';
             <div class="payment-card-body text-center">
                 <div class="text-muted text-uppercase" style="letter-spacing:.05em; font-size:.78rem;">Amount due</div>
                 <div style="font-size:2rem; font-weight:800; line-height:1.1;">Pay exactly ₱<?php echo number_format($order['total_price'], 2); ?></div>
-                <div class="text-muted mt-1" style="font-size:.85rem;">Enter this exact amount when you scan — it speeds up verification.</div>
+                <div class="text-muted mt-1" style="font-size:.85rem;">Send this exact amount — it speeds up verification.</div>
             </div>
         </div>
 
@@ -446,20 +456,33 @@ $typeName = $typeNames[$order['product_type']] ?? 'T-Shirt';
             <div class="payment-card-body">
                 <!-- Channel picker (online channels from admin Payment Settings + COD) -->
                 <div class="channel-pills" role="radiogroup">
-                    <?php foreach ($enabledChannels as $key => $ch): ?>
-                    <label class="channel-option" onclick="selectChannel('<?php echo htmlspecialchars($key, ENT_QUOTES); ?>', true)">
-                        <input type="radio" name="payment_method" value="<?php echo htmlspecialchars($key, ENT_QUOTES); ?>">
-                        <span><?php echo htmlspecialchars((string)$ch['display_name'], ENT_QUOTES); ?></span>
+                    <?php if ($gatewayReady): ?>
+                    <label class="channel-option" onclick="selectChannel('paymongo', true)">
+                        <input type="radio" name="payment_method" value="paymongo">
+                        <span><i class="fas fa-credit-card me-1"></i> Pay Online</span>
                     </label>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
                     <label class="channel-option" onclick="selectChannel('cod', false)">
                         <input type="radio" name="payment_method" value="cod">
                         <span><i class="fas fa-money-bill-wave me-1"></i> Cash on Delivery</span>
                     </label>
                 </div>
-                <?php if (empty($enabledChannels)): ?>
+                <?php if (!$gatewayReady): ?>
                     <p class="text-muted mt-2" style="font-size:.82rem;">Online payment is temporarily unavailable — you can still choose Cash on Delivery.</p>
                 <?php endif; ?>
+
+                <!-- Shown when the gateway is picked: no QR, no screenshot. -->
+                <div class="payment-proof-section" id="gatewayNote">
+                    <div class="payment-instructions" style="background:linear-gradient(135deg, #eef4ff, #e6edff);">
+                        <h6 style="color:#3b5bdb;"><i class="fas fa-shield-halved me-1"></i>Secure online payment</h6>
+                        <p style="margin:0;">
+                            You will be taken to our payment partner to pay
+                            <strong>₱<?php echo number_format($order['total_price'], 2); ?></strong>
+                            with GCash, Maya, GrabPay, or a credit/debit card.
+                            Nothing to upload — we get the confirmation automatically.
+                        </p>
+                    </div>
+                </div>
 
                 <!-- Per-channel QR + account details + how-to-pay steps -->
                 <div id="qrArea" style="display:none; margin-top:1.25rem;">
@@ -468,30 +491,52 @@ $typeName = $typeNames[$order['product_type']] ?? 'T-Shirt';
                         $imgUrl  = $img !== '' ? PAYMENT_QR_IMAGE_URLBASE . rawurlencode($img) : '';
                         $acctNo  = trim((string)($ch['account_no'] ?? ''));
                         $hasAcct = $acctNo !== '' && $acctNo !== '—';
+                        // A bank settles by account transfer, so a missing QR is
+                        // normal there and the steps must not say "scan".
+                        $isBank  = paymentChannelIsBank($key);
                     ?>
                     <div class="channel-panel" data-channel="<?php echo htmlspecialchars($key, ENT_QUOTES); ?>" hidden>
                         <div class="qr-card">
                             <div class="fw-bold mb-2"><?php echo htmlspecialchars((string)$ch['display_name'], ENT_QUOTES); ?></div>
                             <?php if ($imgUrl !== ''): ?>
                                 <img src="<?php echo htmlspecialchars($imgUrl, ENT_QUOTES); ?>" alt="<?php echo htmlspecialchars((string)$ch['display_name'] . ' payment QR code', ENT_QUOTES); ?>" class="qr-img">
-                            <?php else: ?>
+                            <?php elseif (!$isBank): ?>
                                 <div class="alert alert-secondary mb-2">QR image not set for this channel — use the account details below.</div>
                             <?php endif; ?>
-                            <div class="mt-2">
-                                <?php if ((string)$ch['account_name'] !== ''): ?>
-                                    <div><strong>Account name:</strong> <?php echo htmlspecialchars((string)$ch['account_name'], ENT_QUOTES); ?></div>
-                                <?php endif; ?>
-                                <?php if ($hasAcct): ?>
-                                    <div class="text-muted">…or send to <strong><?php echo htmlspecialchars($acctNo, ENT_QUOTES); ?></strong></div>
-                                <?php endif; ?>
-                            </div>
+
+                            <?php if ($isBank && $hasAcct): ?>
+                                <div style="background:#f6f4f0; border:1px solid #e5e0d6; border-radius:12px; padding:1rem 1.25rem; display:inline-block; min-width:min(100%, 300px);">
+                                    <div class="text-muted" style="font-size:.78rem; letter-spacing:.08em; text-transform:uppercase;">Account number</div>
+                                    <div style="font-size:1.3rem; font-weight:700; letter-spacing:.04em; font-variant-numeric:tabular-nums;"><?php echo htmlspecialchars($acctNo, ENT_QUOTES); ?></div>
+                                    <?php if ((string)$ch['account_name'] !== ''): ?>
+                                        <div class="mt-1" style="font-size:.9rem;"><?php echo htmlspecialchars((string)$ch['account_name'], ENT_QUOTES); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="mt-2">
+                                    <?php if ((string)$ch['account_name'] !== ''): ?>
+                                        <div><strong>Account name:</strong> <?php echo htmlspecialchars((string)$ch['account_name'], ENT_QUOTES); ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($hasAcct): ?>
+                                        <div class="text-muted">…or send to <strong><?php echo htmlspecialchars($acctNo, ENT_QUOTES); ?></strong></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <ol class="qr-steps">
-                            <li>Open your e-wallet or banking app.</li>
-                            <li>Scan the QR code above.</li>
-                            <li>Enter the <strong>exact</strong> amount: ₱<?php echo number_format($order['total_price'], 2); ?> <small class="text-muted">(this static QR doesn't pre-fill the amount).</small></li>
-                            <li>Complete the payment and take a screenshot of the receipt.</li>
-                            <li>Upload the screenshot and enter the reference number below.</li>
+                            <?php if ($isBank): ?>
+                                <li>Open your <?php echo htmlspecialchars(paymentChannelTitle($key), ENT_QUOTES); ?> app or visit a branch.</li>
+                                <li>Transfer to the account number above.</li>
+                                <li>Send the <strong>exact</strong> amount: ₱<?php echo number_format($order['total_price'], 2); ?></li>
+                                <li>Save the transfer confirmation or screenshot the receipt.</li>
+                                <li>Upload it and enter the reference number below.</li>
+                            <?php else: ?>
+                                <li>Open your e-wallet or banking app.</li>
+                                <li>Scan the QR code above<?php echo $hasAcct ? ', or send to the number shown' : ''; ?>.</li>
+                                <li>Enter the <strong>exact</strong> amount: ₱<?php echo number_format($order['total_price'], 2); ?> <small class="text-muted">(this static QR doesn't pre-fill the amount).</small></li>
+                                <li>Complete the payment and take a screenshot of the receipt.</li>
+                                <li>Upload the screenshot and enter the reference number below.</li>
+                            <?php endif; ?>
                         </ol>
                     </div>
                     <?php endforeach; ?>
@@ -532,7 +577,7 @@ $typeName = $typeNames[$order['product_type']] ?? 'T-Shirt';
         </div>
 
         <button type="submit" class="btn-pay" id="payBtn" disabled>
-            <i class="fas fa-lock me-2"></i>Complete Payment — ₱<?php echo number_format($order['total_price'], 2); ?>
+            <i class="fas fa-lock me-2"></i><span id="payBtnLabel">Complete Payment</span> — ₱<?php echo number_format($order['total_price'], 2); ?>
         </button>
     </form>
 
@@ -553,26 +598,38 @@ function selectChannel(key, isOnline) {
         radio.closest('.channel-option').classList.add('selected');
     }
 
-    // Show the matching QR panel (online only).
+    // PayMongo collects the money on its own page: no QR to scan, no
+    // screenshot to upload, no reference number to type.
+    const isGateway = (key === 'paymongo');
+    const needsProof = isOnline && !isGateway;
+
+    // Show the matching QR panel (manual online channels only).
     const qrArea = document.getElementById('qrArea');
-    if (qrArea) qrArea.style.display = isOnline ? 'block' : 'none';
+    if (qrArea) qrArea.style.display = needsProof ? 'block' : 'none';
     document.querySelectorAll('.channel-panel').forEach(p => {
         p.hidden = (p.getAttribute('data-channel') !== key);
     });
 
-    // Toggle proof+consent vs COD notice.
-    document.getElementById('onlineProof').classList.toggle('show', isOnline);
+    // Toggle proof+consent vs COD notice vs gateway notice.
+    document.getElementById('onlineProof').classList.toggle('show', needsProof);
     document.getElementById('codSection').classList.toggle('show', !isOnline);
+    const gatewayNote = document.getElementById('gatewayNote');
+    if (gatewayNote) gatewayNote.classList.toggle('show', isGateway);
 
-    // Required fields only apply to online payments.
+    // Required fields only apply when we are collecting proof ourselves.
+    // Leaving them required for the gateway would block the submit on hidden
+    // inputs the customer can never fill in.
     const proof = document.getElementById('proofUpload');
     const consent = document.getElementById('consent');
     const ref = document.querySelector('input[name="reference_number"]');
     [proof, consent, ref].forEach(el => {
         if (!el) return;
-        if (isOnline) el.setAttribute('required', 'required');
+        if (needsProof) el.setAttribute('required', 'required');
         else el.removeAttribute('required');
     });
+
+    const payLabel = document.getElementById('payBtnLabel');
+    if (payLabel) payLabel.textContent = isGateway ? 'Continue to Payment' : 'Complete Payment';
 
     document.getElementById('payBtn').disabled = false;
 }

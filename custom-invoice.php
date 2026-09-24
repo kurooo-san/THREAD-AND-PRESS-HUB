@@ -166,7 +166,7 @@ if ($payment) {
         ? '<span class="badge badge-paid">PAID</span>'
         : '<span class="badge badge-pending">' . strtoupper(htmlspecialchars($pay_status ?: 'unpaid')) . '</span>';
     $html .= '<div class="section" style="margin-top:25px;"><h3>Payment</h3>
-        <div>Method: <strong>' . strtoupper(htmlspecialchars($payment['payment_method'])) . '</strong> ' . $badge . '</div>';
+        <div>Method: <strong>' . htmlspecialchars(paymentMethodLabel($payment['payment_method'])) . '</strong> ' . $badge . '</div>';
     if (!empty($payment['reference_number'])) {
         $html .= '<div>Reference: ' . htmlspecialchars($payment['reference_number']) . '</div>';
     }

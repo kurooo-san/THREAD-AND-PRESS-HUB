@@ -50,15 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $insert->execute();
             $insert->close();
 
-            // Build reset link
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'];
-            $path = dirname($_SERVER['SCRIPT_NAME']);
-            $resetLink = $protocol . '://' . $host . $path . '/reset-password.php?token=' . $token;
+            // Build reset link (getBaseUrl honours APP_URL and ignores a forged Host header)
+            require_once 'includes/email-helper.php';
+            $resetLink = getBaseUrl() . '/reset-password.php?token=' . $token;
 
             // Try to send email
             $emailSent = false;
-            require_once 'includes/email-helper.php';
             $emailSent = sendPasswordResetEmail($email, $user['fullname'], $resetLink);
 
             if ($emailSent) {

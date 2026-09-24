@@ -125,7 +125,7 @@ $html .= '<tr><td>Delivery Fee:</td><td class="text-right">PHP ' . number_format
 $pay_status = $order['payment_status'] ?? '';
 $badge = ($pay_status === 'verified') ? '<span class="badge badge-paid">PAID</span>' : '<span class="badge badge-pending">' . strtoupper(htmlspecialchars($pay_status ?: 'unpaid')) . '</span>';
 $html .= '<div class="section" style="margin-top:25px;"><h3>Payment</h3>
-    <div>Method: <strong>' . strtoupper(htmlspecialchars($order['payment_method'])) . '</strong> ' . $badge . '</div>';
+    <div>Method: <strong>' . htmlspecialchars(paymentMethodLabel($order['payment_method'])) . '</strong> ' . $badge . '</div>';
 if (!empty($order['payment_reference'])) {
     $html .= '<div>Reference: ' . htmlspecialchars($order['payment_reference']) . '</div>';
 }

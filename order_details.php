@@ -1,5 +1,6 @@
 <?php
 require 'includes/config.php';
+require_once 'includes/payment-config.php';   // paymentMethodLabel()
 redirectToLogin();
 
 $pageTitle = 'Order Details';
@@ -145,8 +146,8 @@ $items_result = $items_stmt->get_result();
                             <div class="col-md-6">
                                 <p class="text-muted mb-1">Payment Method</p>
                                 <p style="color: var(--coffee-dark); font-weight: 600;">
-                                    <i class="fas fa-<?php echo $order['payment_method'] === 'gcash' ? 'credit-card' : 'money-bill'; ?>"></i>
-                                    <?php echo $order['payment_method'] === 'gcash' ? 'GCash Payment' : 'Cash on Delivery'; ?>
+                                    <i class="fas fa-<?php echo $order['payment_method'] === 'cod' ? 'money-bill' : 'credit-card'; ?>"></i>
+                                    <?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'])); ?>
                                 </p>
                             </div>
                             <?php if ($order['payment_reference']): ?>

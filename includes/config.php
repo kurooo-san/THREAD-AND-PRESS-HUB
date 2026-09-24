@@ -364,6 +364,32 @@ function productsHasDesignColumn() {
     return $has;
 }
 
+// Swatch colour for a colour name. Lived in shop.php; moved here so
+// product.php can render the same swatches without duplicating the map.
+// shop.php still declares its own copy behind a function_exists guard.
+if (!function_exists('getColorCode')) {
+    function getColorCode($colorName) {
+        $colors = [
+            'Black' => '#000000',
+            'White' => '#FFFFFF',
+            'Navy' => '#001F3F',
+            'Gray' => '#808080',
+            'Red' => '#FF4136',
+            'Blue' => '#0074D9',
+            'Green' => '#2ECC40',
+            'Yellow' => '#FFDC00',
+            'Pink' => '#FF69B4',
+            'Purple' => '#B10DC9',
+            'Brown' => '#8B4513',
+            'Maroon' => '#800000',
+            'Khaki' => '#F0E68C',
+            'Beige' => '#F5F5DC',
+            'Orange' => '#FF7F00'
+        ];
+        return $colors[$colorName] ?? '#999999';
+    }
+}
+
 function getProductStock($productId) {
     global $conn;
     if (!productsHasStockColumn()) return PHP_INT_MAX;
@@ -459,3 +485,8 @@ function verifyRecaptcha($response, $remoteIp = null) {
 }
 
 
+
+// Payment channel config + paymentMethodLabel(). Pure definitions, no
+// output, so it is safe to load on every page; loading it here means order
+// screens, invoices and emails all print the same channel names.
+require_once __DIR__ . '/payment-config.php';
