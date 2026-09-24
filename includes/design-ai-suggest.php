@@ -149,7 +149,8 @@ Format your response as a JSON array with 3 objects, each having these keys:
 
 Return ONLY the JSON array, no other text.";
 
-$url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . urlencode($apiKey);
+// gemini-2.0-flash was retired by Google (404), which silently forced the fallback.
+$url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . urlencode($apiKey);
 
 $payload = [
     'contents' => [
@@ -158,6 +159,9 @@ $payload = [
     'generationConfig' => [
         'temperature' => 0.8,
         'maxOutputTokens' => 1024,
+        // 2.5-flash "thinks" by default and that counts against maxOutputTokens,
+        // cutting the JSON array off mid-way. This task needs no reasoning.
+        'thinkingConfig' => ['thinkingBudget' => 0],
     ]
 ];
 
