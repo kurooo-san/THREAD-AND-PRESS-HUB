@@ -59,3 +59,6 @@ nbproject/
 
 # ---- Claude Code local config ------------------------------
 .claude/
+
+# Product thumbnails are rebuilt on demand by productThumb().
+images/products/thumbs/

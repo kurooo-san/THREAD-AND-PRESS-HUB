@@ -251,7 +251,7 @@ $count_stmt->close();
                             <div class="product-card">
                                 <div class="product-image-wrapper">
                                     <a href="product.php?id=<?php echo (int)$product['id']; ?>" aria-label="View <?php echo htmlspecialchars($product['name'], ENT_QUOTES); ?>" style="display:block;">
-                                    <img src="images/products/<?php echo htmlspecialchars($product['image']); ?>"
+                                    <img src="<?php echo htmlspecialchars(productThumb($product['image'])); ?>" loading="lazy" decoding="async"
                                          alt="<?php echo htmlspecialchars($product['name']); ?>"
                                          class="product-image"
                                          onerror="this.src='https://placehold.co/300x380/f0f0f0/999?text=<?php echo urlencode($product['name']); ?>'">

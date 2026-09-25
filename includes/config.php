@@ -504,3 +504,44 @@ function verifyRecaptcha($response, $remoteIp = null) {
 // output, so it is safe to load on every page; loading it here means order
 // screens, invoices and emails all print the same channel names.
 require_once __DIR__ . '/payment-config.php';
+
+/**
+ * URL of a 600px-wide JPEG copy of a product image, for grids and cards.
+ * Built on first request into images/products/thumbs/ (so new uploads and
+ * AI products get one automatically); falls back to the original when GD
+ * is missing or the source can't be read. Product detail keeps the original.
+ */
+function productThumb(string $image): string
+{
+    $original = 'images/products/' . $image;
+    $name     = pathinfo($image, PATHINFO_FILENAME) . '.jpg';
+    $thumbRel = 'images/products/thumbs/' . $name;
+    $src      = __DIR__ . '/../' . $original;
+    $dst      = __DIR__ . '/../' . $thumbRel;
+
+    if (is_file($dst) && filemtime($dst) >= @filemtime($src)) {
+        return $thumbRel;
+    }
+    if (basename($image) !== $image || !is_file($src) || !function_exists('imagecreatefromstring')) {
+        return $original;
+    }
+    $img = @imagecreatefromstring((string) file_get_contents($src));
+    if (!$img) {
+        return $original;
+    }
+    $w = imagesx($img);
+    $h = imagesy($img);
+    if ($w <= 600) {
+        imagedestroy($img);
+        return $original; // already small
+    }
+    $nh    = (int) round($h * 600 / $w);
+    $thumb = imagecreatetruecolor(600, $nh);
+    imagefill($thumb, 0, 0, imagecolorallocate($thumb, 255, 255, 255)); // flatten PNG transparency
+    imagecopyresampled($thumb, $img, 0, 0, 0, 0, 600, $nh, $w, $h);
+    @mkdir(dirname($dst), 0775, true);
+    $ok = @imagejpeg($thumb, $dst, 80);
+    imagedestroy($img);
+    imagedestroy($thumb);
+    return $ok ? $thumbRel : $original;
+}

@@ -10,7 +10,7 @@ include 'includes/header/header.php';
 
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-bg" style="background-image: url('images/hero/clark-street-mercantile-qnKhZJPKFD8-unsplash.jpg');"></div>
+        <div class="hero-bg" style="background-image: url('images/hero/hero-bg-sm.jpg');"></div>
         <div class="container position-relative" style="z-index: 2;">
             <div class="row align-items-center" style="min-height: 85vh;">
                 <div class="col-lg-7 hero-content">
@@ -144,7 +144,7 @@ include 'includes/header/header.php';
                 <div class="row g-4">
                     <div class="col-md-3 col-6">
                         <a href="shop.php?gender=mens" class="category-card">
-                            <img src="images/hero/mens-card.jpg" alt="Men" onerror="this.src='https://placehold.co/400x500/1a1a1a/ffffff?text=Men'">
+                            <img src="images/hero/mens-card-sm.jpg" alt="Men" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/400x500/1a1a1a/ffffff?text=Men'">
                             <div class="category-overlay">
                                 <h4>Men</h4>
                                 <span>250+ Products</span>
@@ -153,7 +153,7 @@ include 'includes/header/header.php';
                     </div>
                     <div class="col-md-3 col-6">
                         <a href="shop.php?gender=womens" class="category-card">
-                            <img src="images/hero/womens-card.jpg" alt="Women" onerror="this.src='https://placehold.co/400x500/333333/ffffff?text=Women'">
+                            <img src="images/hero/womens-card-sm.jpg" alt="Women" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/400x500/333333/ffffff?text=Women'">
                             <div class="category-overlay">
                                 <h4>Women</h4>
                                 <span>350+ Products</span>
@@ -162,7 +162,7 @@ include 'includes/header/header.php';
                     </div>
                     <div class="col-md-3 col-6">
                         <a href="shop.php?gender=kids" class="category-card">
-                            <img src="images/hero/kids-card.jpg" alt="Kids" onerror="this.src='https://placehold.co/400x500/555555/ffffff?text=Kids'">
+                            <img src="images/hero/kids-card-sm.jpg" alt="Kids" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/400x500/555555/ffffff?text=Kids'">
                             <div class="category-overlay">
                                 <h4>Kids</h4>
                                 <span>150+ Products</span>
@@ -171,7 +171,7 @@ include 'includes/header/header.php';
                     </div>
                     <div class="col-md-3 col-6">
                         <a href="shop.php?category=accessories" class="category-card">
-                            <img src="images/hero/accessories-card.jpg" alt="Accessories" onerror="this.src='https://placehold.co/400x500/777777/ffffff?text=Accessories'">
+                            <img src="images/hero/accessories-card.jpg" alt="Accessories" loading="lazy" decoding="async" onerror="this.src='https://placehold.co/400x500/777777/ffffff?text=Accessories'">
                             <div class="category-overlay">
                                 <h4>Accessories</h4>
                                 <span>100+ Products</span>
@@ -203,7 +203,7 @@ include 'includes/header/header.php';
                             <div class="col-lg-3 col-md-4 col-6">
                                 <div class="product-card">
                                     <div class="product-image-wrapper">
-                                        <img src="images/products/<?php echo htmlspecialchars($p['image']); ?>" alt="<?php echo htmlspecialchars($p['name']); ?>" class="product-image" onerror="this.src='https://placehold.co/300x380/f0f0f0/999?text=<?php echo urlencode($p['name']); ?>'">
+                                        <img src="<?php echo htmlspecialchars(productThumb($p['image'])); ?>" loading="lazy" decoding="async" alt="<?php echo htmlspecialchars($p['name']); ?>" class="product-image" onerror="this.src='https://placehold.co/300x380/f0f0f0/999?text=<?php echo urlencode($p['name']); ?>'">
                                         <div class="product-actions">
                                             <button class="product-action-btn" onclick="addToCart(<?php echo (int)$p['id']; ?>, '<?php echo htmlspecialchars(addslashes($p['name']), ENT_QUOTES); ?>', <?php echo (float)$p['price']; ?>)" title="Add to Cart">
                                                 <i class="fas fa-shopping-bag"></i>

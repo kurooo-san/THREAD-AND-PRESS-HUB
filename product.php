@@ -304,7 +304,7 @@ function pdStarSvg(): string
         <div class="pd-related-grid">
             <?php foreach ($related as $rp): ?>
             <a class="pd-related-card" href="product.php?id=<?php echo (int) $rp['id']; ?>">
-                <img src="images/products/<?php echo htmlspecialchars($rp['image']); ?>" alt="<?php echo htmlspecialchars($rp['name']); ?>"
+                <img src="<?php echo htmlspecialchars(productThumb($rp['image'])); ?>" loading="lazy" decoding="async" alt="<?php echo htmlspecialchars($rp['name']); ?>"
                      onerror="this.src='https://placehold.co/300x375/f0f0f0/999?text=<?php echo urlencode($rp['name']); ?>'">
                 <div>
                     <h6><?php echo htmlspecialchars($rp['name']); ?></h6>
