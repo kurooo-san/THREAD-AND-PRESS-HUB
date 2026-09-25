@@ -14,6 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
     $user_type = sanitizeInput($_POST['user_type'] ?? 'regular');
+    // Never trust the posted role: the column enum also allows 'admin'.
+    if (!in_array($user_type, ['regular', 'pwd', 'senior'], true)) {
+        $user_type = 'regular';
+    }
     $pwd_id = sanitizeInput($_POST['pwd_id'] ?? '');
     $senior_id = sanitizeInput($_POST['senior_id'] ?? '');
     $street_address = sanitizeInput($_POST['street_address'] ?? '');
@@ -29,6 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'All required fields must be filled!';
     } elseif (empty($street_address) || empty($barangay) || empty($city) || empty($province) || empty($zipcode)) {
         $error = 'All delivery address fields are required!';
+    } elseif (!preg_match('/^[0-9]{4}$/', $zipcode)) {
+        // Same rule as saved addresses (addressValidate), so the signup address
+        // can always become the customer's first saved address.
+        $error = 'Zip code should be 4 digits.';
     } elseif ($password !== $confirm_password) {
         $error = 'Passwords do not match!';
     } elseif (strlen($password) < 8
@@ -179,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label class="form-label">Zip Code *</label>
                 <div class="input-icon-wrapper" style="max-width: 200px;">
                     <i class="fas fa-hashtag"></i>
-                    <input type="text" class="form-control" name="zipcode" placeholder="Zip Code" required maxlength="10" pattern="[0-9]{4,10}" title="Enter a valid zip code" value="<?php echo htmlspecialchars($_POST['zipcode'] ?? ''); ?>">
+                    <input type="text" class="form-control" name="zipcode" placeholder="Zip Code" required maxlength="4" inputmode="numeric" pattern="[0-9]{4}" title="Enter your 4-digit zip code" value="<?php echo htmlspecialchars($_POST['zipcode'] ?? ''); ?>">
                 </div>
             </div>
 

@@ -59,7 +59,39 @@ if (!defined('ADDRESS_MAX_PER_USER')) {
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+
+        if ($rows === [] && addressBackfillFromProfile($userId)) {
+            return addressList($userId);
+        }
         return $rows;
+    }
+
+    /**
+     * register.php stores the signup address on users.* only. The first time
+     * such a customer has no saved addresses, copy it in as their default
+     * (same rule as the backfill in migrate_user_addresses.sql). Deleting the
+     * last address blanks users.*, so a deleted address never comes back.
+     */
+    function addressBackfillFromProfile(int $userId): bool
+    {
+        global $conn;
+        $stmt = $conn->prepare(
+            "INSERT INTO user_addresses (user_id, label, street_address, barangay, city, province, zipcode, is_default)
+             SELECT u.id, 'Home', u.street_address, NULLIF(u.barangay, ''),
+                    COALESCE(NULLIF(u.city, ''), '-'), COALESCE(NULLIF(u.province, ''), '-'),
+                    NULLIF(u.zipcode, ''), 1
+               FROM users u
+              WHERE u.id = ?
+                AND u.street_address IS NOT NULL AND u.street_address <> ''
+                AND NOT EXISTS (SELECT 1 FROM user_addresses a WHERE a.user_id = u.id)"
+        );
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param('i', $userId);
+        $ok = $stmt->execute() && $stmt->affected_rows > 0;
+        $stmt->close();
+        return $ok;
     }
 
     /**
@@ -266,11 +298,12 @@ if (!defined('ADDRESS_MAX_PER_USER')) {
         }
 
         if (!empty($existing['is_default'])) {
+            // Clear users.* first: otherwise addressList() below would see no
+            // addresses and backfill the one just deleted from that copy.
+            addressClearUserColumns($userId);
             $remaining = addressList($userId);
             if ($remaining !== []) {
                 addressSetDefault($userId, (int) $remaining[0]['id']);
-            } else {
-                addressClearUserColumns($userId);
             }
         }
         return ['ok' => true, 'error' => ''];
