@@ -108,12 +108,9 @@ mkdir C:\xampp\htdocs\threadpresshub\images\products
 1. Start Apache and MySQL in XAMPP
 2. Visit: `http://localhost/threadpresshub/`
 
-## Default Admin Account
+## Admin Account
 
-**Email:** admin@threadpresshub.com  
-**Password:** admin123
-
-⚠️ **IMPORTANT**: Change this password after first login!
+Register a normal account, then set its user_type to 'admin' in the users table (phpMyAdmin).
 
 ## Usage
 

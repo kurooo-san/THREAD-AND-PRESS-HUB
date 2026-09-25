@@ -52,11 +52,7 @@ http://localhost/threadpresshub/
 
 ## First Login
 
-**Admin Account:**
-- Email: `admin@threadpresshub.com`
-- Password: `admin123`
-
-**Important:** Change this password immediately after logging in!
+Register a normal account, then set its user_type to 'admin' in the users table (phpMyAdmin).
 
 ## Step 6: Add Products
 
