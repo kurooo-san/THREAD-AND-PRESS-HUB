@@ -437,3 +437,7 @@ textarea.pd-input { min-height: 96px; resize: vertical; line-height: 1.6; }
     .pd-swatch:hover,
     .pd-related-card:hover { transform: none; }
 }
+
+/* Dark mode: the empty stars were a pale beige that read as five filled
+   stars on a dark card, even on "No reviews". */
+html.dark-mode .rv-stars-bg svg { fill: #45454e; }

@@ -232,6 +232,24 @@ body.admin-page .tp-nav.cafe-navbar { position: relative; }
 }
 .tp-nav .tp-cta i { margin: 0; font-size: 14px; }
 
+/* 992-1279px (iPad landscape, small laptops): the full bar is ~150px wider
+   than the screen and the cart and avatar fell off the edge. Tighten it:
+   Design Studio / Try-On become icon buttons (the label stays for screen
+   readers and as the tooltip) and the links get less padding. */
+@media (min-width: 992px) and (max-width: 1279.98px) {
+    .tp-nav .tp-nav-shell { gap: 10px; }
+    .tp-nav .tp-nav-pill .nav-link { padding: 8px 11px !important; }
+    .tp-nav .tp-nav-actions { gap: 6px; }
+    .tp-nav .tp-cta { width: 40px; padding: 0 !important; justify-content: center; }
+    .tp-nav .tp-cta span {
+        position: absolute;
+        width: 1px; height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+}
+
 /* style.css (from the old LIGHT navbar) forces `.cafe-navbar .nav-link i` to
    --text-dark (#1a1a1a) !important — invisible on this dark bar. Icons follow
    their button's colour instead: light on Design Studio / theme toggle,
@@ -297,6 +315,24 @@ body.admin-page .tp-nav.cafe-navbar { position: relative; }
 .tp-nav .tp-icon-btn.active {
     color: var(--nv-icon-hover) !important;
     background: rgba(255, 255, 255, 0.07);
+}
+
+/* Cart: same 38px box as the theme toggle (so they stay level), but a bigger,
+   brighter glyph on a soft chip so it reads as the main action. */
+.tp-nav .tp-cart-btn {
+    color: var(--nv-icon-hover) !important;
+    background: var(--nv-surface-soft);
+    box-shadow: inset 0 0 0 1px var(--nv-border);
+}
+.tp-nav .tp-cart-btn .tp-ico {
+    width: 20px;
+    height: 20px;
+}
+.tp-nav .tp-cart-btn:hover,
+.tp-nav .tp-cart-btn:focus,
+.tp-nav .tp-cart-btn.active {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(200, 169, 110, 0.55);
 }
 
 /* Cart count. The cart scripts set display:inline-block / none inline, so this

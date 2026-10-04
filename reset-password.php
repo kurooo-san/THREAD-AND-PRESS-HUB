@@ -12,7 +12,7 @@ $token = $_GET['token'] ?? $_POST['token'] ?? '';
 // Run migration if table doesn't exist
 $tableCheck = $conn->query("SHOW TABLES LIKE 'password_resets'");
 if ($tableCheck->num_rows === 0) {
-    $migrationSQL = file_get_contents(__DIR__ . '/migrate_password_reset.sql');
+    $migrationSQL = file_get_contents(__DIR__ . '/database/migrate_password_reset.sql');
     if ($migrationSQL) {
         $conn->multi_query($migrationSQL);
         while ($conn->next_result()) {;}
@@ -49,8 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validToken) {
         $error = 'Invalid form submission. Please try again.';
     } elseif (empty($password) || empty($confirmPassword)) {
         $error = 'Please fill in all fields.';
-    } elseif (strlen($password) < 6) {
-        $error = 'Password must be at least 6 characters long.';
+    } elseif (!passwordMeetsRules($password)) {
+        $error = PASSWORD_RULE_MESSAGE;
     } elseif ($password !== $confirmPassword) {
         $error = 'Passwords do not match.';
     } else {
@@ -66,6 +66,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validToken) {
             $markUsed->bind_param("s", $token);
             $markUsed->execute();
             $markUsed->close();
+
+            // Sign out every "remember me" device. Otherwise whoever had the
+            // account before the reset stays logged in on the old password.
+            if (rememberTokensTableExists()) {
+                $revoke = $conn->prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+                $revoke->bind_param("i", $resetData['user_id']);
+                $revoke->execute();
+                $revoke->close();
+            }
 
             $success = 'Your password has been reset successfully! You can now <a href="login.php">login</a> with your new password.';
             $validToken = false; // Hide the form
@@ -107,15 +116,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validToken) {
                 <label class="form-label">New Password</label>
                 <div class="input-icon-wrapper">
                     <i class="fas fa-lock"></i>
-                    <input type="password" class="form-control" name="password" placeholder="Enter new password (min 6 chars)" required minlength="6">
+                    <input type="password" class="form-control" name="password" placeholder="Enter new password" required minlength="8">
                 </div>
+                <small class="text-muted" style="font-size:0.78rem;">At least 8 characters, with uppercase, lowercase, a number and a special character.</small>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Confirm New Password</label>
                 <div class="input-icon-wrapper">
                     <i class="fas fa-lock"></i>
-                    <input type="password" class="form-control" name="confirm_password" placeholder="Confirm new password" required minlength="6">
+                    <input type="password" class="form-control" name="confirm_password" placeholder="Confirm new password" required minlength="8">
                 </div>
             </div>
 

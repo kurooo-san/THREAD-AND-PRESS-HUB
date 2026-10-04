@@ -53,14 +53,24 @@
                     <div class="footer-brand">
                         <img class="brand-logo logo-light" src="<?php echo $assetBase ?? ''; ?>images/logo/logo_sm.png" alt=""><img class="brand-logo logo-dark" src="<?php echo $assetBase ?? ''; ?>images/logo/logo_white_sm.png" alt=""> Thread &amp; Press Hub
                     </div>
-                    <p>Your destination for quality apparel and accessories. We combine style, comfort, and sustainability in every piece we create.</p>
+                    <p>Ready-to-wear clothing and custom-printed apparel, shipped anywhere in the Philippines or picked up at the store.</p>
 
+                    <?php
+                    // Only the store's real pages, set in .env. An icon pointing at
+                    // facebook.com's front page looks like a template left unfinished.
+                    $socialLinks = array_filter([
+                        'facebook-f' => getenv('SOCIAL_FACEBOOK_URL'),
+                        'instagram'  => getenv('SOCIAL_INSTAGRAM_URL'),
+                        'tiktok'     => getenv('SOCIAL_TIKTOK_URL'),
+                    ]);
+                    ?>
+                    <?php if ($socialLinks): ?>
                     <div class="footer-social">
-                        <a href="https://facebook.com" target="_blank" rel="noopener"><i class="fab fa-facebook-f"></i></a>
-                        <a href="https://instagram.com" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>
-                        <a href="https://twitter.com" target="_blank" rel="noopener"><i class="fab fa-twitter"></i></a>
-                        <a href="https://youtube.com" target="_blank" rel="noopener"><i class="fab fa-youtube"></i></a>
+                        <?php foreach ($socialLinks as $icon => $url): ?>
+                        <a href="<?php echo htmlspecialchars($url); ?>" target="_blank" rel="noopener" aria-label="<?php echo ucfirst(strtok($icon, '-')); ?>"><i class="fab fa-<?php echo $icon; ?>"></i></a>
+                        <?php endforeach; ?>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Shop Links -->
@@ -68,7 +78,6 @@
                     <h6>Shop</h6>
                     <ul>
                         <li><a href="shop.php">New Arrivals</a></li>
-                        <li><a href="shop.php">Best Sellers</a></li>
                         <li><a href="shop.php?gender=mens">Men</a></li>
                         <li><a href="shop.php?gender=womens">Women</a></li>
                         <li><a href="shop.php?gender=kids">Kids</a></li>
@@ -82,10 +91,9 @@
                     <h6>Support</h6>
                     <ul>
                         <li><a href="contact.php">Contact Us</a></li>
-                        <li><a href="contact.php">FAQs</a></li>
-                        <li><a href="contact.php">Shipping Info</a></li>
-                        <li><a href="contact.php">Returns &amp; Exchanges</a></li>
-                        <li><a href="shop.php">Size Guide</a></li>
+                        <li><a href="pages.php#shipping">Shipping Info</a></li>
+                        <li><a href="pages.php#returns">Returns &amp; Exchanges</a></li>
+                        <li><a href="pages.php#sizes">Size Guide</a></li>
                         <li><a href="orders.php">Track Order</a></li>
                     </ul>
                 </div>
@@ -95,10 +103,8 @@
                     <h6>Company</h6>
                     <ul>
                         <li><a href="about.php">About Us</a></li>
-                        <li><a href="about.php">Our Story</a></li>
-                        <li><a href="contact.php">Get in Touch</a></li>
                         <li><a href="custom-design.php">Custom Designs</a></li>
-                        <li><a href="about.php">Terms of Service</a></li>
+                        <li><a href="pages.php#terms">Terms of Service</a></li>
                         <li><a href="privacy-policy.php">Privacy Policy</a></li>
                     </ul>
                 </div>
@@ -108,10 +114,7 @@
             <div class="footer-bottom">
                 <div>
                     <div class="footer-contact">
-                        <span class="footer-contact-item"><i class="fas fa-envelope"></i> support@threadandpress.com</span>
-                        <span class="footer-contact-item"><i class="fas fa-phone"></i> +63 (2) 8123-4567</span>
-                        <span class="footer-contact-item"><i class="fas fa-map-marker-alt"></i> 123 Fashion Ave, Cainta, Rizal, Philippines</span>
-                    </div>
+                        <span class="footer-contact-item"><i class="fas fa-envelope"></i> <?php echo SUPPORT_EMAIL; ?></span>                    </div>
                 </div>
             </div>
             <div class="d-flex justify-content-center align-items-center mt-3 pt-3" style="border-top: 1px solid var(--border-light);">
@@ -155,8 +158,8 @@
                     <div class="chat-subtitle" id="chat-header-subtitle">Powered by Google AI</div>
                 </div>
             </div>
-            <button id="chat-close" class="chat-close-btn">
-                <i class="fas fa-ellipsis-h"></i>
+            <button id="chat-close" class="chat-close-btn" type="button" aria-label="Close chat">
+                <i class="fas fa-xmark"></i>
             </button>
         </div>
 
@@ -177,9 +180,11 @@
             <div class="chat-quick-actions">
                 <button class="chat-quick-action" onclick="sendQuickChat('Find Products')"><i class="fas fa-search"></i> Find Products</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('Style Advice')"><i class="fas fa-magic"></i> Style Advice</button>
-                <button class="chat-quick-action" onclick="sendQuickChat('Order Help')"><i class="fas fa-box"></i> Order Help</button>
+                <button class="chat-quick-action" onclick="sendQuickChat('Track my recent orders')"><i class="fas fa-box"></i> Track My Orders</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('What payment options do you have?')"><i class="fas fa-credit-card"></i> Payment Options</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('How do I order a custom design?')"><i class="fas fa-palette"></i> Custom Design</button>
+                <button class="chat-quick-action" onclick="sendQuickChat('What can I do in the 3D Design Studio? Tell me about templates, sleeves and the logo designer.')"><i class="fas fa-cube"></i> 3D Design Studio</button>
+                <button class="chat-quick-action" onclick="sendQuickChat('How does the Virtual Try-On work?')"><i class="fas fa-camera"></i> Virtual Try-On</button>
             </div>
             <div id="chat-messages" class="chat-messages">
                 <div class="chat-message bot-message">
@@ -270,7 +275,7 @@
     </div>
     
     <!-- Chatbot Toggle Button -->
-    <button id="chatbot-toggle" class="chatbot-toggle">
+    <button id="chatbot-toggle" class="chatbot-toggle" type="button" aria-label="Open chat" aria-controls="chatbot-widget" aria-expanded="false">
         <i class="fas fa-comment-dots" id="chatbot-toggle-icon"></i>
     </button>
     
@@ -278,18 +283,6 @@
         function sendQuickChat(msg) {
             var input = document.getElementById('chat-input');
             if (input) { input.value = msg; document.getElementById('chat-send').click(); }
-        }
-        var toggleBtn = document.getElementById('chatbot-toggle');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', function() {
-                var icon = document.getElementById('chatbot-toggle-icon');
-                var widget = document.getElementById('chatbot-widget');
-                if (widget && widget.classList.contains('active')) {
-                    icon.className = 'fas fa-comment-dots';
-                } else {
-                    icon.className = 'fas fa-chevron-down';
-                }
-            });
         }
     </script>
     <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../js/chatbot.js' : 'js/chatbot.js'; ?>?v=<?php echo @filemtime(__DIR__ . '/../../js/chatbot.js'); ?>"></script>
@@ -318,7 +311,7 @@
                 Necessary only
             </button>
             <button type="button" id="tph-cookie-accept"
-                    style="background:#10b981; color:#fff; border:none; padding:0.45rem 1.15rem;
+                    style="background:linear-gradient(135deg, #d8b878, #c8a96e); color:#1a1a1a; border:none; padding:0.45rem 1.15rem;
                            border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:600;">
                 Accept all
             </button>
@@ -368,6 +361,97 @@
             });
         })();
     </script>
+
+    <?php
+    // ===== App shell (phones/tablets): bottom tab bar + account sheet =====
+    // Shown below 992px only (css/app-shell.css); js/app-shell.js runs it.
+    $appPage = basename($_SERVER['PHP_SELF']);
+    $appTabs = [
+        'home'    => ['index.php'],
+        'shop'    => ['shop.php', 'product.php', 'promotion.php'],
+        'design'  => ['custom-design.php', 'custom-order-summary.php', 'custom-payment.php', 'custom-order-tracking.php'],
+        'cart'    => ['cart.php', 'checkout.php'],
+        'account' => ['profile.php', 'orders.php', 'order_details.php', 'my-custom-orders.php', 'support-chat.php',
+                      'chat_history.php', 'login.php', 'register.php', 'forgot-password.php', 'reset-password.php'],
+    ];
+    $appActive = '';
+    foreach ($appTabs as $tab => $pages) {
+        if (in_array($appPage, $pages, true)) { $appActive = $tab; break; }
+    }
+    $appTab = function ($tab) use ($appActive) {
+        return $tab === $appActive ? ' class="is-active" aria-current="page"' : '';
+    };
+    $appLoggedIn = isset($_SESSION['user_id']);
+    ?>
+    <nav class="app-tabbar" aria-label="App navigation">
+        <a href="index.php"<?php echo $appTab('home'); ?>><i class="fas fa-house"></i><span>Home</span></a>
+        <a href="shop.php"<?php echo $appTab('shop'); ?>><i class="fas fa-store"></i><span>Shop</span></a>
+        <a href="custom-design.php" class="app-tab-center<?php echo $appActive === 'design' ? ' is-active' : ''; ?>"<?php echo $appActive === 'design' ? ' aria-current="page"' : ''; ?>>
+            <span class="app-tab-fab"><i class="fas fa-palette"></i></span><span>Design</span>
+        </a>
+        <a href="cart.php"<?php echo $appTab('cart'); ?>>
+            <span class="app-tab-icon"><i class="fas fa-bag-shopping"></i><span class="app-tab-badge" id="appCartBadge" hidden>0</span></span><span>Cart</span>
+        </a>
+        <button type="button" data-sheet-open="accountSheet"<?php echo $appTab('account'); ?>><i class="fas fa-user"></i><span>Account</span></button>
+    </nav>
+
+    <div class="app-sheet" id="accountSheet" role="dialog" aria-modal="true" aria-labelledby="accountSheetTitle" hidden>
+        <div class="app-sheet-backdrop" data-sheet-close></div>
+        <div class="app-sheet-panel">
+            <div class="app-sheet-handle" aria-hidden="true"></div>
+            <?php if ($appLoggedIn): ?>
+            <div class="app-account-head">
+                <span class="app-account-avatar" aria-hidden="true"><?php echo htmlspecialchars($navInitials ?? 'U'); ?></span>
+                <div>
+                    <div class="app-account-name" id="accountSheetTitle"><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'My account'); ?></div>
+                    <div class="app-account-sub"><?php echo htmlspecialchars($_SESSION['user_email'] ?? ''); ?></div>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="app-account-head">
+                <span class="app-account-avatar" aria-hidden="true"><i class="fas fa-user"></i></span>
+                <div>
+                    <div class="app-account-name" id="accountSheetTitle">Welcome!</div>
+                    <div class="app-account-sub">Sign in to track orders and chat with us.</div>
+                </div>
+            </div>
+            <div class="app-account-auth">
+                <a href="login.php" class="app-btn app-btn-primary">Sign In</a>
+                <a href="register.php" class="app-btn app-btn-ghost">Create Account</a>
+            </div>
+            <?php endif; ?>
+
+            <div class="app-sheet-label">Browse</div>
+            <div class="app-chips">
+                <a href="shop.php?gender=mens">Men</a>
+                <a href="shop.php?gender=womens">Women</a>
+                <a href="shop.php?gender=kids">Kids</a>
+                <a href="shop.php?category=accessories">Accessories</a>
+            </div>
+
+            <div class="app-list">
+                <?php if ($appLoggedIn): ?>
+                <a href="profile.php"><i class="fas fa-user-pen"></i><span>My Profile</span><i class="fas fa-chevron-right"></i></a>
+                <a href="orders.php"><i class="fas fa-box"></i><span>My Orders</span><i class="fas fa-chevron-right"></i></a>
+                <a href="my-custom-orders.php"><i class="fas fa-shirt"></i><span>Custom Orders</span><i class="fas fa-chevron-right"></i></a>
+                <a href="support-chat.php"><i class="fas fa-headset"></i><span>Live Support</span><i class="fas fa-chevron-right"></i></a>
+                <?php endif; ?>
+                <a href="try-on.php"><i class="fas fa-camera"></i><span>Virtual Try-On</span><i class="fas fa-chevron-right"></i></a>
+                <a href="contact.php"><i class="fas fa-circle-question"></i><span>Contact &amp; FAQs</span><i class="fas fa-chevron-right"></i></a>
+                <a href="about.php"><i class="fas fa-circle-info"></i><span>About Us</span><i class="fas fa-chevron-right"></i></a>
+                <a href="privacy-policy.php"><i class="fas fa-shield-halved"></i><span>Privacy Policy</span><i class="fas fa-chevron-right"></i></a>
+                <button type="button" data-theme-toggle><i class="fas fa-circle-half-stroke"></i><span>Dark mode</span><span class="app-switch" aria-hidden="true"></span></button>
+                <button type="button" id="appInstallBtn" hidden><i class="fas fa-mobile-screen-button"></i><span>Install app</span><i class="fas fa-download"></i></button>
+                <?php if ($appLoggedIn && ($_SESSION['user_type'] ?? '') === 'admin'): ?>
+                <a href="admin/dashboard.php"><i class="fas fa-gauge"></i><span>Admin Dashboard</span><i class="fas fa-chevron-right"></i></a>
+                <?php endif; ?>
+                <?php if ($appLoggedIn): ?>
+                <a href="logout.php" class="app-list-danger"><i class="fas fa-arrow-right-from-bracket"></i><span>Log out</span></a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <script src="js/app-shell.js?v=<?php echo @filemtime(__DIR__ . '/../../js/app-shell.js'); ?>" defer></script>
     <?php endif; ?>
 </body>
 </html>

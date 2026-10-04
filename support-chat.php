@@ -1,13 +1,11 @@
 <?php
 require 'includes/support-chat-config.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
+redirectToLogin();
 
 $userId = $_SESSION['user_id'];
 $pageTitle = 'Support Chat';
+$bodyClass = 'support-chat-page'; // phones hide the floating AI chat button here (css/style.css)
 
 // Handle new conversation creation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_conversation'])) {
@@ -48,7 +46,9 @@ if (isset($_GET['conversation'])) {
 <?php include 'includes/header/header.php'; ?>
 
 <div class="support-chat-container">
-    <div class="support-chat-wrapper">
+    <!-- has-active: phones show the open chat and slide the list in on demand;
+         without one they show the list. -->
+    <div class="support-chat-wrapper<?php echo $activeConversation ? ' has-active' : ''; ?>">
         <!-- Sidebar: Conversation List -->
         <div class="support-sidebar" id="supportSidebar">
             <div class="support-sidebar-header">
@@ -56,6 +56,10 @@ if (isset($_GET['conversation'])) {
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newConversationModal">
                     <i class="fas fa-plus"></i> New
                 </button>
+                <?php if ($activeConversation): ?>
+                <button type="button" class="support-sidebar-close d-md-none" aria-label="Back to chat"
+                        onclick="document.getElementById('supportSidebar').classList.remove('show')"><i class="fas fa-xmark"></i></button>
+                <?php endif; ?>
             </div>
             <div class="support-conversation-list">
                 <?php if (empty($conversations)): ?>
@@ -95,8 +99,8 @@ if (isset($_GET['conversation'])) {
             <?php if ($activeConversation): ?>
                 <!-- Chat Header -->
                 <div class="support-chat-header">
-                    <button class="btn btn-sm btn-outline-secondary d-md-none me-2" id="toggleSidebar">
-                        <i class="fas fa-bars"></i>
+                    <button class="btn btn-sm btn-outline-secondary d-md-none me-2" id="toggleSidebar" type="button" aria-label="All conversations">
+                        <i class="fas fa-arrow-left"></i>
                     </button>
                     <div class="support-chat-info">
                         <h6><?php echo htmlspecialchars($activeConversation['subject']); ?></h6>

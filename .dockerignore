@@ -15,17 +15,19 @@
 
 # ---- Unauthenticated maintenance scripts ---------------------------
 update_admin.php
-test_email.php
+scripts/test_email.php
 composer-setup.php
 composer.phar
-seed_payment_demo.php
-insert_sample_products.php
-migrate.php
+scripts/seed_payment_demo.php
+scripts/insert_sample_products.php
+scripts/remove_product.php
+scripts/migrate.php
 
 # ---- Real customer data (RA 10173) ---------------------------------
-threadpresshub.sql
-backup_*.sql
-*.dump
+database/dumps/
+**/threadpresshub*.sql
+**/backup_*.sql
+**/*.dump
 
 # Runtime uploads live on a Railway volume, not in the image.
 uploads/
@@ -38,6 +40,8 @@ vendor/
 # ---- Not needed at runtime -----------------------------------------
 tests/
 phpunit.xml
+server.js
+package.json
 .git/
 .github/
 .claude/
@@ -45,8 +49,7 @@ phpunit.xml
 .idea/
 *.md
 !README.md
-system architecture/
-QR-instapay.PNG
+docs/
 css/style_backup.css
 
 # ---- Local / OS ----------------------------------------------------

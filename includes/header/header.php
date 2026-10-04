@@ -8,9 +8,17 @@ $assetBase   = $isAdminPage ? '../' : '';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?php echo isset($pageTitle) ? htmlspecialchars($pageTitle) . ' - Thread & Press Hub' : 'Thread & Press Hub'; ?></title>
     <link rel="icon" type="image/png" href="<?php echo $assetBase; ?>images/logo/logo_sm.png">
+    <!-- Installable app (PWA): manifest.json + sw.js. -->
+    <link rel="manifest" href="<?php echo $assetBase; ?>manifest.json">
+    <meta name="theme-color" content="#131313">
+    <link rel="apple-touch-icon" href="<?php echo $assetBase; ?>images/icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Thread &amp; Press">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -19,6 +27,8 @@ $assetBase   = $isAdminPage ? '../' : '';
     <!-- Loaded last on purpose: the modern navbar rules must win over style.css. -->
     <?php if (!$isAdminPage): ?>
     <link href="css/navbar-modern.css?v=<?php echo @filemtime(__DIR__ . '/../../css/navbar-modern.css'); ?>" rel="stylesheet">
+    <!-- Phone/tablet app shell: bottom tab bar, sheets, compact header. -->
+    <link href="css/app-shell.css?v=<?php echo @filemtime(__DIR__ . '/../../css/app-shell.css'); ?>" rel="stylesheet">
     <?php else: ?>
     <link href="../css/admin-modern.css?v=<?php echo @filemtime(__DIR__ . '/../../css/admin-modern.css'); ?>" rel="stylesheet">
     <?php endif; ?>
@@ -84,6 +94,13 @@ if ($navFirstName === false || $navFirstName === '') {
                     <span class="brand-sub">HUB</span>
                 </span>
             </a>
+            <?php if (!$isAdminPage): ?>
+            <!-- Phones/tablets: the bottom tab bar replaces the menu; the header keeps search and theme. -->
+            <div class="app-head-actions d-lg-none">
+                <button type="button" class="tp-icon-btn" id="navSearchBtn" aria-label="Search products"><i class="fas fa-magnifying-glass"></i></button>
+                <button type="button" class="tp-icon-btn theme-toggle" data-theme-toggle aria-label="Toggle dark mode"><i class="fas fa-moon theme-icon-moon"></i><i class="fas fa-sun theme-icon-sun"></i></button>
+            </div>
+            <?php endif; ?>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -113,12 +130,12 @@ if ($navFirstName === false || $navFirstName === '') {
                 <ul class="navbar-nav align-items-center tp-nav-actions <?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') === false) ? '' : 'ms-auto'; ?>">
                     <?php if (strpos($_SERVER['PHP_SELF'], '/admin/') === false): ?>
                     <li class="nav-item">
-                        <a class="nav-link tp-cta tp-cta-ghost" href="custom-design.php">
+                        <a class="nav-link tp-cta tp-cta-ghost" href="custom-design.php" title="Design Studio">
                             <i class="fas fa-palette"></i><span>Design Studio</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link tp-cta tp-cta-solid" href="try-on.php">
+                        <a class="nav-link tp-cta tp-cta-solid" href="try-on.php" title="Try-On">
                             <i class="fas fa-camera"></i><span>Try-On</span>
                         </a>
                     </li>
@@ -129,7 +146,7 @@ if ($navFirstName === false || $navFirstName === '') {
                         </button>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link tp-icon-btn" href="cart.php" aria-label="Cart">
+                        <a class="nav-link tp-icon-btn tp-cart-btn" href="cart.php" aria-label="Cart">
                             <svg class="tp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                                 <path d="M3 6h18"/>
@@ -180,6 +197,7 @@ if ($navFirstName === false || $navFirstName === '') {
                 <i class="fas fa-search" style="color: var(--text-light);"></i>
                 <input type="text" id="searchInput" placeholder="Search for products..." autocomplete="off">
                 <button type="button" onclick="performSearch()">Search</button>
+                <button type="button" class="search-close" aria-label="Close search" onclick="document.getElementById('searchOverlay').classList.remove('active')"><i class="fas fa-xmark"></i></button>
             </div>
         </div>
     </div>

@@ -23,13 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($attemptsTable && $attemptsTable->num_rows > 0) {
                 // Clean old attempts (older than 15 minutes)
                 $conn->query("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
-                // Check recent attempts
-                $checkAttempts = $conn->prepare("SELECT COUNT(*) as cnt FROM login_attempts WHERE (email = ? OR ip_address = ?) AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
+                // Check recent attempts: 5 per email+IP pair, so one person's typos don't lock out
+                // everyone on a shared network; a looser per-IP cap still stops guessing across many emails.
+                $checkAttempts = $conn->prepare("SELECT COALESCE(SUM(email = ?), 0) AS pair_cnt, COUNT(*) AS ip_cnt FROM login_attempts WHERE ip_address = ? AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
                 $checkAttempts->bind_param("ss", $email, $ip);
                 $checkAttempts->execute();
-                $attemptCount = $checkAttempts->get_result()->fetch_assoc()['cnt'];
+                $attempts = $checkAttempts->get_result()->fetch_assoc();
                 $checkAttempts->close();
-                if ($attemptCount >= 5) {
+                if ($attempts['pair_cnt'] >= 5 || $attempts['ip_cnt'] >= 30) {
                     $rateLimited = true;
                     $error = 'Too many login attempts. Please try again in 15 minutes.';
                 }
@@ -59,12 +60,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (verifyPassword($password, $user['password'])) {
                         // Clear login attempts on success
                         if ($attemptsTable && $attemptsTable->num_rows > 0) {
-                            $clearAttempts = $conn->prepare("DELETE FROM login_attempts WHERE email = ? OR ip_address = ?");
+                            $clearAttempts = $conn->prepare("DELETE FROM login_attempts WHERE email = ? AND ip_address = ?");
                             $clearAttempts->bind_param("ss", $email, $ip);
                             $clearAttempts->execute();
                             $clearAttempts->close();
                         }
 
+                        // New session id on sign-in so a pre-login id cannot be reused (session fixation).
+                        session_regenerate_id(true);
                         $_SESSION['user_id'] = $user['id'];
                         $_SESSION['user_name'] = $user['fullname'];
                         $_SESSION['user_email'] = $user['email'];
@@ -78,8 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Audit log
                         logAudit('user_login', 'user', $user['id'], 'Login successful');
                         
-                        // Redirect based on user type
-                        if ($user['user_type'] === 'admin') {
+                        // Back to the page that asked for login (the form has no action, so
+                        // ?redirect= survives the POST), else the default for the user type.
+                        $target = safeRedirectTarget($_GET['redirect'] ?? '');
+                        if ($target) {
+                            header("Location: $target");
+                        } elseif ($user['user_type'] === 'admin') {
                             header("Location: admin/dashboard.php");
                         } else {
                             header("Location: index.php");
@@ -112,7 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container my-5">
     <div class="form-container">
         <div class="form-brand">
-            <span class="brand-logo">TP</span>
+            <img class="brand-logo logo-light" src="images/logo/logo_sm.png" alt="Thread &amp; Press Hub logo">
+            <img class="brand-logo logo-dark" src="images/logo/logo_white_sm.png" alt="Thread &amp; Press Hub logo">
         </div>
         <h2 class="form-title">Welcome Back</h2>
         <p class="form-subtitle">Sign in to your Thread &amp; Press Hub account</p>
@@ -127,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label class="form-label">Email Address</label>
                 <div class="input-icon-wrapper">
                     <i class="fas fa-envelope"></i>
-                    <input type="email" class="form-control" name="email" placeholder="Enter your email" required>
+                    <input type="email" class="form-control" name="email" placeholder="Enter your email" required value="<?php echo $email ?? ''; /* already HTML-escaped by sanitizeInput() */ ?>">
                 </div>
             </div>
 
@@ -136,6 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="input-icon-wrapper">
                     <i class="fas fa-lock"></i>
                     <input type="password" class="form-control" name="password" placeholder="Enter your password" required>
+                    <button type="button" class="pw-toggle" aria-label="Show password"><i class="fas fa-eye"></i></button>
                 </div>
             </div>
 
@@ -157,5 +166,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 </div>
+
+<script>
+document.querySelectorAll('.pw-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var field = btn.parentNode.querySelector('input');
+        var show = field.type === 'password';
+        field.type = show ? 'text' : 'password';
+        btn.querySelector('i').className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+        btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+});
+</script>
 
 <?php include 'includes/footer/footer.php'; ?>

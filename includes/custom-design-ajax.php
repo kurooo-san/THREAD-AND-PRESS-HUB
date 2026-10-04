@@ -29,6 +29,9 @@ switch ($action) {
     case 'get':
         handleGet($conn, $userId);
         break;
+    case 'editor':
+        handleEditor($conn, $userId);
+        break;
     default:
         echo json_encode(['success' => false, 'message' => 'Invalid action.']);
 }
@@ -129,6 +132,13 @@ function handleAiGenerate($userId)
         ]],
         'generationConfig' => ['temperature' => 0.7],
     ];
+
+    global $conn;
+    if (!aiQuotaAllows($conn, 'design', 15)) {
+        http_response_code(429);
+        echo json_encode(['success' => false, 'message' => AI_QUOTA_MESSAGE]);
+        return;
+    }
 
     $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'
         . $model . ':generateContent?key=' . urlencode($apiKey);
@@ -240,7 +250,8 @@ function reencodeImage($srcPath, $mime, $destPath)
 
 function handleSave($conn, $userId) {
     $productType = $conn->real_escape_string(trim($_POST['product_type'] ?? 'tshirt'));
-    $notes = $conn->real_escape_string(trim($_POST['notes'] ?? ''));
+    // Bound as a parameter below, so no escaping here (escaping would store "don\'t").
+    $notes = trim($_POST['notes'] ?? '');
     $designImage = $_POST['design_image'] ?? '';
     $designImageBack = $_POST['design_image_back'] ?? '';
     $designData = $_POST['design_data'] ?? '{}';
@@ -299,6 +310,49 @@ function handleSave($conn, $userId) {
         $printBackPath = saveDesignImage($printBackRaw, $uploadDir, $userId, 'print-back') ?: '';
     }
 
+    // Extra print files: each sleeve, and the corporate logo on its own (for
+    // embroidery or a separate print; it is also in print_front). Their paths
+    // ride along in design_data, always set here, never taken from the browser.
+    $extraPrints = [];
+    foreach (['left' => 'sleeve_left', 'right' => 'sleeve_right', 'logo' => 'logo_print'] as $which => $field) {
+        $raw = $_POST[$field] ?? '';
+        if ($raw !== '' && strpos($raw, 'data:image/') === 0) {
+            $path = saveDesignImage($raw, $uploadDir, $userId, $which === 'logo' ? 'logo' : 'sleeve-' . $which);
+            if ($path) $extraPrints[$which] = $path;
+        }
+    }
+    $designFields = json_decode($designData, true);
+    if (!is_array($designFields)) $designFields = [];
+    unset($designFields['extraPrints'], $designFields['editorFile']);
+    if ($extraPrints) $designFields['extraPrints'] = $extraPrints;
+
+    // Colours are priced from the print files just saved, not from the
+    // browser's count (same method as countPrintColors() in custom-design.php).
+    $colorFiles = array_filter([$printFrontPath, $printBackPath, $extraPrints['left'] ?? '', $extraPrints['right'] ?? '']);
+    $colors = countPrintColors(array_map(fn($p) => $uploadDir . basename($p), $colorFiles));
+    if ($colors === null) {
+        // No GD: fall back to the browser's figure, within the same bounds.
+        $colors = max(1, min(10, (int) ($designFields['colorsUsed'] ?? 1)));
+    }
+    $designFields['colorsUsed'] = $colors;
+    $designFields['colorCost']  = ($colors - 1) * 25;
+
+    // The editor state, so the design can be reopened and edited later. A
+    // private JSON file; its path is only ever read back by this script.
+    $editorPath = '';
+    $editorRaw  = (string) ($_POST['editor_state'] ?? '');
+    if ($editorRaw !== '' && strlen($editorRaw) <= 3 * 1024 * 1024) {
+        $editor = json_decode($editorRaw, true);
+        if (is_array($editor) && ($editor['v'] ?? null) === 1) {
+            $name = 'editor_' . $userId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.json';
+            if (file_put_contents($uploadDir . $name, $editorRaw) !== false) {
+                $editorPath = 'uploads/designs/' . $name;
+                $designFields['editorFile'] = $editorPath;
+            }
+        }
+    }
+    $designData = json_encode($designFields);
+
     // Add design_image_back column if it doesn't exist
     $conn->query("ALTER TABLE custom_designs ADD COLUMN IF NOT EXISTS design_image_back LONGTEXT DEFAULT NULL AFTER design_image");
     // Same for the print files, so a missed migration does not break saving.
@@ -321,9 +375,79 @@ function handleSave($conn, $userId) {
         if ($dbImageBackPath) @unlink($uploadDir . basename($dbImageBackPath));
         if ($printFrontPath)  @unlink($uploadDir . basename($printFrontPath));
         if ($printBackPath)   @unlink($uploadDir . basename($printBackPath));
+        foreach ($extraPrints as $p) @unlink($uploadDir . basename($p));
+        if ($editorPath) @unlink($uploadDir . basename($editorPath));
         echo json_encode(['success' => false, 'message' => 'Failed to save design. Please try again.']);
     }
     $stmt->close();
+}
+
+/**
+ * Colours in the print files, for pricing: 1 to 10, or null without GD.
+ *
+ * Must match countPrintColors() in custom-design.php, which shows the same
+ * figure in the price estimate: every 2nd pixel in each direction, pixels at
+ * least half opaque (GD alpha 0 = opaque .. 127 = clear, so <= 63), each
+ * channel rounded to 5 levels (value / 64), and a colour counts when it
+ * covers at least 1% of the inked pixels.
+ */
+function countPrintColors(array $files)
+{
+    if (!function_exists('imagecreatefrompng')) return null;
+    $buckets = [];
+    $total = 0;
+    foreach ($files as $file) {
+        $img = @imagecreatefrompng($file);
+        if (!$img) continue;
+        $w = imagesx($img);
+        $h = imagesy($img);
+        for ($y = 0; $y < $h; $y += 2) {
+            for ($x = 0; $x < $w; $x += 2) {
+                $c = imagecolorat($img, $x, $y);
+                if ((($c >> 24) & 0x7F) > 63) continue;
+                $k = (int) round((($c >> 16) & 0xFF) / 64) * 25
+                   + (int) round((($c >> 8) & 0xFF) / 64) * 5
+                   + (int) round(($c & 0xFF) / 64);
+                $buckets[$k] = ($buckets[$k] ?? 0) + 1;
+                $total++;
+            }
+        }
+        imagedestroy($img);
+    }
+    if ($total === 0) return 1;
+    $n = 0;
+    foreach ($buckets as $count) {
+        if ($count >= $total * 0.01) $n++;
+    }
+    return max(1, min(10, $n));
+}
+
+/** The saved editor-state file of a design ('' when there is none or it is gone). */
+function editorFileOf(array $designData)
+{
+    $p = $designData['editorFile'] ?? '';
+    if (!is_string($p) || !preg_match('#^uploads/designs/editor_[\w.-]+\.json$#', $p)) return '';
+    return is_file(dirname(__DIR__) . '/' . $p) ? $p : '';
+}
+
+/** GET ?action=editor&id=N: a design's editor state, for "Edit" in My Designs. */
+function handleEditor($conn, $userId)
+{
+    $designId = (int) ($_GET['id'] ?? 0);
+    $stmt = $conn->prepare("SELECT design_data FROM custom_designs WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $designId, $userId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $data = $row ? json_decode((string) $row['design_data'], true) : null;
+    $file = is_array($data) ? editorFileOf($data) : '';
+    $editor = $file !== '' ? json_decode((string) file_get_contents(dirname(__DIR__) . '/' . $file), true) : null;
+    if (!is_array($editor)) {
+        echo json_encode(['success' => false, 'message' => 'This design cannot be edited.']);
+        return;
+    }
+    echo json_encode(['success' => true, 'editor' => $editor]);
 }
 
 function saveDesignImage($imageDataUri, $uploadDir, $userId, $side) {
@@ -332,6 +456,8 @@ function saveDesignImage($imageDataUri, $uploadDir, $userId, $side) {
 
     $decoded = base64_decode($imageData[1], true);
     if ($decoded === false) return false;
+    // The prefix is only a claim; the bytes must really be an image.
+    if (@getimagesizefromstring($decoded) === false) return false;
 
     $ext = 'png';
     if (strpos($imageData[0], 'jpeg') !== false) $ext = 'jpg';
@@ -382,17 +508,25 @@ function handleList($conn, $userId) {
         $row['quantity']   = max(1, min(100, (int) ($data['quantity'] ?? 1)));
         $row['elements']   = (int) ($data['elementsCount'] ?? 0);
 
+        $extras = designExtraPrints($data);
         $price = customDesignPrice(
             (string) $row['product_type'],
             $row['print_size'],
             $row['quantity'],
             (int) ($data['colorsUsed'] ?? 1),
-            $discountType
+            $discountType,
+            $extras['sleeves'],
+            $extras['logo']
         );
         $row['price_total']    = $price['total'];
         $row['price_unit']     = $price['unit'];
         $row['discount_type']  = $discountType;
         $row['colors_used']    = $price['colorsUsed'];
+
+        // Whether this design can be reopened in the studio (#edit): only
+        // designs saved with their editor state. The file path stays private.
+        $row['editable'] = editorFileOf($data) !== '';
+        unset($row['design_data']);
 
         // Tell the page up front whether the artwork file is still on disk, so
         // it can say "preview unavailable" rather than showing a placeholder

@@ -7,6 +7,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
     exit();
 }
 
+// Every POST form on this page carries csrf_token (csrfTokenField()); refuse anything else.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken()) {
+    http_response_code(403);
+    exit('Your session expired or the form was invalid. Go back, refresh the page and try again.');
+}
+
 $pageTitle = 'Custom Orders Management';
 $error = '';
 $success = '';
@@ -14,7 +20,7 @@ $success = '';
 // Run migration if tables don't exist
 $tableCheck = $conn->query("SHOW TABLES LIKE 'custom_orders'");
 if ($tableCheck->num_rows === 0) {
-    $migrationSQL = file_get_contents(__DIR__ . '/../migrate_custom_orders.sql');
+    $migrationSQL = file_get_contents(__DIR__ . '/../database/migrate_custom_orders.sql');
     if ($migrationSQL) {
         $conn->multi_query($migrationSQL);
         while ($conn->next_result()) {;}
@@ -115,7 +121,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
 <?php include '../includes/header/header.php'; ?>
 
 <style>
-.admin-custom-orders { max-width: 1300px; margin: 0 auto; padding: 1.5rem; }
+.admin-custom-orders { max-width: 1300px; width: 100%; min-width: 0; margin: 0 auto; padding: 1.5rem; } /* width: see .admin-container */
 .co-stats-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
 .co-stat-card {
     flex: 1; min-width: 150px; background: #fff; border-radius: 12px;
@@ -243,7 +249,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
                         <img src="../<?php echo htmlspecialchars($o['design_image']); ?>" 
                              class="co-thumb" alt="Design"
                              onclick="showModal('../<?php echo htmlspecialchars($o['design_image']); ?>')"
-                             onerror="this.src='https://placehold.co/90x90/f0f0f0/999?text=Design'">
+                             onerror="this.onerror=null;this.src='https://placehold.co/90x90/f0f0f0/999?text=Design'">
                     </div>
 
                     <!-- Order Info -->
@@ -289,13 +295,13 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
                                 <?php endif; ?>
                                 <?php if ($o['payment_status'] === 'pending' && $o['payment_id']): ?>
                                     <div class="co-verify-btns">
-                                        <form method="POST" style="flex:1;">
+                                        <form method="POST" style="flex:1;"><?php echo csrfTokenField(); ?>
                                             <input type="hidden" name="payment_id" value="<?php echo (int)$o['payment_id']; ?>">
                                             <button type="submit" name="verify_payment" value="verify" class="btn-verify" style="width:100%;">
                                                 <i class="fas fa-check me-1"></i>Verify
                                             </button>
                                         </form>
-                                        <form method="POST" style="flex:1;">
+                                        <form method="POST" style="flex:1;"><?php echo csrfTokenField(); ?>
                                             <input type="hidden" name="payment_id" value="<?php echo (int)$o['payment_id']; ?>">
                                             <button type="submit" name="verify_payment" value="reject" class="btn-reject" style="width:100%;">
                                                 <i class="fas fa-times me-1"></i>Reject
@@ -311,7 +317,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
 
                     <!-- Actions -->
                     <div>
-                        <form method="POST" class="co-actions-form">
+                        <form method="POST" class="co-actions-form"><?php echo csrfTokenField(); ?>
                             <input type="hidden" name="order_id" value="<?php echo (int)$o['id']; ?>">
                             <select name="status" class="form-select form-select-sm">
                                 <?php foreach ($statusLabels as $key => $val): ?>

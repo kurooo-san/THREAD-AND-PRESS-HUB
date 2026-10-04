@@ -7,7 +7,7 @@
  * this file only handles capture, UI state and graceful failure paths.
  *
  * Config is injected by try-on.php via window.TRYON_CONFIG:
- *   { products: [{id,name,price,image}], csrfToken, endpoints: {tryOn, save} }
+ *   { products: [{id,name,price,image,gender,sizes,colors}], csrfToken, endpoints: {tryOn, save, suggest} }
  */
 (function () {
     'use strict';
@@ -68,6 +68,40 @@
     const btnPrev = el('catalogPrev');
     const btnNext = el('catalogNext');
 
+    // Failed try-on panel
+    const failOverlay = el('tryonFail');
+    const failText = el('tryonFailText');
+    const failRetry = el('failRetry');
+    const failLooks = el('failLooks');
+    const failClose = el('failClose');
+
+    // Colour / size picker for "Add to Cart"
+    const pickPanel = el('tryonPick');
+    const pickColors = el('pickColors');
+    const pickSizes = el('pickSizes');
+    const pickColorGroup = el('pickColorGroup');
+    const pickSizeGroup = el('pickSizeGroup');
+    const pickConfirm = el('pickConfirm');
+    const pickCancel = el('pickCancel');
+
+    // AI size finder (inside the Size group of the picker)
+    const sizeFindToggle = el('sizeFindToggle');
+    const sizeFind = el('sizeFind');
+    const sizeHeight = el('sizeHeight');
+    const sizeWeight = el('sizeWeight');
+    const sizeFit = el('sizeFit');
+    const sizeFindGo = el('sizeFindGo');
+    const sizeFindResult = el('sizeFindResult');
+
+    // Saved-look viewer
+    const lightbox = el('tryonLightbox');
+    const lbImg = el('lbImg');
+    const lbCaption = el('lbCaption');
+    const lbPrev = el('lbPrev');
+    const lbNext = el('lbNext');
+    const lbClose = el('lbClose');
+    const lbDownload = el('lbDownload');
+
     const btnEnd = el('btnEnd');
     const btnCart = el('btnCart');
     const cartBadge = el('cartBadge');
@@ -88,6 +122,15 @@
     let currentGender = 'all';    // catalog filter: all | mens | womens | kids
     let cameraReady = false;      // true once the camera (or an upload) is usable
     let cameraOn = false;         // whether the live camera is currently running
+    let sessionEnded = false;     // END was pressed: late AI answers are ignored
+
+    // The stage tag (LIVE / PHOTO / TRY-ON). Setting textContent would delete
+    // its coloured dot, so the dot is rebuilt with the label every time.
+    function setStageTag(label, dotColor) {
+        liveTag.innerHTML = '<span class="live-dot" aria-hidden="true"></span> ';
+        liveTag.appendChild(document.createTextNode(label));
+        liveTag.querySelector('.live-dot').style.background = dotColor;
+    }
 
     // -------------------------------------------------------------------
     // Camera
@@ -195,6 +238,7 @@
     // Catalog
     // -------------------------------------------------------------------
     function renderCatalog() {
+        closePicker();
         if (products.length === 0) {
             catName.textContent = 'No items for this filter';
             catPrice.textContent = '';
@@ -261,6 +305,43 @@
         return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
     }
 
+    // The AI takes a while; walk the user through what it is doing instead of
+    // one static line. It stays on the last step if the AI takes longer.
+    const TRYON_STEPS = [
+        'Analyzing your photo…',
+        'Finding your pose and fit…',
+        'Fitting the garment on you…',
+        'Matching the fabric and light…',
+        'Adding the final details…',
+    ];
+    const STYLIST_STEPS = [
+        'Looking at your style…',
+        'Checking the catalog…',
+        'Picking the looks that suit you best…',
+    ];
+    let stepTimer = null;
+    function startSteps(list) {
+        let i = 0;
+        if (loadingText) loadingText.textContent = list[0];
+        clearInterval(stepTimer);
+        stepTimer = setInterval(() => {
+            i = Math.min(i + 1, list.length - 1);
+            if (loadingText) loadingText.textContent = list[i];
+        }, 3000);
+    }
+    function stopSteps() {
+        clearInterval(stepTimer);
+        stepTimer = null;
+    }
+
+    // Try-on failed: say why, and offer another go with the same photo (no
+    // new countdown) or the saved looks, so there is always something to show.
+    function showFailure(message) {
+        failText.textContent = message;
+        failLooks.hidden = savedCount <= 0;
+        showOverlay(failOverlay);
+    }
+
     // Shows a big 5…4…3…2…1 countdown over the stage, resolving when it ends.
     function runCountdown(seconds) {
         return new Promise((resolve) => {
@@ -293,19 +374,23 @@
         });
     }
 
-    async function doTryOn() {
+    // `retryFrame` (a data URL) re-sends a photo already taken, with no countdown.
+    async function doTryOn(retryFrame) {
         if (busy || products.length === 0) return;
 
         busy = true;
         btnTryOn.disabled = true;
+        hideOverlay(failOverlay);
+        const reuse = typeof retryFrame === 'string' ? retryFrame : null;   // a click passes an Event
 
         // Live camera: give the user a few seconds to step back and pose.
         // Uploaded photo: no need to pose, capture immediately.
-        if (!uploadedImage) {
+        if (!reuse && !uploadedImage) {
             await runCountdown(COUNTDOWN_SECONDS);
+            if (sessionEnded) { busy = false; return; }
         }
 
-        const frame = captureFrame();
+        const frame = reuse || captureFrame();
         if (!frame) {
             showToast('Camera is not ready yet. Please wait a moment.', true);
             btnTryOn.disabled = false;
@@ -314,7 +399,7 @@
         }
         lastBefore = frame;
 
-        if (loadingText) loadingText.textContent = 'Generating your try-on… this usually takes a few seconds.';
+        startSteps(TRYON_STEPS);
         showOverlay(loadingOverlay);
 
         try {
@@ -324,9 +409,10 @@
                 body: JSON.stringify({ personImage: frame, productId: products[currentIndex].id }),
             });
             const data = await res.json().catch(() => ({ success: false, error: 'Unexpected server response.' }));
+            if (sessionEnded) return;   // END was pressed while the AI was working
 
             if (!data.success) {
-                showToast(data.error || 'Try-on failed. Please try again.', true);
+                showFailure(data.error || 'Try-on failed. Please try again.');
                 return;
             }
 
@@ -335,12 +421,12 @@
             resultImg.style.display = 'block';
             liveVideo.style.display = 'none';
             uploadImg.style.display = 'none';
-            liveTag.textContent = 'TRY-ON';
-            liveTag.querySelector('.live-dot')?.style.setProperty('background', 'var(--tryon-accent)');
+            setStageTag('TRY-ON', 'var(--tryon-accent)');
             setResultControls();
         } catch (err) {
-            showToast('Network error. Check your connection and try again.', true);
+            if (!sessionEnded) showFailure('Network error. Check your connection and try again.');
         } finally {
+            stopSteps();
             hideOverlay(loadingOverlay);
             btnTryOn.disabled = false;
             busy = false;
@@ -353,12 +439,11 @@
         resultImg.removeAttribute('src');
         if (uploadedImage) {
             uploadImg.style.display = 'block';
-            liveTag.textContent = 'PHOTO';
+            setStageTag('PHOTO', 'var(--tryon-live)');
         } else {
             liveVideo.style.display = 'block';
-            liveTag.textContent = 'LIVE';
+            setStageTag('LIVE', 'var(--tryon-live)');
         }
-        liveTag.querySelector('.live-dot')?.style.setProperty('background', 'var(--tryon-live)');
         setLiveControls();
     }
 
@@ -376,6 +461,9 @@
         btnCompare.style.display = 'none';
     }
     function setResultControls() {
+        // A new result can be saved.
+        btnSave.disabled = false;
+        btnSave.innerHTML = '<i class="fas fa-bookmark" aria-hidden="true"></i> Save look';
         btnTryOn.style.display = 'none';
         btnStylist.style.display = 'none';
         btnUpload.style.display = 'none';
@@ -417,7 +505,7 @@
                 resultImg.style.display = 'none';
                 closeCompare();
                 hideOverlay(errorOverlay); // allow use even if the camera was denied
-                liveTag.textContent = 'PHOTO';
+                setStageTag('PHOTO', 'var(--tryon-live)');
                 updateActionButtons();
                 setLiveControls();
                 showToast('Photo loaded. Pick a product, then Try On.');
@@ -435,7 +523,7 @@
         uploadImg.style.display = 'none';
         uploadImg.removeAttribute('src');
         liveVideo.style.display = 'block';
-        liveTag.textContent = 'LIVE';
+        setStageTag('LIVE', 'var(--tryon-live)');
         setLiveControls();
         // If the camera isn't running, show the "camera off" prompt again.
         if (!cameraOn) showCameraOff();
@@ -494,7 +582,7 @@
         busy = true;
         btnStylist.disabled = true;
         btnTryOn.disabled = true;
-        if (loadingText) loadingText.textContent = 'Finding the looks that suit you best…';
+        startSteps(STYLIST_STEPS);
         showOverlay(loadingOverlay);
 
         try {
@@ -507,6 +595,7 @@
                 }),
             });
             const data = await res.json().catch(() => ({ success: false, error: 'Unexpected server response.' }));
+            if (sessionEnded) return;
             if (!data.success) {
                 showToast(data.error || 'Could not get suggestions.', true);
                 return;
@@ -515,6 +604,7 @@
         } catch (err) {
             showToast('Network error. Check your connection and try again.', true);
         } finally {
+            stopSteps();
             hideOverlay(loadingOverlay);
             updateActionButtons();
             busy = false;
@@ -558,23 +648,168 @@
         doTryOn();
     }
 
-    // Adds the currently-shown catalog product to the shopping cart
-    // (same localStorage format used by shop.php / cart.php).
-    function addCurrentToCart() {
+    // "Add to Cart" asks for colour and size first, like the product page;
+    // an order without a size cannot be fulfilled. A choice with only one
+    // option is made for the customer.
+    let pickChoice = { color: '', size: '' };
+    const listOf = (v) => (Array.isArray(v) ? v : []);
+
+    function openPicker() {
         if (products.length === 0) return;
         const p = products[currentIndex];
+        const colors = listOf(p.colors);
+        const sizes = listOf(p.sizes);
+        if (!colors.length && !sizes.length) {
+            addToCart(p, '', '');
+            return;
+        }
+        pickChoice = { color: colors.length === 1 ? colors[0] : '', size: sizes.length === 1 ? sizes[0] : '' };
+        renderChips(pickColors, colors, 'color');
+        renderChips(pickSizes, sizes, 'size');
+        pickColorGroup.hidden = !colors.length;
+        pickSizeGroup.hidden = !sizes.length;
+        syncPickConfirm();
+        resetSizeFinder();
+        btnAddCart.style.display = 'none';
+        pickPanel.hidden = false;
+    }
 
+    // -------------------------------------------------------------------
+    // AI size finder: height + weight + fit → one of this product's sizes
+    // -------------------------------------------------------------------
+    const SIZE_PROFILE_KEY = 'tryonSizeProfile';
+    let sizeFitChoice = 'regular';
+
+    // Measurements are remembered on this device so the next product only
+    // needs one tap. Storage can be blocked; the finder still works without.
+    function loadSizeProfile() {
+        try {
+            const p = JSON.parse(localStorage.getItem(SIZE_PROFILE_KEY)) || {};
+            if (p.height) sizeHeight.value = p.height;
+            if (p.weight) sizeWeight.value = p.weight;
+            if (p.fit) setSizeFit(p.fit);
+        } catch (e) { /* no saved profile */ }
+    }
+
+    function setSizeFit(fit) {
+        sizeFitChoice = fit;
+        sizeFit.querySelectorAll('.pick-chip').forEach((c) => c.classList.toggle('active', c.dataset.fit === fit));
+    }
+
+    function resetSizeFinder() {
+        sizeFind.hidden = true;
+        sizeFindToggle.setAttribute('aria-expanded', 'false');
+        sizeFindResult.hidden = true;
+    }
+
+    function showSizeResult(html, isError) {
+        sizeFindResult.innerHTML = html;
+        sizeFindResult.classList.toggle('is-error', !!isError);
+        sizeFindResult.hidden = false;
+    }
+
+    async function findSize() {
+        const p = products[currentIndex];
+        if (!p) return;
+        const height = parseFloat(sizeHeight.value);
+        const weight = parseFloat(sizeWeight.value);
+        if (!(height >= 80 && height <= 230)) {
+            showSizeResult('Please enter your height in cm (80–230).', true);
+            sizeHeight.focus();
+            return;
+        }
+        if (!(weight >= 10 && weight <= 250)) {
+            showSizeResult('Please enter your weight in kg (10–250).', true);
+            sizeWeight.focus();
+            return;
+        }
+        try {
+            localStorage.setItem(SIZE_PROFILE_KEY, JSON.stringify({ height: height, weight: weight, fit: sizeFitChoice }));
+        } catch (e) { /* not saved, fine */ }
+
+        sizeFindGo.disabled = true;
+        showSizeResult('<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Finding your size…');
+        try {
+            const res = await fetch(endpoints.size, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+                body: JSON.stringify({ productId: p.id, height: height, weight: weight, fit: sizeFitChoice }),
+            });
+            const data = await res.json().catch(() => ({ success: false, error: 'Unexpected server response.' }));
+            // The customer may have closed the picker or changed product meanwhile.
+            if (pickPanel.hidden || products[currentIndex] !== p) return;
+            if (!data.success) {
+                showSizeResult(escapeHtml(data.error || 'Could not get a size.'), true);
+                return;
+            }
+            pickChoice.size = data.size;
+            pickSizes.querySelectorAll('.pick-chip').forEach((c) => c.classList.toggle('active', c.textContent === data.size));
+            syncPickConfirm();
+            showSizeResult('We recommend <strong>' + escapeHtml(data.size) + '</strong>' +
+                (data.reason ? ' — ' + escapeHtml(data.reason) : '') + ' It is selected for you.');
+        } catch (err) {
+            showSizeResult('Network error. Check your connection and try again.', true);
+        } finally {
+            sizeFindGo.disabled = false;
+        }
+    }
+
+    function closePicker() {
+        if (!pickPanel) return;
+        pickPanel.hidden = true;
+        btnAddCart.style.display = '';
+    }
+
+    function renderChips(box, values, key) {
+        box.innerHTML = '';
+        values.forEach((v) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'pick-chip' + (pickChoice[key] === v ? ' active' : '');
+            b.textContent = v;
+            b.addEventListener('click', () => {
+                pickChoice[key] = v;
+                box.querySelectorAll('.pick-chip').forEach((c) => c.classList.toggle('active', c === b));
+                syncPickConfirm();
+            });
+            box.appendChild(b);
+        });
+    }
+
+    function syncPickConfirm() {
+        const p = products[currentIndex];
+        pickConfirm.disabled = !p
+            || (listOf(p.colors).length > 0 && !pickChoice.color)
+            || (listOf(p.sizes).length > 0 && !pickChoice.size);
+    }
+
+    // Same localStorage 'cart' and item shape as shop.php / product.php / cart.php.
+    function addToCart(p, color, size) {
         let cart = [];
         try { cart = JSON.parse(localStorage.getItem('cart')) || []; } catch (e) { cart = []; }
 
-        const existing = cart.find((it) => it.id == p.id && it.color === '' && it.size === 'N/A');
+        const existing = cart.find((it) => it.id == p.id && it.color === color && it.size === size);
         if (existing) {
             existing.quantity += 1;
         } else {
-            cart.push({ id: p.id, name: p.name, price: Number(p.price), quantity: 1, color: '', size: 'N/A' });
+            cart.push({ id: p.id, name: p.name, price: Number(p.price), quantity: 1, color: color, size: size });
         }
         localStorage.setItem('cart', JSON.stringify(cart));
-        showToast(p.name + ' added to cart.');
+        updateNavCartCount();
+        const detail = [color, size].filter(Boolean).join(', ');
+        showToast(p.name + (detail ? ' (' + detail + ')' : '') + ' added to cart.');
+    }
+
+    // The cart count in the header (the same badge product.php updates).
+    function updateNavCartCount() {
+        let cart = [];
+        try { cart = JSON.parse(localStorage.getItem('cart')) || []; } catch (e) { cart = []; }
+        const count = cart.reduce((n, i) => n + (parseInt(i.quantity, 10) || 0), 0);
+        const badge = document.getElementById('navCartCount');
+        if (badge) {
+            badge.style.display = count > 0 ? 'inline-block' : 'none';
+            badge.textContent = count;
+        }
     }
 
     // Triggers a browser download for a given image data URL.
@@ -591,6 +826,11 @@
     // baked into the bottom-right corner (free marketing when shared).
     function downloadResult() {
         if (!resultImg.src) return;
+        downloadWithWatermark(resultImg.src);
+    }
+
+    // The same, for any image of this site (the result, or a saved look).
+    function downloadWithWatermark(src) {
         const img = new Image();
         img.onload = () => {
             try {
@@ -619,11 +859,11 @@
                 triggerDownload(canvas.toDataURL('image/png'));
             } catch (e) {
                 // Tainted canvas or other failure — fall back to the raw image.
-                triggerDownload(resultImg.src);
+                triggerDownload(src);
             }
         };
-        img.onerror = () => triggerDownload(resultImg.src);
-        img.src = resultImg.src;
+        img.onerror = () => triggerDownload(src);
+        img.src = src;
     }
 
     // -------------------------------------------------------------------
@@ -643,14 +883,16 @@
                 savedCount += 1;
                 updateBadge();
                 showToast('Look saved to your collection.');
-            } else {
-                showToast(data.error || 'Could not save look.', true);
+                // Saved: the button stays off until there is a new result,
+                // so the same look is not saved twice.
+                btnSave.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Saved';
+                return;
             }
+            showToast(data.error || 'Could not save look.', true);
         } catch (err) {
             showToast('Network error while saving.', true);
-        } finally {
-            btnSave.disabled = false;
         }
+        btnSave.disabled = false;   // failed: allow another try
     }
 
     async function openDrawer() {
@@ -667,16 +909,19 @@
                 drawerBody.innerHTML = '<p class="empty">No saved looks yet. Generate a try-on and tap “Save look”.</p>';
                 return;
             }
+            currentLooks = looks.slice();
             const grid = document.createElement('div');
             grid.className = 'tryon-drawer-grid';
             looks.forEach((l) => {
                 const fig = document.createElement('div');
                 fig.className = 'tryon-look';
 
-                const a = document.createElement('a');
-                a.href = l.url;
-                a.target = '_blank';
-                a.rel = 'noopener';
+                // Opens the look in the viewer on this page (not a new tab).
+                const a = document.createElement('button');
+                a.type = 'button';
+                a.className = 'tryon-look-open';
+                a.setAttribute('aria-label', 'View saved look' + (l.time ? ' from ' + l.time : ''));
+                a.addEventListener('click', () => openLightbox(currentLooks.findIndex((x) => x.file === l.file)));
                 const img = document.createElement('img');
                 img.src = l.url;
                 img.alt = 'Saved look from ' + (l.time || '');
@@ -713,6 +958,7 @@
             const data = await res.json();
             if (data.success) {
                 node.remove();
+                currentLooks = currentLooks.filter((x) => x.file !== file);
                 savedCount = Math.max(0, savedCount - 1);
                 updateBadge();
                 showToast('Look deleted.');
@@ -727,7 +973,49 @@
         }
     }
 
+    // ---- Saved-look viewer ----
+    let currentLooks = [];   // the looks shown in the drawer: [{url, file, time}]
+    let lbIndex = -1;
+
+    function openLightbox(i) {
+        if (i < 0 || i >= currentLooks.length) return;
+        lbIndex = i;
+        showLook();
+        lightbox.hidden = false;
+        lbClose.focus();
+    }
+
+    function showLook() {
+        const l = currentLooks[lbIndex];
+        lbImg.src = l.url;
+        lbImg.alt = 'Saved look' + (l.time ? ' from ' + l.time : '');
+        lbCaption.textContent = (l.time ? l.time + ' · ' : '') + (lbIndex + 1) + ' of ' + currentLooks.length;
+        lbPrev.hidden = lbNext.hidden = currentLooks.length < 2;
+    }
+
+    function stepLightbox(delta) {
+        if (currentLooks.length < 2) return;
+        lbIndex = (lbIndex + delta + currentLooks.length) % currentLooks.length;
+        showLook();
+    }
+
+    function closeLightbox() {
+        if (lightbox.hidden) return;
+        lightbox.hidden = true;
+        lbImg.removeAttribute('src');
+        lbIndex = -1;
+    }
+
+    // How many looks are saved, for the badge (and the failure panel's button).
+    function loadSavedCount() {
+        fetch(endpoints.save, { method: 'GET' })
+            .then((r) => r.json())
+            .then((d) => { savedCount = ((d && d.looks) || []).length; updateBadge(); })
+            .catch(() => {});
+    }
+
     function closeDrawer() {
+        closeLightbox();
         drawer.classList.remove('open');
         drawerBackdrop.classList.remove('show');
     }
@@ -769,6 +1057,9 @@
     // END session
     // -------------------------------------------------------------------
     function endSession() {
+        sessionEnded = true;
+        stopSteps();
+        hideOverlay(loadingOverlay);
         stopCamera();
         showPermissionError('Session ended. Reload the page to start again.');
         btnTryOn.style.display = 'none';
@@ -783,14 +1074,24 @@
         btnCompare.style.display = 'none';
         closeCompare();
         hideOverlay(suggestOverlay);
+        hideOverlay(failOverlay);
+        closePicker();
     }
 
     // -------------------------------------------------------------------
     // Wire up
     // -------------------------------------------------------------------
     function init() {
+        // "Try On" on a shop card links here with ?product=ID: start on that item.
+        const wanted = parseInt(new URLSearchParams(window.location.search).get('product'), 10);
+        const wantedIndex = wanted > 0 ? products.findIndex((p) => p.id === wanted) : -1;
+        if (wantedIndex >= 0) currentIndex = wantedIndex;
         renderCatalog();
+        if (wantedIndex >= 0) {
+            showToast('Ready to try on: ' + products[wantedIndex].name + '. Turn the camera on or upload a photo.');
+        }
         updateBadge();
+        loadSavedCount();
         // Camera starts OFF for a cleaner first impression; the user turns it on.
         showCameraOff();
         syncCameraBtn();
@@ -800,7 +1101,32 @@
         btnLive.addEventListener('click', backToLive);
         btnSave.addEventListener('click', saveLook);
         btnDownload.addEventListener('click', downloadResult);
-        btnAddCart.addEventListener('click', addCurrentToCart);
+        btnAddCart.addEventListener('click', openPicker);
+        pickCancel.addEventListener('click', closePicker);
+        sizeFindToggle.addEventListener('click', () => {
+            sizeFind.hidden = !sizeFind.hidden;
+            sizeFindToggle.setAttribute('aria-expanded', String(!sizeFind.hidden));
+            if (!sizeFind.hidden && !sizeHeight.value) sizeHeight.focus();
+        });
+        sizeFit.addEventListener('click', (e) => {
+            const chip = e.target.closest('[data-fit]');
+            if (chip) setSizeFit(chip.dataset.fit);
+        });
+        sizeFindGo.addEventListener('click', findSize);
+        [sizeHeight, sizeWeight].forEach((i) => i.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); findSize(); }
+        }));
+        loadSizeProfile();
+        pickConfirm.addEventListener('click', () => {
+            if (pickConfirm.disabled || pickPanel.hidden || products.length === 0) return;
+            addToCart(products[currentIndex], pickChoice.color, pickChoice.size);
+            closePicker();
+        });
+
+        // Failed try-on panel
+        failRetry.addEventListener('click', () => doTryOn(lastBefore || undefined));
+        failLooks.addEventListener('click', () => { hideOverlay(failOverlay); openDrawer(); });
+        failClose.addEventListener('click', () => hideOverlay(failOverlay));
         btnStylist.addEventListener('click', runStylist);
         suggestClose.addEventListener('click', () => hideOverlay(suggestOverlay));
 
@@ -828,13 +1154,31 @@
                 applyGenderFilter(b.dataset.gender);
             });
         });
+        // Saved-look viewer
+        lbClose.addEventListener('click', closeLightbox);
+        lbPrev.addEventListener('click', () => stepLightbox(-1));
+        lbNext.addEventListener('click', () => stepLightbox(1));
+        lbDownload.addEventListener('click', () => { if (lbIndex >= 0) downloadWithWatermark(currentLooks[lbIndex].url); });
+        lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });   // backdrop
+
         btnEnd.addEventListener('click', endSession);
         btnCart.addEventListener('click', openDrawer);
         drawerClose.addEventListener('click', closeDrawer);
         drawerBackdrop.addEventListener('click', closeDrawer);
 
-        // Keyboard: left/right arrows cycle the catalog.
+        // Keyboard: left/right arrows cycle the catalog - but not while typing
+        // (the header search box uses the arrow keys too).
         document.addEventListener('keydown', (e) => {
+            if (e.altKey || e.ctrlKey || e.metaKey) return;
+            // While the saved-look viewer is open, the arrows move through the looks.
+            if (!lightbox.hidden) {
+                if (e.key === 'Escape') closeLightbox();
+                else if (e.key === 'ArrowLeft') stepLightbox(-1);
+                else if (e.key === 'ArrowRight') stepLightbox(1);
+                return;
+            }
+            const t = e.target;
+            if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
             if (e.key === 'ArrowLeft') cycle(-1);
             if (e.key === 'ArrowRight') cycle(1);
         });

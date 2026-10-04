@@ -1,11 +1,17 @@
 <?php
 /**
  * Order Lookup API
- * Allows chatbot to retrieve order information
+ * Returns the logged-in customer's OWN orders only.
  * Endpoint: POST /includes/order-lookup.php
+ *
+ * It used to return any order to anyone who knew (or guessed) its number:
+ * the query had "AND (o.user_id = ? OR o.id = ?)", which is always true, and
+ * visitors who were not logged in were not checked at all.
  */
 
 require_once __DIR__ . '/config.php';
+
+header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -14,8 +20,19 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
-$query = trim($input['query'] ?? '');
-$userId = $_SESSION['user_id'] ?? null;
+$query = trim((string) ($input['query'] ?? ''));
+$userId = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
+
+// Orders are private: only a logged-in customer can look up, and only their own.
+if (!$userId) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'type'    => 'login_required',
+        'message' => "🔒 Please log in to track your orders. I can only show orders on your own account."
+    ]);
+    exit();
+}
 
 if (empty($query)) {
     echo json_encode(['error' => 'Query is required']);
@@ -28,7 +45,8 @@ try {
     if ($conn->connect_error) {
         throw new Exception('Database connection failed');
     }
-    
+    configureDbConnection($conn);
+
     // Check if query is an order ID (number) or a status request
     $orderId = null;
     $statusOnly = false;
@@ -40,24 +58,17 @@ try {
     
     // If we found an order ID
     if ($orderId) {
-        // If user is logged in, verify they own the order or show public info
-        $sql = "SELECT o.*, 
+        // The order must belong to the logged-in customer.
+        $sql = "SELECT o.*,
                     COUNT(oi.id) as item_count,
-                    GROUP_CONCAT(p.name, ', ') as product_names
+                    GROUP_CONCAT(p.name SEPARATOR ', ') as product_names
                 FROM orders o
                 LEFT JOIN order_items oi ON o.id = oi.order_id
                 LEFT JOIN products p ON oi.product_id = p.id
-                WHERE o.id = ?";
-        
-        // Only owner can see full details without user ID, or anyone if they know the ID
-        if ($userId) {
-            $sql .= " AND (o.user_id = ? OR o.id = ?)";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("iii", $orderId, $userId, $orderId);
-        } else {
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("i", $orderId);
-        }
+                WHERE o.id = ? AND o.user_id = ?
+                GROUP BY o.id";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ii", $orderId, $userId);
         
         $stmt->execute();
         $result = $stmt->get_result();
@@ -107,7 +118,9 @@ try {
             echo json_encode([
                 'success' => true,
                 'type' => 'order_not_found',
-                'message' => "❌ Sorry, I couldn't find order #" . $orderId . ". \n\n💡 **Tips:**\n• Make sure you entered the correct order ID\n• Log in to view your orders\n• Contact support@threadpresshub.com if you need help"
+                // Same answer whether the order does not exist or is someone
+                // else's, so the number reveals nothing.
+                'message' => "❌ I couldn't find order #" . $orderId . " on your account. \n\n💡 **Tips:**\n• Make sure you entered the correct order ID\n• I can only show orders placed with this account\n• Contact " . SUPPORT_EMAIL . " if you need help"
             ]);
         }
     } else {
@@ -153,7 +166,7 @@ try {
             echo json_encode([
                 'success' => true,
                 'type' => 'order_help',
-                'message' => "📦 **Order Tracking Help**\n\nYou can:\n• 🔍 Ask about a specific order (\"Check order 123\")\n• 📋 Log in to view all your orders\n• ☎️ Contact support@threadpresshub.com\n\n💡 Tip: Log in to see your complete order history!"
+                'message' => "📦 **Order Tracking Help**\n\nYou can:\n• 🔍 Ask about a specific order (\"Check order 123\")\n• 📋 Log in to view all your orders\n• ☎️ Contact " . SUPPORT_EMAIL . "\n\n💡 Tip: Log in to see your complete order history!"
             ]);
         }
     }

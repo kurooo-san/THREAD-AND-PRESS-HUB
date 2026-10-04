@@ -2,10 +2,7 @@
 // chat_history.php - View your chat history with the AI chatbot
 require_once 'includes/config.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit();
-}
+redirectToLogin();
 
 $pageTitle = 'Chat History';
 $userId    = (int)$_SESSION['user_id'];

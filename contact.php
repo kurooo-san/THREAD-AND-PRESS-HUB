@@ -18,8 +18,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category = trim($_POST['category'] ?? 'general');
     $priority = trim($_POST['priority'] ?? 'normal');
     
+    // Anti-spam: at most 3 messages per IP per 10 minutes (the form is public).
+    $recentFromIp = 0;
+    $rl = getContactDB()->prepare("SELECT COUNT(*) AS c FROM contact_messages WHERE ip_address = ? AND created_at > NOW() - INTERVAL 10 MINUTE");
+    if ($rl) {
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+        $rl->bind_param('s', $clientIp);
+        $rl->execute();
+        $recentFromIp = (int) $rl->get_result()->fetch_assoc()['c'];
+        $rl->close();
+    }
+
     // Validation
-    if (empty($name)) {
+    if (!verifyCsrfToken()) {
+        $error = '❌ Invalid form submission. Please refresh the page and try again.';
+    } elseif ($recentFromIp >= 3) {
+        $error = '❌ You have sent several messages already. Please wait a few minutes before sending another.';
+    } elseif (empty($name)) {
         $error = '❌ Name is required.';
     } elseif (empty($email)) {
         $error = '❌ Email is required.';
@@ -67,29 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="mt-4 d-flex flex-column gap-3">
                 <div class="d-flex gap-3 align-items-start">
                     <div style="width:42px; height:42px; border-radius:50%; background:var(--bg-light); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        <i class="fas fa-map-marker-alt" style="color:var(--primary);"></i>
-                    </div>
-                    <div>
-                        <h6 style="font-weight:600; margin-bottom:0.15rem;">Address</h6>
-                        <p class="text-muted small mb-0">123 Fashion Ave, Cainta, Rizal, Philippines</p>
-                    </div>
-                </div>
-                <div class="d-flex gap-3 align-items-start">
-                    <div style="width:42px; height:42px; border-radius:50%; background:var(--bg-light); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                         <i class="fas fa-envelope" style="color:var(--primary);"></i>
                     </div>
                     <div>
                         <h6 style="font-weight:600; margin-bottom:0.15rem;">Email</h6>
-                        <p class="text-muted small mb-0">support@threadandpress.com</p>
-                    </div>
-                </div>
-                <div class="d-flex gap-3 align-items-start">
-                    <div style="width:42px; height:42px; border-radius:50%; background:var(--bg-light); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        <i class="fas fa-phone" style="color:var(--primary);"></i>
-                    </div>
-                    <div>
-                        <h6 style="font-weight:600; margin-bottom:0.15rem;">Phone</h6>
-                        <p class="text-muted small mb-0">+63 (2) 8123-4567</p>
+                        <p class="text-muted small mb-0"><?php echo SUPPORT_EMAIL; ?></p>
                     </div>
                 </div>
             </div>

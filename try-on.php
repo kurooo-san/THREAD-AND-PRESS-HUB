@@ -28,7 +28,7 @@ $wearableCategories = ['t-shirts', 'hoodies', 'dresses', 'pants'];
 $placeholders = implode(',', array_fill(0, count($wearableCategories), '?'));
 $types        = str_repeat('s', count($wearableCategories));
 
-$sql = "SELECT id, name, price, image, category, gender
+$sql = "SELECT id, name, price, image, category, gender, available_sizes, available_colors
         FROM products
         WHERE status = 'active' AND category IN ($placeholders) AND image <> ''
         ORDER BY category, name";
@@ -45,6 +45,9 @@ if ($stmt = $conn->prepare($sql)) {
             'price'  => (float) $row['price'],
             'image'  => $row['image'],
             'gender' => $row['gender'] ?? '',
+            // Chosen before "Add to Cart", like on the product page.
+            'sizes'  => array_values(array_filter(array_map('trim', explode(',', (string) ($row['available_sizes'] ?? ''))))),
+            'colors' => array_values(array_filter(array_map('trim', explode(',', (string) ($row['available_colors'] ?? ''))))),
         ];
     }
     $stmt->close();
@@ -55,7 +58,7 @@ $csrfToken = generateCsrfToken();
 
 <?php include 'includes/header/header.php'; ?>
 
-<link rel="stylesheet" href="css/try-on.css">
+<link rel="stylesheet" href="css/try-on.css?v=<?php echo @filemtime(__DIR__ . '/css/try-on.css'); ?>">
 
 <div class="container py-4">
     <nav aria-label="breadcrumb">
@@ -106,6 +109,21 @@ $csrfToken = generateCsrfToken();
                 <div class="tryon-overlay" id="tryonLoading">
                     <div class="spinner" aria-hidden="true"></div>
                     <p>Generating your try-on… this usually takes a few seconds.</p>
+                </div>
+
+                <!-- Try-on failed: retry with the same photo, or show saved looks -->
+                <div class="tryon-overlay" id="tryonFail">
+                    <i class="fas fa-triangle-exclamation icon-lg" aria-hidden="true"></i>
+                    <p id="tryonFailText">The AI could not finish this try-on.</p>
+                    <div class="fail-actions">
+                        <button id="failRetry" class="tryon-btn tryon-btn-primary" type="button">
+                            <i class="fas fa-rotate-right" aria-hidden="true"></i> Try again
+                        </button>
+                        <button id="failLooks" class="tryon-btn tryon-btn-ghost" type="button">
+                            <i class="fas fa-bookmark" aria-hidden="true"></i> View saved looks
+                        </button>
+                        <button id="failClose" class="tryon-btn tryon-btn-ghost" type="button">Close</button>
+                    </div>
                 </div>
 
                 <!-- Permission / error overlay -->
@@ -189,6 +207,47 @@ $csrfToken = generateCsrfToken();
                     <button id="btnAddCart" class="tryon-btn tryon-btn-primary tryon-card-cart" type="button">
                         <i class="fas fa-cart-plus" aria-hidden="true"></i> Add to Cart
                     </button>
+                    <!-- Colour and size, asked before adding (the shop needs both) -->
+                    <div class="tryon-pick" id="tryonPick" hidden>
+                        <div class="pick-group" id="pickColorGroup">
+                            <div class="pick-label">Color</div>
+                            <div class="pick-chips" id="pickColors"></div>
+                        </div>
+                        <div class="pick-group" id="pickSizeGroup">
+                            <div class="pick-label">Size</div>
+                            <div class="pick-chips" id="pickSizes"></div>
+                            <!-- AI size finder (includes/tryon-size.php): picks a size chip for you -->
+                            <button type="button" class="size-find-toggle" id="sizeFindToggle" aria-expanded="false" aria-controls="sizeFind">
+                                <i class="fas fa-ruler" aria-hidden="true"></i> Not sure? Find my size with AI
+                            </button>
+                            <div class="size-find" id="sizeFind" hidden>
+                                <div class="size-find-row">
+                                    <label>Height (cm)
+                                        <input type="number" id="sizeHeight" inputmode="numeric" min="80" max="230" placeholder="165">
+                                    </label>
+                                    <label>Weight (kg)
+                                        <input type="number" id="sizeWeight" inputmode="numeric" min="10" max="250" placeholder="60">
+                                    </label>
+                                </div>
+                                <div class="pick-label">Preferred fit</div>
+                                <div class="pick-chips" id="sizeFit">
+                                    <button type="button" class="pick-chip" data-fit="fitted">Fitted</button>
+                                    <button type="button" class="pick-chip active" data-fit="regular">Regular</button>
+                                    <button type="button" class="pick-chip" data-fit="loose">Loose</button>
+                                </div>
+                                <button type="button" class="tryon-btn tryon-btn-ghost size-find-go" id="sizeFindGo">
+                                    <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Recommend a size
+                                </button>
+                                <p class="size-find-result" id="sizeFindResult" role="status" aria-live="polite" hidden></p>
+                            </div>
+                        </div>
+                        <div class="pick-actions">
+                            <button id="pickCancel" class="tryon-btn tryon-btn-ghost" type="button">Cancel</button>
+                            <button id="pickConfirm" class="tryon-btn tryon-btn-primary" type="button" disabled>
+                                <i class="fas fa-cart-plus" aria-hidden="true"></i> Add
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Original feed thumbnail -->
@@ -201,6 +260,10 @@ $csrfToken = generateCsrfToken();
                 </div>
             </div>
         </div>
+        <p class="tryon-privacy">
+            <i class="fas fa-lock" aria-hidden="true"></i>
+            Your photo is sent to our AI only to create the try-on. It is not stored unless you tap “Save look”.
+        </p>
     </div>
 </div>
 
@@ -216,6 +279,28 @@ $csrfToken = generateCsrfToken();
     <div class="tryon-drawer-body" id="drawerBody"></div>
 </aside>
 
+<!-- Saved-look viewer: opens in the page (it used to open a new tab) -->
+<div class="tryon-lightbox" id="tryonLightbox" hidden role="dialog" aria-modal="true" aria-label="Saved look">
+    <button id="lbClose" class="lb-close" type="button" aria-label="Close">
+        <i class="fas fa-xmark" aria-hidden="true"></i>
+    </button>
+    <button id="lbPrev" class="lb-nav lb-prev" type="button" aria-label="Previous look">
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+    </button>
+    <figure class="lb-figure">
+        <img id="lbImg" alt="">
+        <figcaption id="lbCaption"></figcaption>
+    </figure>
+    <button id="lbNext" class="lb-nav lb-next" type="button" aria-label="Next look">
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+    </button>
+    <div class="lb-actions">
+        <button id="lbDownload" class="tryon-btn tryon-btn-primary" type="button">
+            <i class="fas fa-download" aria-hidden="true"></i> Download
+        </button>
+    </div>
+</div>
+
 <div class="tryon-toast" id="tryonToast" role="status" aria-live="polite"></div>
 
 <script>
@@ -225,10 +310,11 @@ $csrfToken = generateCsrfToken();
         endpoints: {
             tryOn: 'includes/tryon-ajax.php',
             save: 'includes/tryon-save.php',
-            suggest: 'includes/tryon-suggest.php'
+            suggest: 'includes/tryon-suggest.php',
+            size: 'includes/tryon-size.php'
         }
     };
 </script>
-<script src="js/try-on.js"></script>
+<script src="js/try-on.js?v=<?php echo @filemtime(__DIR__ . '/js/try-on.js'); ?>"></script>
 
 <?php include 'includes/footer/footer.php'; ?>

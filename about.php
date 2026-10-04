@@ -10,8 +10,8 @@ $pageTitle = 'About';
         <div class="col-md-6">
             <span class="hero-badge" style="background: var(--bg-light); color: var(--text-dark); border-color: var(--border-light);">Our Story</span>
             <h1 style="font-weight:800; font-size:2.5rem; line-height:1.15; margin-top:0.75rem;">About Thread &amp; Press Hub</h1>
-            <p class="lead" style="color:var(--text-medium); font-size:1rem; line-height:1.7; margin-top:1rem;">Thread &amp; Press Hub was founded with a simple mission: to provide high-quality, stylish apparel for everyone. Our team of designers and fabric experts work hard to deliver premium products at affordable prices.</p>
-            <p style="color:var(--text-light);">We believe in sustainability, comfort, and customer satisfaction. Every piece you purchase supports small-scale artisans and responsible manufacturing practices.</p>
+            <p class="lead" style="color:var(--text-medium); font-size:1rem; line-height:1.7; margin-top:1rem;">Thread &amp; Press Hub is an apparel shop based in Rizal that does two things: it sells ready-to-wear clothing for men, women and kids, and it prints your own designs on shirts, hoodies and polos.</p>
+            <p style="color:var(--text-light);">Orders ship anywhere in the Philippines, or you can pick them up at the store for free. PWD and Senior Citizen customers get their 20% discount applied at checkout.</p>
         </div>
         <div class="col-md-6 text-center">
             <img src="images/hero/about-us.jpg" class="img-fluid" alt="About us" style="border-radius: var(--radius-lg);">
@@ -20,29 +20,29 @@ $pageTitle = 'About';
 
     <div class="py-5 mt-3">
         <div class="section-heading">
-            <h2>Our Values</h2>
-            <p>What drives us every day</p>
+            <h2>What We Do</h2>
+            <p>Ready-made, or made by you</p>
         </div>
         <div class="row g-4 text-center">
             <div class="col-md-4">
                 <div class="card border-0 p-4" style="background:var(--bg-light); border-radius:var(--radius-lg);">
-                    <i class="fas fa-leaf mb-3" style="font-size:2rem; color:var(--primary);"></i>
-                    <h5 style="font-weight:700;">Eco-Friendly</h5>
-                    <p class="text-muted small mb-0">We use sustainable materials and minimize waste in every step of production.</p>
+                    <i class="fas fa-shirt mb-3" style="font-size:2rem; color:var(--primary);"></i>
+                    <h5 style="font-weight:700;">Ready-to-Wear</h5>
+                    <p class="text-muted small mb-0">Dresses, tees, hoodies, pants and accessories, each listed with the colors and sizes in stock.</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card border-0 p-4" style="background:var(--bg-light); border-radius:var(--radius-lg);">
-                    <i class="fas fa-users mb-3" style="font-size:2rem; color:var(--primary);"></i>
-                    <h5 style="font-weight:700;">Community</h5>
-                    <p class="text-muted small mb-0">Supporting local artisans and fair labor practices across the Philippines.</p>
+                    <i class="fas fa-palette mb-3" style="font-size:2rem; color:var(--primary);"></i>
+                    <h5 style="font-weight:700;">Custom Printing</h5>
+                    <p class="text-muted small mb-0">Lay out your print in the Design Studio on a tee, hoodie, polo, couple set or company uniform, with the price shown as you design.</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card border-0 p-4" style="background:var(--bg-light); border-radius:var(--radius-lg);">
-                    <i class="fas fa-gem mb-3" style="font-size:2rem; color:var(--primary);"></i>
-                    <h5 style="font-weight:700;">Quality</h5>
-                    <p class="text-muted small mb-0">Premium fabrics, durable construction, and attention to every detail.</p>
+                    <i class="fas fa-wand-magic-sparkles mb-3" style="font-size:2rem; color:var(--primary);"></i>
+                    <h5 style="font-weight:700;">Try Before You Buy</h5>
+                    <p class="text-muted small mb-0">AI Try-On shows a garment on your own photo, and the size finder suggests a size from your height and weight.</p>
                 </div>
             </div>
         </div>

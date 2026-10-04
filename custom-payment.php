@@ -10,7 +10,7 @@ $pageTitle = 'Custom Order Payment';
 // Run migration if tables don't exist
 $tableCheck = $conn->query("SHOW TABLES LIKE 'custom_orders'");
 if ($tableCheck->num_rows === 0) {
-    $migrationSQL = file_get_contents(__DIR__ . '/migrate_custom_orders.sql');
+    $migrationSQL = file_get_contents(__DIR__ . '/database/migrate_custom_orders.sql');
     if ($migrationSQL) {
         $conn->multi_query($migrationSQL);
         while ($conn->next_result()) {;}
@@ -431,7 +431,7 @@ $typeName = $typeNames[$order['product_type']] ?? 'T-Shirt';
 
     <!-- Order Mini Summary -->
     <div class="order-mini-summary">
-        <img src="<?php echo htmlspecialchars($order['design_image']); ?>" class="order-mini-img" alt="Design" onerror="this.src='https://placehold.co/80x80/f0f0f0/999?text=Design'">
+        <img src="<?php echo htmlspecialchars($order['design_image']); ?>" class="order-mini-img" alt="Design" onerror="this.onerror=null;this.src='https://placehold.co/80x80/f0f0f0/999?text=Design'">
         <div class="order-mini-info">
             <h6>Custom <?php echo htmlspecialchars($typeName); ?> — Order #<?php echo $orderId; ?></h6>
             <p>Size: <?php echo htmlspecialchars($order['size']); ?> · Qty: <?php echo (int)$order['quantity']; ?></p>

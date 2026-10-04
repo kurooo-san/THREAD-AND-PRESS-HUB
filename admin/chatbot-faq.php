@@ -7,12 +7,19 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
     exit();
 }
 
+// Every POST form on this page carries csrf_token (csrfTokenField()); refuse anything else.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken()) {
+    http_response_code(403);
+    exit('Your session expired or the form was invalid. Go back, refresh the page and try again.');
+}
+
 $pageTitle = 'Chatbot FAQ Management';
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
+configureDbConnection($conn);
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -183,7 +190,7 @@ $categories = $conn->query("SELECT DISTINCT category FROM chatbot_faq ORDER BY c
                         <button class="btn btn-sm btn-outline-primary btn-action" onclick="editFaq(<?php echo $faq['id']; ?>, '<?php echo htmlspecialchars(json_encode($faq)); ?>')">
                             <i class="fas fa-edit"></i> Edit
                         </button>
-                        <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this FAQ?');">
+                        <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this FAQ?');"><?php echo csrfTokenField(); ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?php echo $faq['id']; ?>">
                             <button type="submit" class="btn btn-sm btn-outline-danger btn-action">
@@ -210,7 +217,7 @@ $categories = $conn->query("SELECT DISTINCT category FROM chatbot_faq ORDER BY c
                 <h5 class="modal-title" id="modalTitle">Add New FAQ</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST">
+            <form method="POST"><?php echo csrfTokenField(); ?>
                 <div class="modal-body">
                     <input type="hidden" name="action" id="formAction" value="add">
                     <input type="hidden" name="id" id="faqId" value="">

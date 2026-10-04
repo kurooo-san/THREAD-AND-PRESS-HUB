@@ -4,11 +4,13 @@
  * Handles separate database connection for contact form submissions
  */
 
-// Contact Database Configuration
-define('CONTACT_DB_HOST', getenv('CONTACT_DB_HOST') ?: 'localhost');
-define('CONTACT_DB_USER', getenv('CONTACT_DB_USER') ?: 'root');
-define('CONTACT_DB_PASS', getenv('CONTACT_DB_PASS') ?: '');
-define('CONTACT_DB_NAME', getenv('CONTACT_DB_NAME') ?: 'threadpresshub');
+// Contact Database Configuration. Defaults to the main app database (config.php,
+// which honours MYSQL_URL), so it also works on Railway; CONTACT_DB_* can override.
+define('CONTACT_DB_HOST', getenv('CONTACT_DB_HOST') ?: (defined('DB_HOST') ? DB_HOST : 'localhost'));
+define('CONTACT_DB_USER', getenv('CONTACT_DB_USER') ?: (defined('DB_USER') ? DB_USER : 'root'));
+define('CONTACT_DB_PASS', getenv('CONTACT_DB_PASS') ?: (defined('DB_PASS') ? DB_PASS : ''));
+define('CONTACT_DB_NAME', getenv('CONTACT_DB_NAME') ?: (defined('DB_NAME') ? DB_NAME : 'threadpresshub'));
+define('CONTACT_DB_PORT', getenv('CONTACT_DB_PORT') ? (int) getenv('CONTACT_DB_PORT') : (defined('DB_PORT') ? DB_PORT : 3306));
 
 /**
  * Create and return contact database connection
@@ -22,14 +24,15 @@ function getContactDB() {
             CONTACT_DB_HOST, 
             CONTACT_DB_USER, 
             CONTACT_DB_PASS, 
-            CONTACT_DB_NAME
+            CONTACT_DB_NAME,
+            CONTACT_DB_PORT
         );
         
         if ($contact_conn->connect_error) {
             die("Contact DB Connection failed: " . $contact_conn->connect_error);
         }
         
-        $contact_conn->set_charset("utf8mb4");
+        configureDbConnection($contact_conn);
     }
     
     return $contact_conn;
@@ -50,6 +53,10 @@ function insertContactMessage($data) {
     $message = $data['message'] ?? '';
     $category = $data['category'] ?? 'general';
     $priority = $data['priority'] ?? 'normal';
+    // Public form input: priority is echoed as a CSS class in the admin view.
+    if (!in_array($priority, ['low', 'normal', 'high', 'urgent'], true)) {
+        $priority = 'normal';
+    }
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
     

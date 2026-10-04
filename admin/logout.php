@@ -1,13 +1,6 @@
 <?php
-require '../includes/config.php';
-
-// Check if user is logged in
-if (isLoggedIn()) {
-    // Destroy session
-    session_destroy();
-}
-
-// Redirect to home page
-header("Location: ../index.php");
+// The storefront logout also clears the remember-me cookie and its DB token;
+// destroying only the session here let that cookie sign the admin straight back in.
+header("Location: ../logout.php");
 exit();
 ?>

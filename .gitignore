@@ -26,7 +26,7 @@ test_email.php
 # ---- Real customer data (RA 10173) ---------------------------
 # Database dumps containing live user rows, emails and password
 # hashes. The migrate_*.sql schema files ARE tracked.
-threadpresshub.sql
+threadpresshub*.sql
 backup_*.sql
 *.dump
 
@@ -50,6 +50,7 @@ composer-setup.php
 *.bak
 *.log
 *.tmp
+.phpunit.result.cache
 .DS_Store
 Thumbs.db
 desktop.ini
@@ -62,3 +63,16 @@ nbproject/
 
 # Product thumbnails are rebuilt on demand by productThumb().
 images/products/thumbs/
+
+# 3D model sources (large, with duplicates). Only the compressed copies in
+# images/models/web/ are served. Rebuild one with @gltf-transform/cli:
+#   gltf-transform optimize in.glb tmp.glb --compress false --texture-compress webp --texture-size 1024
+#     --simplify false --join false --weld false --flatten false --instance false --palette false
+#   gltf-transform draco tmp.glb out.glb --quantize-normal 12 --quantize-position 16 --quantize-texcoord 14
+images/models/*
+!images/models/web/
+
+# Raw 3D source models (site uses the compressed copies in images/models/web)
+images/models/basic/
+images/models/corporate-model/
+images/models/couple-model/

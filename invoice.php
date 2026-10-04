@@ -3,10 +3,7 @@
 require_once 'includes/config.php';
 require_once 'vendor/autoload.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit();
-}
+redirectToLogin();
 
 $order_id = (int)($_GET['order_id'] ?? 0);
 $is_admin = ($_SESSION['user_type'] ?? '') === 'admin';
@@ -133,7 +130,7 @@ $html .= '</div>';
 
 $html .= '<div class="footer">
     Thank you for shopping with Thread &amp; Press Hub!<br>
-    For inquiries, contact us at support@threadandpresshub.com
+    For inquiries, contact us at ' . SUPPORT_EMAIL . '
 </div></body></html>';
 
 // Render PDF

@@ -131,6 +131,11 @@ $requestData = [
     ],
 ];
 
+// Image generation is the priciest call, so it gets the tightest cap.
+if (!aiQuotaAllows($conn, 'tryon', 15)) {
+    tryon_fail(AI_QUOTA_MESSAGE, 429);
+}
+
 $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'
     . TRYON_MODEL . ':generateContent?key=' . urlencode($apiKey);
 

@@ -13,6 +13,11 @@ $stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
+// The account was deleted while this session was still open: sign out.
+if (!$user) {
+    header('Location: logout.php');
+    exit();
+}
 
 // ---------------------------------------------------------------------
 // Saved addresses. These live in their own <form>s (HTML forbids nesting),
@@ -105,8 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['address_action'])) {
         if (!empty($new_password)) {
             if (!verifyPassword($current_password, $user['password'])) {
                 $error = 'Current password is incorrect!';
-            } elseif (strlen($new_password) < 6) {
-                $error = 'New password must be at least 6 characters!';
+            } elseif (!passwordMeetsRules($new_password)) {
+                $error = PASSWORD_RULE_MESSAGE;
             } else {
                 $hashed = hashPassword($new_password);
                 $pwd_stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
@@ -181,7 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['address_action'])) {
 
                         <div class="form-group mb-3">
                             <label class="form-label" style="font-size:0.82rem; font-weight:600;">New Password</label>
-                            <input type="password" class="form-control" name="new_password">
+                            <input type="password" class="form-control" name="new_password" minlength="8">
+                            <small class="text-muted" style="font-size:0.78rem;">At least 8 characters, with uppercase, lowercase, a number and a special character.</small>
                         </div>
 
                         <button type="submit" class="btn btn-dark" style="border-radius:12px; font-weight:600; padding:0.65rem 1.75rem;">

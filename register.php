@@ -39,12 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Zip code should be 4 digits.';
     } elseif ($password !== $confirm_password) {
         $error = 'Passwords do not match!';
-    } elseif (strlen($password) < 8
-        || !preg_match('/[A-Z]/', $password)
-        || !preg_match('/[a-z]/', $password)
-        || !preg_match('/\d/',   $password)
-        || !preg_match('/[^A-Za-z0-9]/', $password)) {
-        $error = 'Password must be at least 8 characters and contain uppercase, lowercase, number, and a special character.';
+    } elseif (!passwordMeetsRules($password)) {
+        $error = PASSWORD_RULE_MESSAGE;
     } else {
         // Check if email already exists
         $check_email = $conn->prepare("SELECT id FROM users WHERE email = ?");
@@ -81,7 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container my-5">
     <div class="form-container">
         <div class="form-brand">
-            <span class="brand-logo">TP</span>
+            <img class="brand-logo logo-light" src="images/logo/logo_sm.png" alt="Thread &amp; Press Hub logo">
+            <img class="brand-logo logo-dark" src="images/logo/logo_white_sm.png" alt="Thread &amp; Press Hub logo">
         </div>
         <h2 class="form-title">Create Account</h2>
         <p class="form-subtitle">Join Thread &amp; Press Hub and start shopping</p>
@@ -199,16 +196,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label class="form-label">Password *</label>
                 <div class="input-icon-wrapper">
                     <i class="fas fa-lock"></i>
-                    <input type="password" class="form-control" name="password" placeholder="Create a password" required>
+                    <input type="password" class="form-control" name="password" id="regPassword" placeholder="Create a password" required aria-describedby="pwRules">
+                    <button type="button" class="pw-toggle" aria-label="Show password"><i class="fas fa-eye"></i></button>
                 </div>
-                <small class="text-muted" style="font-size:0.78rem;">Min. 8 chars w/ uppercase, lowercase, number &amp; special character</small>
+                <div class="pw-rules" id="pwRules">
+                    <p class="pw-rules-title">Password must contain:</p>
+                    <ul>
+                        <li data-rule="len"><span class="pw-dot"><i class="fas fa-check"></i></span> At least 8 characters</li>
+                        <li data-rule="upper"><span class="pw-dot"><i class="fas fa-check"></i></span> One uppercase letter</li>
+                        <li data-rule="lower"><span class="pw-dot"><i class="fas fa-check"></i></span> One lowercase letter</li>
+                        <li data-rule="num"><span class="pw-dot"><i class="fas fa-check"></i></span> One number</li>
+                        <li data-rule="special"><span class="pw-dot"><i class="fas fa-check"></i></span> One special character (!@#$%)</li>
+                    </ul>
+                </div>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Confirm Password *</label>
                 <div class="input-icon-wrapper">
                     <i class="fas fa-lock"></i>
-                    <input type="password" class="form-control" name="confirm_password" placeholder="Confirm your password" required>
+                    <input type="password" class="form-control" name="confirm_password" id="regConfirm" placeholder="Confirm your password" required aria-describedby="pwMatch">
+                    <button type="button" class="pw-toggle" aria-label="Show password"><i class="fas fa-eye"></i></button>
+                </div>
+                <div class="pw-rules pw-match" id="pwMatch" hidden>
+                    <ul><li><span class="pw-dot"><i class="fas fa-check"></i></span> <span class="pw-match-text">Passwords match</span></li></ul>
                 </div>
             </div>
 
@@ -232,7 +243,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
+<style>
+.pw-rules { margin-top: 0.6rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border-light, #e8e8e8); border-radius: 12px; background: rgba(0,0,0,0.015); }
+.pw-rules-title { font-size: 0.78rem; font-weight: 600; margin: 0 0 0.4rem; color: #666; }
+.pw-rules ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.pw-rules li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #888; transition: color .2s; }
+.pw-dot { width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--border-medium, #d0d0d0); color: #fff; font-size: 0.6rem; transition: background .2s, transform .2s; }
+.pw-rules li.ok { color: var(--success, #22c55e); font-weight: 500; }
+.pw-rules li.ok .pw-dot { background: var(--success, #22c55e); transform: scale(1.1); }
+.pw-rules.touched li:not(.ok) .pw-dot { background: var(--danger, #ef4444); }
+.pw-rules.touched li:not(.ok) { color: var(--danger, #ef4444); }
+html.dark-mode .pw-rules { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); }
+html.dark-mode .pw-rules-title { color: #bbb; }
+html.dark-mode .pw-dot { background: #555; }
+.pw-match { padding: 0.5rem 0.9rem; }.pw-match li:not(.ok) .pw-dot i::before { content: "\f00d"; }
+</style>
+
 <script>
+(function () {
+    // Mirrors the server-side check in this file (any non-alphanumeric counts as special).
+    var rules = { len: /^.{8,}$/, upper: /[A-Z]/, lower: /[a-z]/, num: /\d/, special: /[^A-Za-z0-9]/ };
+    var input = document.getElementById('regPassword');
+    var box = document.getElementById('pwRules');
+    function check() {
+        var v = input.value;
+        Object.keys(rules).forEach(function (k) {
+            box.querySelector('[data-rule="' + k + '"]').classList.toggle('ok', rules[k].test(v));
+        });
+    }
+    input.addEventListener('input', check);
+    input.addEventListener('blur', function () { if (input.value) box.classList.add('touched'); });
+    check();
+
+    var confirm = document.getElementById('regConfirm');
+    var matchBox = document.getElementById('pwMatch');
+    var matchItem = matchBox.querySelector('li');
+    function checkMatch() {
+        var ok = confirm.value === input.value;
+        matchBox.hidden = !confirm.value;
+        matchItem.classList.toggle('ok', ok);
+        matchBox.querySelector('.pw-match-text').textContent = ok ? 'Passwords match' : 'Passwords do not match';
+    }
+    confirm.addEventListener('input', function () { matchBox.classList.add('touched'); checkMatch(); });
+    input.addEventListener('input', checkMatch);
+
+    document.querySelectorAll('.pw-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var field = btn.parentNode.querySelector('input');
+            var show = field.type === 'password';
+            field.type = show ? 'text' : 'password';
+            btn.querySelector('i').className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+    });
+})();
+
 document.getElementById('userType').addEventListener('change', function() {
     document.getElementById('pwdIdGroup').style.display = this.value === 'pwd' ? 'block' : 'none';
     document.getElementById('seniorIdGroup').style.display = this.value === 'senior' ? 'block' : 'none';

@@ -331,7 +331,7 @@ if ($successFlash !== null) {
         <div class="tracking-card-body">
             <div class="order-detail-grid">
                 <div>
-                    <img src="<?php echo htmlspecialchars($order['design_image']); ?>" class="order-detail-img" alt="Design" onerror="this.src='https://placehold.co/200x250/f0f0f0/999?text=Design'">
+                    <img src="<?php echo htmlspecialchars($order['design_image']); ?>" class="order-detail-img" alt="Design" onerror="this.onerror=null;this.src='https://placehold.co/200x250/f0f0f0/999?text=Design'">
                 </div>
                 <div>
                     <ul class="order-info-list">

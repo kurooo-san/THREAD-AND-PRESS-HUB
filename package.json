@@ -1,0 +1,8 @@
+{
+  "name": "thread-and-presshub",
+  "private": true,
+  "description": "Local dev server for Thread & Press Hub on http://localhost:3000",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

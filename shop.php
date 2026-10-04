@@ -4,13 +4,41 @@ redirectToLogin();
 
 $pageTitle = 'Shop';
 
+// Labels for the filters. Only these values are accepted from the URL, so
+// nothing a visitor types into ?gender= or ?category= reaches the page.
+$gender_labels = ['mens' => 'Men', 'womens' => 'Women', 'kids' => 'Kids'];
+$gender_titles = ['mens' => "Men's", 'womens' => "Women's", 'kids' => 'Kids'];
+$type_labels   = ['t-shirts' => 'T-Shirts', 'hoodies' => 'Hoodies', 'pants' => 'Pants',
+                  'dresses' => 'Dresses', 'accessories' => 'Accessories'];
+// Types that can be tried on in the Virtual Try-On (same list as try-on.php).
+$tryon_types   = ['t-shirts', 'hoodies', 'dresses', 'pants'];
+$sort_options  = ['newest', 'price-low', 'price-high', 'name'];
+
 // Get filter parameters from GET request
-$selected_gender = $_GET['gender'] ?? null;
-$selected_category = $_GET['category'] ?? null;
-$selected_color = $_GET['color'] ?? null;
-$selected_size = $_GET['size'] ?? null;
-$selected_sort = $_GET['sort'] ?? 'newest';
-$search_query   = isset($_GET['search']) ? trim($_GET['search']) : '';
+$selected_gender   = isset($gender_labels[$_GET['gender'] ?? '']) ? $_GET['gender'] : null;
+$selected_category = isset($type_labels[$_GET['category'] ?? '']) ? $_GET['category'] : null;
+$selected_color    = trim((string) ($_GET['color'] ?? '')) ?: null;
+$selected_size     = trim((string) ($_GET['size'] ?? '')) ?: null;
+$selected_sort     = in_array($_GET['sort'] ?? '', $sort_options, true) ? $_GET['sort'] : 'newest';
+$search_query      = isset($_GET['search']) ? trim((string) $_GET['search']) : '';
+
+/**
+ * A shop.php link that keeps every current filter, search and sort, with
+ * $changes applied (null removes one). Changing one filter used to drop the
+ * search and the sort.
+ */
+$shopUrl = function (array $changes = []) use ($selected_gender, $selected_category, $selected_color, $selected_size, $selected_sort, $search_query) {
+    $q = array_merge([
+        'search'   => $search_query,
+        'gender'   => $selected_gender,
+        'category' => $selected_category,
+        'color'    => $selected_color,
+        'size'     => $selected_size,
+        'sort'     => $selected_sort === 'newest' ? null : $selected_sort,
+    ], $changes);
+    $q = array_filter($q, fn($v) => $v !== null && $v !== '');
+    return 'shop.php' . ($q ? '?' . http_build_query($q) : '');
+};
 
 // Build the WHERE clause based on filters
 $where_clauses = ["status = 'active'"];
@@ -24,13 +52,13 @@ if ($search_query !== '') {
     $types .= "sss";
 }
 
-if ($selected_gender && in_array($selected_gender, ['mens', 'womens', 'kids'])) {
+if ($selected_gender) {
     $where_clauses[] = "gender = ?";
     $params[] = $selected_gender;
     $types .= "s";
 }
 
-if ($selected_category && in_array($selected_category, ['accessories', 't-shirts', 'hoodies', 'pants', 'dresses'])) {
+if ($selected_category) {
     $where_clauses[] = "category = ?";
     $params[] = $selected_category;
     $types .= "s";
@@ -123,30 +151,44 @@ $count_stmt->close();
 
 <div class="container py-4">
     <!-- Page Header -->
-    <div class="mb-4">
+    <div class="mb-4 shop-head">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb" style="font-size:0.85rem;">
                 <li class="breadcrumb-item"><a href="index.php" class="text-decoration-none">Home</a></li>
-                <li class="breadcrumb-item active">Shop</li>
+                <?php if ($selected_gender || $selected_category): ?>
+                    <li class="breadcrumb-item"><a href="shop.php" class="text-decoration-none">Shop</a></li>
+                <?php else: ?>
+                    <li class="breadcrumb-item active">Shop</li>
+                <?php endif; ?>
                 <?php if ($selected_gender): ?>
-                    <li class="breadcrumb-item active"><?php echo ucfirst(str_replace('s', "'s", $selected_gender)); ?></li>
-                <?php elseif ($selected_category): ?>
-                    <li class="breadcrumb-item active"><?php echo ucfirst(htmlspecialchars($selected_category)); ?></li>
+                    <?php if ($selected_category): ?>
+                        <li class="breadcrumb-item"><a href="<?php echo htmlspecialchars($shopUrl(['category' => null, 'color' => null, 'size' => null])); ?>" class="text-decoration-none"><?php echo $gender_labels[$selected_gender]; ?></a></li>
+                    <?php else: ?>
+                        <li class="breadcrumb-item active"><?php echo $gender_labels[$selected_gender]; ?></li>
+                    <?php endif; ?>
+                <?php endif; ?>
+                <?php if ($selected_category): ?>
+                    <li class="breadcrumb-item active"><?php echo $type_labels[$selected_category]; ?></li>
                 <?php endif; ?>
             </ol>
         </nav>
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <h1 style="font-weight:800; font-size:2rem; margin:0;">
-                <?php 
-                if ($search_query !== '')          echo 'Search: "' . htmlspecialchars($search_query) . '"';
-                elseif ($selected_gender === 'womens') echo "Women's Collection";
-                elseif ($selected_gender === 'mens')   echo "Men's Collection";
-                elseif ($selected_gender === 'kids')   echo "Kids Collection";
-                elseif ($selected_category === 'accessories') echo "Accessories";
-                else echo "All Products";
+                <?php
+                if ($search_query !== '') {
+                    echo 'Search: "' . htmlspecialchars($search_query) . '"';
+                } elseif ($selected_gender && $selected_category) {
+                    echo $gender_titles[$selected_gender] . ' ' . $type_labels[$selected_category];   // e.g. Men's Hoodies
+                } elseif ($selected_gender) {
+                    echo $gender_titles[$selected_gender] . ' Collection';
+                } elseif ($selected_category) {
+                    echo $type_labels[$selected_category];
+                } else {
+                    echo 'All Products';
+                }
                 ?>
             </h1>
-            <a href="custom-design.php" class="btn btn-dark" style="border-radius:12px; padding:0.6rem 1.5rem; font-weight:600; font-size:0.9rem; display:flex; align-items:center; gap:0.5rem;">
+            <a href="custom-design.php" class="btn btn-dark shop-design-cta" style="border-radius:12px; padding:0.6rem 1.5rem; font-weight:600; font-size:0.9rem; display:flex; align-items:center; gap:0.5rem;">
                 <i class="fas fa-palette"></i> Design Your Apparel
             </a>
         </div>
@@ -155,28 +197,40 @@ $count_stmt->close();
     <div class="row">
         <!-- Sidebar Filters -->
         <div class="col-lg-3 mb-4">
-            <div class="shop-sidebar sticky-top" style="top: 90px;">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 style="font-weight:700; margin:0;">Filters</h5>
-                    <?php if ($selected_gender || $selected_category || $selected_color || $selected_size): ?>
-                        <a href="shop.php" class="text-decoration-none small">Clear all</a>
-                    <?php endif; ?>
+            <?php $activeFilterCount = count(array_filter([$selected_gender, $selected_category, $selected_color, $selected_size])); ?>
+            <div class="shop-sidebar sticky-top" id="shopSidebar" style="top: 90px;">
+                <div class="d-flex justify-content-between align-items-center mb-3 shop-filter-head">
+                    <h5 style="font-weight:700; margin:0;">Filters<?php if ($activeFilterCount): ?> <span class="shop-filter-count"><?php echo $activeFilterCount; ?></span><?php endif; ?></h5>
+                    <div class="d-flex align-items-center gap-3">
+                        <?php if ($activeFilterCount): ?>
+                            <a href="shop.php" class="text-decoration-none small">Clear all</a>
+                        <?php endif; ?>
+                        <!-- Phones and tablets: filters fold away so products come first. -->
+                        <button type="button" class="shop-filter-toggle d-lg-none" aria-expanded="false" aria-controls="shopSidebar" onclick="toggleShopFilters(this)">
+                            <span>Show</span> <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Categories -->
+                <!-- Shop for: who it is for. Combines with Type. -->
                 <div class="filter-section">
-                    <h6>Categories</h6>
-                    <?php
-                    $colorSizeParams = '';
-                    if ($selected_color) $colorSizeParams .= '&color=' . urlencode($selected_color);
-                    if ($selected_size) $colorSizeParams .= '&size=' . urlencode($selected_size);
-                    ?>
-                    <div class="filter-links">
-                        <a href="shop.php<?php echo $colorSizeParams ? '?' . ltrim($colorSizeParams, '&') : ''; ?>" class="filter-link <?php echo !$selected_gender && !$selected_category ? 'active' : ''; ?>">All Products</a>
-                        <a href="?gender=mens<?php echo $colorSizeParams; ?>" class="filter-link <?php echo $selected_gender === 'mens' ? 'active' : ''; ?>">Men</a>
-                        <a href="?gender=womens<?php echo $colorSizeParams; ?>" class="filter-link <?php echo $selected_gender === 'womens' ? 'active' : ''; ?>">Women</a>
-                        <a href="?gender=kids<?php echo $colorSizeParams; ?>" class="filter-link <?php echo $selected_gender === 'kids' ? 'active' : ''; ?>">Kids</a>
-                        <a href="?category=accessories<?php echo $colorSizeParams; ?>" class="filter-link <?php echo $selected_category === 'accessories' ? 'active' : ''; ?>">Accessories</a>
+                    <h6>Shop for</h6>
+                    <div class="filter-pills">
+                        <a href="<?php echo htmlspecialchars($shopUrl(['gender' => null])); ?>" class="filter-pill <?php echo !$selected_gender ? 'active' : ''; ?>">Everyone</a>
+                        <?php foreach ($gender_labels as $g => $label): ?>
+                            <a href="<?php echo htmlspecialchars($shopUrl(['gender' => $g])); ?>" class="filter-pill <?php echo $selected_gender === $g ? 'active' : ''; ?>"><?php echo $label; ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Type: what it is. Combines with Shop for (e.g. Men + Hoodies). -->
+                <div class="filter-section">
+                    <h6>Type</h6>
+                    <div class="filter-pills">
+                        <a href="<?php echo htmlspecialchars($shopUrl(['category' => null])); ?>" class="filter-pill <?php echo !$selected_category ? 'active' : ''; ?>">All types</a>
+                        <?php foreach ($type_labels as $t => $label): ?>
+                            <a href="<?php echo htmlspecialchars($shopUrl(['category' => $t])); ?>" class="filter-pill <?php echo $selected_category === $t ? 'active' : ''; ?>"><?php echo $label; ?></a>
+                        <?php endforeach; ?>
                     </div>
                 </div>
 
@@ -186,10 +240,11 @@ $count_stmt->close();
                     <h6>Colors</h6>
                     <div class="d-flex flex-wrap gap-2">
                         <?php foreach ($all_colors as $color): ?>
-                            <span class="color-swatch <?php echo $selected_color === $color ? 'active' : ''; ?>"
-                                  style="background-color: <?php echo getColorCode($color); ?>;<?php echo $selected_color === $color ? ' outline:3px solid var(--accent-green, #2ECC40); outline-offset:2px; transform:scale(1.15);' : ''; ?>"
-                                  title="<?php echo htmlspecialchars($color); ?>"
-                                  onclick="filterByColor('<?php echo htmlspecialchars($color); ?>')"></span>
+                            <button type="button" class="color-swatch <?php echo $selected_color === $color ? 'active' : ''; ?>"
+                                  style="background-color: <?php echo getColorCode($color); ?>;"
+                                  title="<?php echo htmlspecialchars($color); ?>" aria-label="<?php echo htmlspecialchars($color); ?>"
+                                  aria-pressed="<?php echo $selected_color === $color ? 'true' : 'false'; ?>"
+                                  onclick="filterByColor(<?php echo htmlspecialchars(json_encode((string) $color), ENT_QUOTES); ?>)"></button>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -202,8 +257,8 @@ $count_stmt->close();
                     <div class="d-flex flex-wrap gap-2">
                         <?php foreach ($all_sizes as $size): ?>
                             <button type="button" class="size-filter-btn <?php echo $selected_size === $size ? 'active' : ''; ?>"
-                                    onclick="filterBySize('<?php echo $size; ?>')">
-                                <?php echo $size; ?>
+                                    onclick="filterBySize(<?php echo htmlspecialchars(json_encode((string) $size), ENT_QUOTES); ?>)">
+                                <?php echo htmlspecialchars($size); ?>
                             </button>
                         <?php endforeach; ?>
                     </div>
@@ -227,18 +282,24 @@ $count_stmt->close();
                 </div>
             </div>
 
-            <?php if ($selected_color || $selected_size): ?>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <?php if ($selected_color): ?>
-                    <span class="badge rounded-pill d-flex align-items-center gap-1" style="background:var(--accent-green, #2ECC40); font-size:0.78rem; padding:0.4rem 0.8rem; cursor:pointer;" onclick="filterByColor('<?php echo htmlspecialchars($selected_color); ?>')">
-                        <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:<?php echo getColorCode($selected_color); ?>; border:1px solid rgba(255,255,255,0.5);"></span>
-                        <?php echo htmlspecialchars($selected_color); ?> <i class="fas fa-times ms-1" style="font-size:0.65rem;"></i>
-                    </span>
-                <?php endif; ?>
-                <?php if ($selected_size): ?>
-                    <span class="badge rounded-pill d-flex align-items-center gap-1" style="background:var(--accent-green, #2ECC40); font-size:0.78rem; padding:0.4rem 0.8rem; cursor:pointer;" onclick="filterBySize('<?php echo htmlspecialchars($selected_size); ?>')">
-                        Size: <?php echo htmlspecialchars($selected_size); ?> <i class="fas fa-times ms-1" style="font-size:0.65rem;"></i>
-                    </span>
+            <?php
+            $chips = [];
+            if ($search_query !== '')  $chips[] = ['“' . $search_query . '”', ['search' => null], null];
+            if ($selected_gender)      $chips[] = [$gender_labels[$selected_gender], ['gender' => null], null];
+            if ($selected_category)    $chips[] = [$type_labels[$selected_category], ['category' => null], null];
+            if ($selected_color)       $chips[] = [$selected_color, ['color' => null], getColorCode($selected_color)];
+            if ($selected_size)        $chips[] = ['Size ' . $selected_size, ['size' => null], null];
+            ?>
+            <?php if ($chips): ?>
+            <div class="active-filters">
+                <?php foreach ($chips as [$label, $remove, $swatch]): ?>
+                    <a class="active-chip" href="<?php echo htmlspecialchars($shopUrl($remove)); ?>" title="Remove this filter">
+                        <?php if ($swatch): ?><span class="active-chip-swatch" style="background:<?php echo $swatch; ?>;"></span><?php endif; ?>
+                        <?php echo htmlspecialchars($label); ?> <i class="fas fa-xmark" aria-hidden="true"></i>
+                    </a>
+                <?php endforeach; ?>
+                <?php if (count($chips) > 1): ?>
+                    <a class="active-chip-clear" href="shop.php">Clear all</a>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
@@ -254,8 +315,13 @@ $count_stmt->close();
                                     <img src="<?php echo htmlspecialchars(productThumb($product['image'])); ?>" loading="lazy" decoding="async"
                                          alt="<?php echo htmlspecialchars($product['name']); ?>"
                                          class="product-image"
-                                         onerror="this.src='https://placehold.co/300x380/f0f0f0/999?text=<?php echo urlencode($product['name']); ?>'">
+                                         onerror="this.onerror=null;this.src='https://placehold.co/300x380/f0f0f0/999?text=<?php echo urlencode($product['name']); ?>'">
                                     </a>
+                                    <?php if (in_array($product['category'], $tryon_types, true)): ?>
+                                    <a class="tryon-chip" href="try-on.php?product=<?php echo (int)$product['id']; ?>" title="See it on you with the Virtual Try-On">
+                                        <i class="fas fa-camera" aria-hidden="true"></i> Try On
+                                    </a>
+                                    <?php endif; ?>
                                     <div class="product-actions">
                                         <button class="product-action-btn" title="Quick Add" 
                                                 onclick="quickAddModal(<?php echo (int)$product['id']; ?>, '<?php echo htmlspecialchars(addslashes($product['name']), ENT_QUOTES); ?>', <?php echo (float)$product['price']; ?>, '<?php echo htmlspecialchars(addslashes($product['available_colors']), ENT_QUOTES); ?>', '<?php echo htmlspecialchars(addslashes($product['available_sizes']), ENT_QUOTES); ?>')">
@@ -284,31 +350,27 @@ $count_stmt->close();
                                         }
                                     ?>
                                     
-                                    <!-- Inline Color/Size Selectors -->
-                                    <div class="mt-2 d-flex flex-wrap gap-1">
-                                        <?php 
-                                        $product_colors = array_map('trim', explode(',', $product['available_colors']));
-                                        foreach ($product_colors as $color): 
+                                    <!-- Inline Color/Size Selectors (look: .color-option / .size-option in shop-modern.css) -->
+                                    <div class="card-options">
+                                        <?php
+                                        $product_colors = array_filter(array_map('trim', explode(',', (string) $product['available_colors'])));
+                                        foreach ($product_colors as $color):
                                         ?>
-                                            <span class="color-option" data-product="<?php echo $product['id']; ?>" data-color="<?php echo htmlspecialchars($color); ?>"
-                                                  style="display:inline-block; width:16px; height:16px; border-radius:50%; background-color:<?php echo getColorCode($color); ?>; border:2px solid #e0e0e0; cursor:pointer;"
+                                            <span class="color-option" data-product="<?php echo (int)$product['id']; ?>" data-color="<?php echo htmlspecialchars($color); ?>"
+                                                  style="background-color:<?php echo getColorCode($color); ?>;"
                                                   title="<?php echo htmlspecialchars($color); ?>"></span>
                                         <?php endforeach; ?>
                                     </div>
-                                    <div class="mt-1 d-flex flex-wrap gap-1">
-                                        <?php 
-                                        $product_sizes = array_map('trim', explode(',', $product['available_sizes']));
-                                        $product_sizes = array_filter($product_sizes);
-                                        if (!empty($product_sizes)):
-                                        foreach ($product_sizes as $size): 
+                                    <div class="card-options">
+                                        <?php
+                                        $product_sizes = array_filter(array_map('trim', explode(',', (string) $product['available_sizes'])));
+                                        foreach ($product_sizes as $size):
                                         ?>
-                                            <span class="size-option" data-product="<?php echo $product['id']; ?>" data-size="<?php echo htmlspecialchars($size); ?>"
-                                                  style="font-size:0.7rem; padding:2px 7px; border-radius:4px; background:#f0f0f0; cursor:pointer; display:inline-block;">
-                                                  <?php echo htmlspecialchars($size); ?></span>
-                                        <?php endforeach; endif; ?>
+                                            <span class="size-option" data-product="<?php echo (int)$product['id']; ?>" data-size="<?php echo htmlspecialchars($size); ?>"><?php echo htmlspecialchars($size); ?></span>
+                                        <?php endforeach; ?>
                                     </div>
-                                    
-                                    <div class="mt-2">
+
+                                    <div class="mt-2 card-buttons">
                                         <?php
                                         $isOOS = isset($product['stock']) && (int)$product['stock'] <= 0;
                                         // Built once and reused by both buttons so they always act on the
@@ -317,14 +379,13 @@ $count_stmt->close();
                                                . htmlspecialchars(addslashes($product['name']), ENT_QUOTES)
                                                . "', " . (float)$product['price'] . ", 1";
                                         ?>
-                                        <button type="button" class="btn btn-dark btn-sm w-100" style="border-radius:8px; font-size:0.8rem;<?php echo $isOOS ? ' opacity:0.5; cursor:not-allowed;' : ''; ?>"
+                                        <button type="button" class="btn btn-dark btn-sm w-100 card-btn"
                                                 <?php echo $isOOS ? 'disabled' : ''; ?>
                                                 onclick="<?php echo $isOOS ? "showToast('Out of stock','error')" : "addToCart($pArgs)"; ?>">
                                             <i class="fas fa-shopping-bag me-1"></i> <?php echo $isOOS ? 'Out of Stock' : 'Add to Cart'; ?>
                                         </button>
                                         <?php if (!$isOOS): ?>
-                                        <button type="button" class="btn btn-sm w-100 mt-1"
-                                                style="border-radius:8px; font-size:0.8rem; font-weight:600; background:var(--accent, #c8a96e); border:1px solid var(--accent, #c8a96e); color:#16140f;"
+                                        <button type="button" class="btn btn-sm w-100 mt-1 card-btn card-btn-buy"
                                                 onclick="buyNowFromCard(<?php echo $pArgs; ?>)">
                                             <i class="fas fa-bolt me-1"></i> Buy Now
                                         </button>
@@ -349,6 +410,41 @@ $count_stmt->close();
     </div>
 </div>
 
+<!-- Quick Add: the bag button on each card opens this sheet (a bottom sheet
+     on phones, a dialog on desktop). Colour/size options come from the card
+     itself and the add goes through addToCart()/buyNowFromCard(). -->
+<div class="app-sheet" id="quickAddSheet" role="dialog" aria-modal="true" aria-labelledby="qaName" hidden>
+    <div class="app-sheet-backdrop" data-sheet-close></div>
+    <div class="app-sheet-panel">
+        <div class="app-sheet-handle" aria-hidden="true"></div>
+        <div class="qa-product">
+            <img id="qaImg" src="" alt="">
+            <div>
+                <div class="qa-name" id="qaName"></div>
+                <div class="qa-price" id="qaPrice"></div>
+            </div>
+        </div>
+        <div id="qaColorsWrap">
+            <div class="app-sheet-label">Colour — <span id="qaColorName">choose one</span></div>
+            <div class="qa-options" id="qaColors"></div>
+        </div>
+        <div id="qaSizesWrap">
+            <div class="app-sheet-label">Size</div>
+            <div class="qa-options" id="qaSizes"></div>
+        </div>
+        <div class="app-sheet-label">Quantity</div>
+        <div class="qa-qty">
+            <button type="button" onclick="qaStep(-1)" aria-label="Decrease quantity">&minus;</button>
+            <span id="qaQty">1</span>
+            <button type="button" onclick="qaStep(1)" aria-label="Increase quantity">+</button>
+        </div>
+        <div class="qa-actions">
+            <button type="button" class="app-btn app-btn-primary" onclick="qaSubmit('cart')"><i class="fas fa-bag-shopping"></i> Add to Cart</button>
+            <button type="button" class="app-btn app-btn-accent" onclick="qaSubmit('buy')"><i class="fas fa-bolt"></i> Buy Now</button>
+        </div>
+    </div>
+</div>
+
 <script src="js/buy-now.js"></script>
 <script>
 // Fallback showToast function in case footer hasn't loaded
@@ -363,6 +459,12 @@ if (typeof showToast === 'undefined') {
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
     }
+}
+
+function toggleShopFilters(btn) {
+    const open = document.getElementById('shopSidebar').classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.querySelector('span').textContent = open ? 'Hide' : 'Show';
 }
 
 function filterByColor(color) {
@@ -395,95 +497,38 @@ function sortProducts(sort) {
     window.location.href = '?' + params.toString();
 }
 
-// handle color/size selection
+// Colour / size choice on a card. The highlight is the .selected class
+// (styled in shop-modern.css); clicking the chosen one again clears it.
 function initOptionSelection() {
-    console.log('Initializing option selection...');
-    
-    // Setup color options
-    const colorOptions = document.querySelectorAll('.color-option');
-    console.log('Found color options:', colorOptions.length);
-    
-    colorOptions.forEach(el => {
-        el.addEventListener('click', function(e) {
-            e.preventDefault();
-            const pid = this.dataset.product;
-            const color = this.dataset.color;
-            console.log('Color clicked - Product:', pid, 'Color:', color);
-            
-            if (this.classList.contains('selected')) {
-                this.classList.remove('selected');
-                console.log('Color deselected:', color);
-            } else {
-                // Select this color and deselect others
-                document.querySelectorAll(`.color-option[data-product="${pid}"]`).forEach(e => {
-                    e.classList.remove('selected');
-                    e.style.border = '2px solid #999';
-                    e.style.transform = 'scale(1)';
-                });
-                this.classList.add('selected');
-                this.style.border = '3px solid var(--accent-green)';
-                this.style.transform = 'scale(1.1)';
-                console.log('Color selected:', color);
-            }
+    document.querySelectorAll('.color-option, .size-option').forEach(el => {
+        // Reachable and usable from the keyboard too (Tab, then Enter/Space).
+        el.tabIndex = 0;
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-label', el.classList.contains('color-option') ? 'Colour ' + el.dataset.color : 'Size ' + el.dataset.size);
+        el.setAttribute('aria-pressed', 'false');
+        el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
         });
-    });
-    
-    // Setup size options
-    const sizeOptions = document.querySelectorAll('.size-option');
-    console.log('Found size options:', sizeOptions.length);
-    
-    sizeOptions.forEach(el => {
-        el.addEventListener('click', function(e) {
+        el.addEventListener('click', function (e) {
             e.preventDefault();
-            const pid = this.dataset.product;
-            const size = this.dataset.size;
-            console.log('Size clicked - Product:', pid, 'Size:', size);
-            
-            if (this.classList.contains('selected')) {
-                this.classList.remove('selected');
-                this.style.backgroundColor = '#f0f0f0';
-                this.style.color = '#000';
-                console.log('Size deselected:', size);
-            } else {
-                // Select this size and deselect others
-                document.querySelectorAll(`.size-option[data-product="${pid}"]`).forEach(e => {
-                    e.classList.remove('selected');
-                    e.style.backgroundColor = '#f0f0f0';
-                    e.style.color = '#000';
-                });
+            const group = this.classList.contains('color-option') ? '.color-option' : '.size-option';
+            const wasSelected = this.classList.contains('selected');
+            document.querySelectorAll(`${group}[data-product="${this.dataset.product}"]`).forEach(o => {
+                o.classList.remove('selected');
+                o.setAttribute('aria-pressed', 'false');
+            });
+            if (!wasSelected) {
                 this.classList.add('selected');
-                this.style.backgroundColor = 'var(--accent-green)';
-                this.style.color = 'white';
-                this.style.fontWeight = 'bold';
-                console.log('Size selected:', size);
+                this.setAttribute('aria-pressed', 'true');
             }
         });
     });
 }
 
-/**
- * Put one card's colour/size back to unselected.
- *
- * The click handlers paint the highlight with INLINE styles (border and
- * transform on the swatch, background/colour/weight on the size), so those
- * are reset here too -- removing the .selected class on its own would leave
- * the highlight painted on screen.
- */
+/** Put one card's colour/size back to unselected. */
 function clearCardSelection(productId) {
-    document.querySelectorAll(`.color-option[data-product="${productId}"]`).forEach(el => {
-        el.classList.remove('selected');
-        // #e0e0e0 is what the markup paints an untouched swatch. (The older
-        // deselect-by-clicking path uses #999, which leaves the card looking
-        // subtly darker than its neighbours.)
-        el.style.border = '2px solid #e0e0e0';
-        el.style.transform = 'scale(1)';
-    });
-    document.querySelectorAll(`.size-option[data-product="${productId}"]`).forEach(el => {
-        el.classList.remove('selected');
-        el.style.backgroundColor = '#f0f0f0';
-        el.style.color = '#000';
-        el.style.fontWeight = 'normal';
-    });
+    document.querySelectorAll(`.color-option[data-product="${productId}"], .size-option[data-product="${productId}"]`)
+        .forEach(el => { el.classList.remove('selected'); el.setAttribute('aria-pressed', 'false'); });
 }
 
 /**
@@ -544,8 +589,11 @@ function addToCart(productId, productName, price, quantity) {
         let color = pick.color;
         let size  = pick.size;
 
-        // Using localStorage to store cart data
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        // Using localStorage to store cart data. A damaged cart is treated as
+        // empty, or nothing could ever be added again.
+        let cart = [];
+        try { cart = JSON.parse(localStorage.getItem('cart')) || []; } catch (e) { cart = []; }
+        if (!Array.isArray(cart)) cart = [];
         
         // Check if same configuration already in cart
         let existingItem = cart.find(item => item.id == productId && item.color === color && item.size === size);
@@ -585,8 +633,11 @@ function addToCart(productId, productName, price, quantity) {
 document.addEventListener('DOMContentLoaded', initOptionSelection);
 
 function updateCartCount() {
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    let count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    // A damaged 'cart' in storage must not break the page (this runs on load).
+    let cart = [];
+    try { cart = JSON.parse(localStorage.getItem('cart')) || []; } catch (e) { cart = []; }
+    if (!Array.isArray(cart)) cart = [];
+    let count = cart.reduce((sum, item) => sum + (parseInt(item.quantity, 10) || 0), 0);
     // update any inline badge near cart icon
     let badge = document.querySelector('.nav-link i.fa-shopping-cart + .badge');
     if (badge) {
@@ -610,6 +661,90 @@ function updateCartCount() {
 
 // Update cart count on page load
 updateCartCount();
+
+// ===== Quick Add sheet =====
+let qa = null;
+
+function quickAddModal(productId, productName, price) {
+    const colorEls = [...document.querySelectorAll(`.color-option[data-product="${productId}"]`)];
+    const sizeEls  = [...document.querySelectorAll(`.size-option[data-product="${productId}"]`)];
+    const card = (colorEls[0] || sizeEls[0] || document.body).closest('.product-card');
+    const cardAdd = card ? card.querySelector('.product-body button.btn-dark') : null;
+    if (cardAdd && cardAdd.disabled) { showToast('Out of stock', 'error'); return; }
+
+    qa = { id: productId, name: productName, price: price, color: '', size: '', qty: 1,
+           hasColors: colorEls.length > 0, hasSizes: sizeEls.length > 0 };
+
+    const img = card ? card.querySelector('img.product-image') : null;
+    document.getElementById('qaImg').src = img ? img.src : '';
+    document.getElementById('qaName').textContent = productName;
+    document.getElementById('qaPrice').textContent = '₱' + Number(price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('qaQty').textContent = '1';
+    document.getElementById('qaColorName').textContent = 'choose one';
+
+    const colors = document.getElementById('qaColors');
+    colors.innerHTML = '';
+    colorEls.forEach(src => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'qa-color';
+        b.style.background = src.style.backgroundColor;
+        b.title = src.dataset.color;
+        b.setAttribute('aria-label', src.dataset.color);
+        b.onclick = () => {
+            qa.color = src.dataset.color;
+            colors.querySelectorAll('.qa-color').forEach(x => x.classList.toggle('is-selected', x === b));
+            document.getElementById('qaColorName').textContent = src.dataset.color;
+        };
+        colors.appendChild(b);
+    });
+    document.getElementById('qaColorsWrap').hidden = !qa.hasColors;
+
+    const sizes = document.getElementById('qaSizes');
+    sizes.innerHTML = '';
+    sizeEls.forEach(src => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'qa-size';
+        b.textContent = src.dataset.size;
+        b.onclick = () => {
+            qa.size = src.dataset.size;
+            sizes.querySelectorAll('.qa-size').forEach(x => x.classList.toggle('is-selected', x === b));
+        };
+        sizes.appendChild(b);
+    });
+    document.getElementById('qaSizesWrap').hidden = !qa.hasSizes;
+
+    AppSheet.open('quickAddSheet');
+}
+
+function qaStep(delta) {
+    if (!qa) return;
+    qa.qty = Math.max(1, Math.min(99, qa.qty + delta));
+    document.getElementById('qaQty').textContent = qa.qty;
+}
+
+// Copy the sheet's choice onto the card, then use the card's own add/buy so
+// validation and the cart format stay in one place.
+function qaSubmit(mode) {
+    if (!qa) return;
+    const missing = [];
+    if (qa.hasColors && !qa.color) missing.push('color');
+    if (qa.hasSizes && !qa.size) missing.push('size');
+    if (missing.length) { showToast(`Please select ${missing.join(' and ')}`, 'error'); return; }
+
+    clearCardSelection(qa.id);
+    if (qa.color) document.querySelector(`.color-option[data-product="${qa.id}"][data-color="${CSS.escape(qa.color)}"]`)?.classList.add('selected');
+    if (qa.size) document.querySelector(`.size-option[data-product="${qa.id}"][data-size="${CSS.escape(qa.size)}"]`)?.classList.add('selected');
+
+    const item = qa;
+    AppSheet.close();
+    if (mode === 'buy') {
+        buyNowFromCard(item.id, item.name, item.price, item.qty);
+    } else {
+        addToCart(item.id, item.name, item.price, item.qty);
+    }
+}
 </script>
 
 <?php 

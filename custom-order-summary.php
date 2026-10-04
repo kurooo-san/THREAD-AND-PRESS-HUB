@@ -7,7 +7,7 @@ $pageTitle = 'Custom Order Summary';
 // Run migration if tables don't exist
 $tableCheck = $conn->query("SHOW TABLES LIKE 'custom_orders'");
 if ($tableCheck->num_rows === 0) {
-    $migrationSQL = file_get_contents(__DIR__ . '/migrate_custom_orders.sql');
+    $migrationSQL = file_get_contents(__DIR__ . '/database/migrate_custom_orders.sql');
     if ($migrationSQL) {
         $conn->multi_query($migrationSQL);
         while ($conn->next_result()) {;}
@@ -32,13 +32,19 @@ if (!$design) {
     exit();
 }
 
-// Get parameters from URL
-// Validate against every configured apparel type, not just three of them.
+// A cancelled design, or one waiting on changes, cannot be ordered (the
+// "My Designs" card hides the button; this stops a hand-typed URL too).
+if (in_array(strtolower((string) $design['status']), ['cancelled', 'revision'], true)) {
+    header("Location: custom-design.php");
+    exit();
+}
+
+// The apparel type is what was designed, never the URL's ?type=: that would
+// let a hoodie design be ordered at the t-shirt price.
 require_once __DIR__ . '/includes/apparel-config.php';
-$validApparelTypes = getApparelTypeKeys();
-$apparelType = in_array($_GET['type'] ?? '', $validApparelTypes, true)
-    ? $_GET['type']
-    : (in_array($design['product_type'], $validApparelTypes, true) ? $design['product_type'] : 'tshirt');
+$apparelConfig = getApparelConfig();
+$apparelType = isset($apparelConfig[$design['product_type']]) ? $design['product_type'] : 'tshirt';
+// Get the remaining choices from the URL
 $apparelColor = preg_match('/^#[0-9A-Fa-f]{6}$/', $_GET['color'] ?? '') ? $_GET['color'] : '#FFFFFF';
 $size = in_array($_GET['size'] ?? '', ['XS', 'S', 'M', 'L', 'XL', '2XL']) ? $_GET['size'] : 'M';
 $quantity = max(1, min(100, intval($_GET['qty'] ?? 1)));
@@ -63,21 +69,25 @@ if ($discountType !== 'regular' && $discountType !== $actual_user_type) {
 require_once __DIR__ . '/includes/apparel-config.php';
 
 $designData = json_decode($design['design_data'] ?? '{}', true);
+if (!is_array($designData)) $designData = [];
 $colorsUsed = max(1, intval($designData['colorsUsed'] ?? 1));
+$extraPrints = designExtraPrints($designData);   // sleeves / logo, from the saved print files
 
-$price = customDesignPrice($apparelType, $printSize, $quantity, $colorsUsed, $discountType);
+$price = customDesignPrice($apparelType, $printSize, $quantity, $colorsUsed, $discountType,
+                           $extraPrints['sleeves'], $extraPrints['logo']);
+$extraPrices = getExtraPrintPrices();
 
 $basePrice       = $price['base'];
 $printCost       = $price['print'];
 $colorCost       = $price['color'];
+$extrasCost      = $price['extras'];
 $unitPrice       = $price['unit'];
 $subtotal        = $price['subtotal'];
 $discountPercent = $price['discountRate'];
 $discountAmount  = $price['discount'];
 $totalPrice      = $price['total'];
 
-$typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
-$typeName = $typeNames[$apparelType] ?? 'T-Shirt';
+$typeName = $apparelConfig[$apparelType]['label'];
 $printSizeNames = ['small' => 'Small (4×4")', 'medium' => 'Medium (8×8")', 'large' => 'Large (12×12")', 'full' => 'Full Print'];
 
 // Handle order creation
@@ -85,6 +95,9 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order'])) {
     $stmt = $conn->prepare("INSERT INTO custom_orders (user_id, design_id, design_image, product_type, apparel_color, size, quantity, base_price, print_cost, color_cost, subtotal, discount_type, discount_amount, total_price, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_payment')");
     $notes = trim($_POST['notes'] ?? $design['notes'] ?? '');
+    // custom_orders has no column for sleeve/logo prints; they are print work,
+    // so they go into print_cost and base + print + colour still adds up to the unit price.
+    $printCostStored = $printCost + $extrasCost;
     $stmt->bind_param("iissssiddddsdds",
         $_SESSION['user_id'],
         $designId,
@@ -94,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order'])) {
         $size,
         $quantity,
         $basePrice,
-        $printCost,
+        $printCostStored,
         $colorCost,
         $subtotal,
         $discountType,
@@ -369,12 +382,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order'])) {
             <div class="design-preview-row">
                 <div>
                     <div style="text-align:center; margin-bottom:0.3rem; font-weight:600; font-size:0.8rem; color:#888;">FRONT</div>
-                    <img src="<?php echo htmlspecialchars($design['design_image']); ?>" class="design-preview-img" alt="Your Design (Front)" onerror="this.src='https://placehold.co/300x400/f0f0f0/999?text=Design'">
+                    <img src="<?php echo htmlspecialchars($design['design_image']); ?>" class="design-preview-img" alt="Your Design (Front)" onerror="this.onerror=null;this.src='https://placehold.co/300x400/f0f0f0/999?text=Design'">
                 </div>
                 <?php if (!empty($design['design_image_back'])): ?>
                 <div>
                     <div style="text-align:center; margin-bottom:0.3rem; font-weight:600; font-size:0.8rem; color:#888;">BACK</div>
-                    <img src="<?php echo htmlspecialchars($design['design_image_back']); ?>" class="design-preview-img" alt="Your Design (Back)" onerror="this.src='https://placehold.co/300x400/f0f0f0/999?text=Back'">
+                    <img src="<?php echo htmlspecialchars($design['design_image_back']); ?>" class="design-preview-img" alt="Your Design (Back)" onerror="this.onerror=null;this.src='https://placehold.co/300x400/f0f0f0/999?text=Back'">
                 </div>
                 <?php endif; ?>
                 <div>
@@ -440,6 +453,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order'])) {
                 <li>
                     <span>Extra Colors (<?php echo $colorsUsed - 1; ?> × ₱25)</span>
                     <span>₱<?php echo number_format($colorCost, 2); ?></span>
+                </li>
+                <?php endif; ?>
+                <?php if ($extraPrints['sleeves'] > 0): ?>
+                <li>
+                    <span>Sleeve Prints (<?php echo $extraPrints['sleeves']; ?> × ₱<?php echo number_format($extraPrices['sleeve']); ?>)</span>
+                    <span>₱<?php echo number_format($extraPrints['sleeves'] * $extraPrices['sleeve'], 2); ?></span>
+                </li>
+                <?php endif; ?>
+                <?php if ($extraPrints['logo']): ?>
+                <li>
+                    <span>Logo Print</span>
+                    <span>₱<?php echo number_format($extraPrices['logo'], 2); ?></span>
                 </li>
                 <?php endif; ?>
                 <li>

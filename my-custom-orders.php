@@ -7,7 +7,7 @@ $pageTitle = 'My Custom Orders';
 // Run migration if needed
 $tableCheck = $conn->query("SHOW TABLES LIKE 'custom_orders'");
 if ($tableCheck->num_rows === 0) {
-    $migrationSQL = file_get_contents(__DIR__ . '/migrate_custom_orders.sql');
+    $migrationSQL = file_get_contents(__DIR__ . '/database/migrate_custom_orders.sql');
     if ($migrationSQL) {
         $conn->multi_query($migrationSQL);
         while ($conn->next_result()) {;}
@@ -172,7 +172,7 @@ $statusLabels = [
             <div class="custom-order-card">
                 <div class="custom-order-row">
                     <div>
-                        <img src="<?php echo htmlspecialchars($o['design_image']); ?>" class="custom-order-img" alt="Design" onerror="this.src='https://placehold.co/80x80/f0f0f0/999?text=Design'">
+                        <img src="<?php echo htmlspecialchars($o['design_image']); ?>" class="custom-order-img" alt="Design" onerror="this.onerror=null;this.src='https://placehold.co/80x80/f0f0f0/999?text=Design'">
                     </div>
                     <div class="custom-order-info">
                         <h6>Custom <?php echo htmlspecialchars($typeNames[$o['product_type']] ?? 'Apparel'); ?></h6>

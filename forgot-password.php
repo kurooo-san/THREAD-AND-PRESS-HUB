@@ -10,17 +10,32 @@ $success = '';
 // Run migration if table doesn't exist
 $tableCheck = $conn->query("SHOW TABLES LIKE 'password_resets'");
 if ($tableCheck->num_rows === 0) {
-    $migrationSQL = file_get_contents(__DIR__ . '/migrate_password_reset.sql');
+    $migrationSQL = file_get_contents(__DIR__ . '/database/migrate_password_reset.sql');
     if ($migrationSQL) {
         $conn->multi_query($migrationSQL);
         while ($conn->next_result()) {;}
     }
 }
 
+// Same reply whether or not the email is registered, so the form cannot be
+// used to find out who has an account.
+$genericReply = 'If an account with that email exists, a password reset link has been sent. Please check your inbox.';
+
+// The reset link is only ever shown on the page to someone browsing from this
+// machine (XAMPP without SMTP). It used to be shown to anyone whenever the email
+// failed to send, which let a stranger reset any account, the admin's included.
+// Behind Railway's proxy REMOTE_ADDR is the real visitor, never loopback.
+$isLocalRequest = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
+
+// At most this many reset emails per account per hour (stops email bombing).
+const RESET_REQUESTS_PER_HOUR = 3;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
 
-    if (empty($email)) {
+    if (!verifyCsrfToken()) {
+        $error = 'Invalid form submission. Please try again.';
+    } elseif (empty($email)) {
         $error = 'Please enter your email address.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
@@ -31,9 +46,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $result = $stmt->get_result();
 
-        if ($result->num_rows === 1) {
-            $user = $result->fetch_assoc();
+        $user = $result->num_rows === 1 ? $result->fetch_assoc() : null;
 
+        $recentRequests = 0;
+        if ($user) {
+            $countStmt = $conn->prepare("SELECT COUNT(*) AS n FROM password_resets WHERE user_id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+            $countStmt->bind_param("i", $user['id']);
+            $countStmt->execute();
+            $recentRequests = (int) $countStmt->get_result()->fetch_assoc()['n'];
+            $countStmt->close();
+        }
+
+        if ($user && $recentRequests < RESET_REQUESTS_PER_HOUR) {
             // Generate secure token
             $token = bin2hex(random_bytes(32));
             $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
@@ -54,14 +78,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once 'includes/email-helper.php';
             $resetLink = getBaseUrl() . '/reset-password.php?token=' . $token;
 
-            // Try to send email
-            $emailSent = false;
             $emailSent = sendPasswordResetEmail($email, $user['fullname'], $resetLink);
 
-            if ($emailSent) {
-                $success = 'A password reset link has been sent to your email address. Please check your inbox.';
-            } else {
-                // For development: show the link directly
+            $success = $genericReply;
+            if (!$emailSent) {
+                error_log('[forgot-password] reset email failed for user #' . $user['id']);
+            }
+            if (!$emailSent && $isLocalRequest) {
+                // Local development only: show the link directly
                 $success = 'Password reset link generated! <br><br>'
                     . '<div class="alert alert-info" style="border-radius:10px; font-size:0.85rem;">'
                     . '<strong><i class="fas fa-info-circle"></i> Development Mode:</strong> Email sending is not configured. '
@@ -73,8 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Log the action
             logAuditAction($conn, null, 'password_reset_requested', 'user', $user['id'], 'Reset requested for: ' . $email);
         } else {
-            // Don't reveal if email exists or not (security)
-            $success = 'If an account with that email exists, a password reset link has been sent.';
+            // Unknown email, or this account hit the hourly cap: same reply either way.
+            $success = $genericReply;
         }
         $stmt->close();
     }

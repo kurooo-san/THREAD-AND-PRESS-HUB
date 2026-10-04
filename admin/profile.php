@@ -29,8 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $confirmPassword = $_POST['confirm_password'] ?? '';
 
     // Validate inputs
-    if (empty($fullname) || empty($email)) {
+    if (!verifyCsrfToken()) {
+        $error = 'Invalid form submission. Please try again.';
+    } elseif (empty($fullname) || empty($email)) {
         $error = 'Name and email are required!';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please enter a valid email address!';
     } else {
         // Check if email is already used by another user
         $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
@@ -41,14 +45,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->close();
 
-        // If trying to change password
-        if (!empty($newPassword) || !empty($confirmPassword)) {
+        // A taken email stops here. It used to fall through to the UPDATE,
+        // which the UNIQUE key on users.email turned into a 500 error.
+        if ($error) {
+            // nothing to save
+        } elseif (!empty($newPassword) || !empty($confirmPassword)) {
+            // Trying to change password
             if (empty($currentPassword)) {
                 $error = 'Current password is required to set a new password!';
             } elseif ($newPassword !== $confirmPassword) {
                 $error = 'New passwords do not match!';
-            } elseif (strlen($newPassword) < 6) {
-                $error = 'New password must be at least 6 characters!';
+            } elseif (!passwordMeetsRules($newPassword)) {
+                $error = PASSWORD_RULE_MESSAGE;
             } else {
                 // Verify current password
                 $stmt = $conn->prepare("SELECT password FROM users WHERE id = ?");
@@ -123,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
 
                     <form method="POST" action="">
+                        <?php echo csrfTokenField(); ?>
                         <!-- Full Name -->
                         <div class="mb-3">
                             <label for="fullname" class="form-label"><i class="fas fa-user"></i> Full Name</label>
@@ -159,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <!-- New Password -->
                         <div class="mb-3">
                             <label for="new_password" class="form-label"><i class="fas fa-lock"></i> New Password</label>
-                            <input type="password" class="form-control" id="new_password" name="new_password" placeholder="Minimum 6 characters">
+                            <input type="password" class="form-control" id="new_password" name="new_password" minlength="8" placeholder="8+ characters with upper, lower, number, symbol">
                             <small class="text-muted">Leave blank to keep current password</small>
                         </div>
 

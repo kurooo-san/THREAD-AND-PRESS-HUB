@@ -70,7 +70,7 @@ include 'includes/header/header.php';
                 <h4 class="mt-4">8. Your Rights</h4>
                 <p>Under RA 10173 you have the right to access, correct, delete, or object to processing of
                 your personal data. To exercise these rights, contact us at
-                <a href="mailto:support@threadandpress.com">support@threadandpress.com</a>.</p>
+                <a href="mailto:<?php echo SUPPORT_EMAIL; ?>"><?php echo SUPPORT_EMAIL; ?></a>.</p>
 
                 <h4 class="mt-4">9. Children</h4>
                 <p>Our services are not directed to children under 13. We do not knowingly collect data from minors.</p>
@@ -80,9 +80,7 @@ include 'includes/header/header.php';
 
                 <h4 class="mt-4">11. Contact</h4>
                 <p>Thread &amp; Press Hub<br>
-                Email: <a href="mailto:support@threadandpress.com">support@threadandpress.com</a><br>
-                Phone: +63 (2) 8123-4567<br>
-                Address: 123 Fashion Ave, Cainta, Rizal, Philippines</p>
+                Email: <a href="mailto:<?php echo SUPPORT_EMAIL; ?>"><?php echo SUPPORT_EMAIL; ?></a></p>
             </div>
         </div>
     </div>

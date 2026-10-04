@@ -47,8 +47,31 @@ define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
 define('RECAPTCHA_SITE_KEY',   getenv('RECAPTCHA_SITE_KEY')   ?: '');
 define('RECAPTCHA_SECRET_KEY', getenv('RECAPTCHA_SECRET_KEY') ?: '');
 
+// The one support address shown anywhere (footer, contact, invoices, chatbot),
+// from STORE_EMAIL in .env.
+// js/chatbot.js repeats it in two fallback messages; keep them in sync.
+define('SUPPORT_EMAIL', getenv('STORE_EMAIL') ?: 'support@threadpresshub.com');
+
 // Force HTTPS in production
 define('FORCE_HTTPS', (getenv('FORCE_HTTPS') ?: 'false') === 'true');
+
+// Philippine time for PHP date()/strtotime(); the DB session below matches it.
+date_default_timezone_set('Asia/Manila');
+
+/**
+ * Session settings every connection needs. Call it on any extra mysqli the
+ * app opens, or that connection silently behaves differently.
+ */
+function configureDbConnection(mysqli $db): void
+{
+    // utf8mb4, not utf8: utf8 cannot carry emoji and the insert fails.
+    $db->set_charset('utf8mb4');
+    // Match XAMPP MariaDB's defaults. MySQL 8 (Railway) adds ONLY_FULL_GROUP_BY,
+    // which rejects GROUP BY queries that work locally.
+    $db->query("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+    // Railway's MySQL runs in UTC; NOW()/CURRENT_TIMESTAMP must be Manila time.
+    $db->query("SET time_zone = '+08:00'");
+}
 
 // Create connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
@@ -58,10 +81,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-$conn->set_charset("utf8");
-// Match XAMPP MariaDB's defaults. MySQL 8 (Railway) adds ONLY_FULL_GROUP_BY,
-// which rejects GROUP BY queries that work locally.
-$conn->query("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+configureDbConnection($conn);
 
 // Session configuration - Only start if not already active
 if (session_status() === PHP_SESSION_NONE) {
@@ -105,6 +125,9 @@ if (!headers_sent()) {
     }
 }
 
+// passwordMeetsRules() + PASSWORD_RULE_MESSAGE: one rule for every password form.
+require_once __DIR__ . '/password-rules.php';
+
 // Helper functions
 function hashPassword($password) {
     return password_hash($password, PASSWORD_BCRYPT);
@@ -120,14 +143,37 @@ function isLoggedIn() {
 
 function redirectToLogin() {
     if (!isLoggedIn()) {
-        header("Location: login.php");
+        // Remember the page they wanted so login.php can send them back (GET only,
+        // a replayed POST would resubmit a form). Admin pages sit one folder down.
+        $login = (strpos($_SERVER['PHP_SELF'], '/admin/') !== false ? '../' : '') . 'login.php';
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && safeRedirectTarget($_SERVER['REQUEST_URI'] ?? '')) {
+            $login .= '?redirect=' . urlencode($_SERVER['REQUEST_URI']);
+        }
+        header("Location: $login");
         exit();
     }
 }
 
+// Returns $url if it is a same-site path (e.g. "/checkout.php?id=3"), else null.
+// Blocks open redirects ("//evil.com", "https://...", "/\evil.com") and auth pages.
+function safeRedirectTarget($url) {
+    $url = (string)$url;
+    if ($url === '' || $url[0] !== '/' || strlen($url) > 2000
+        || preg_match('#^/[/\\\\]|[\\\\\x00-\x1f]#', $url)) {
+        return null;
+    }
+    $path = parse_url($url, PHP_URL_PATH);
+    if ($path === null || $path === false
+        || in_array(basename($path), ['login.php', 'logout.php', 'register.php'], true)) {
+        return null;
+    }
+    return $url;
+}
+
 function redirectIfLoggedIn() {
     if (isLoggedIn()) {
-        header("Location: shop.php");
+        $target = safeRedirectTarget($_GET['redirect'] ?? '');
+        header("Location: " . ($target ?: 'shop.php'));
         exit();
     }
 }
@@ -193,6 +239,58 @@ function logAudit($action, $entityType = null, $entityId = null, $details = null
     $stmt->bind_param("ississs", $userId, $action, $entityType, $entityId, $details, $ip, $ua);
     $stmt->execute();
     $stmt->close();
+}
+
+// =============================================================
+// AI quota — every Gemini call is paid, and anyone can register, so each
+// customer gets a per-feature hourly cap. Admins are not capped.
+// =============================================================
+define('AI_QUOTA_MESSAGE', "You've reached the hourly limit for this AI feature. Please try again later.");
+
+/**
+ * Records one AI call for the logged-in user and returns true, or returns
+ * false (recording nothing) once they have made $maxPerHour calls of this
+ * $feature in the last hour. Call it right before the Gemini request.
+ */
+function aiQuotaAllows(mysqli $db, string $feature, int $maxPerHour): bool
+{
+    if (($_SESSION['user_type'] ?? '') === 'admin') {
+        return true;
+    }
+    $userId = (int) ($_SESSION['user_id'] ?? 0);
+    if ($userId <= 0) {
+        return false;
+    }
+
+    // Created on first use, like password_resets, so no manual migration step.
+    $db->query("CREATE TABLE IF NOT EXISTS `ai_usage` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `user_id` int(11) NOT NULL,
+        `feature` varchar(20) NOT NULL,
+        `used_at` timestamp NOT NULL DEFAULT current_timestamp(),
+        PRIMARY KEY (`id`),
+        KEY `idx_user_feature_time` (`user_id`, `feature`, `used_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Keep the table small: rows older than a day are never counted again.
+    if (random_int(1, 50) === 1) {
+        $db->query("DELETE FROM ai_usage WHERE used_at < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+    }
+
+    $stmt = $db->prepare("SELECT COUNT(*) AS n FROM ai_usage WHERE user_id = ? AND feature = ? AND used_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+    $stmt->bind_param("is", $userId, $feature);
+    $stmt->execute();
+    $used = (int) $stmt->get_result()->fetch_assoc()['n'];
+    $stmt->close();
+    if ($used >= $maxPerHour) {
+        return false;
+    }
+
+    $stmt = $db->prepare("INSERT INTO ai_usage (user_id, feature) VALUES (?, ?)");
+    $stmt->bind_param("is", $userId, $feature);
+    $stmt->execute();
+    $stmt->close();
+    return true;
 }
 
 // =============================================================
@@ -291,6 +389,10 @@ function tryAutoLoginViaRememberCookie() {
         if ($st && $st['status'] === 'banned') { clearRememberCookie(); return; }
     }
 
+    // Same as login.php: a fresh session id whenever someone becomes signed in.
+    if (!headers_sent()) {
+        session_regenerate_id(true);
+    }
     $_SESSION['user_id']    = (int)$row['user_id'];
     $_SESSION['user_name']  = $row['fullname'];
     $_SESSION['user_email'] = $row['email'];

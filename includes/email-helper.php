@@ -116,8 +116,7 @@ function emailTemplate($title, $content) {
     <tr>
         <td style="background:#f9f9f9;padding:20px 30px;text-align:center;border-top:1px solid #eee;">
             <p style="margin:0;font-size:12px;color:#999;">
-                &copy; ' . date('Y') . ' Thread &amp; Press Hub. All rights reserved.<br>
-                123 Fashion Ave, Cainta, Rizal, Philippines
+                &copy; ' . date('Y') . ' Thread &amp; Press Hub. All rights reserved.
             </p>
         </td>
     </tr>

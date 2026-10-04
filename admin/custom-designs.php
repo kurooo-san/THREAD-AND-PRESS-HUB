@@ -7,6 +7,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
     exit();
 }
 
+// Every POST form on this page carries csrf_token (csrfTokenField()); refuse anything else.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken()) {
+    http_response_code(403);
+    exit('Your session expired or the form was invalid. Go back, refresh the page and try again.');
+}
+
 $pageTitle = 'Custom Design Requests';
 $error = '';
 $success = '';
@@ -14,7 +20,7 @@ $success = '';
 // Run migration if table doesn't exist
 $tableCheck = $conn->query("SHOW TABLES LIKE 'custom_designs'");
 if ($tableCheck->num_rows === 0) {
-    $migrationSQL = file_get_contents(__DIR__ . '/../migrate_custom_designs.sql');
+    $migrationSQL = file_get_contents(__DIR__ . '/../database/migrate_custom_designs.sql');
     if ($migrationSQL) {
         $conn->multi_query($migrationSQL);
         while ($conn->next_result()) {;}
@@ -332,7 +338,7 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
                              class="design-thumb" 
                              alt="Design Preview"
                              onclick="showDesignModal(<?php echo (int)$design['id']; ?>)"
-                             onerror="this.src='https://placehold.co/120x120/f0f0f0/999?text=Design'">
+                             onerror="this.onerror=null;this.src='https://placehold.co/120x120/f0f0f0/999?text=Design'">
                     </div>
 
                     <!-- Info -->
@@ -366,9 +372,23 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
                         $printBack  = trim((string)($design['print_back'] ?? ''));
                         $hasPrintFront = $printFront !== '' && is_file(__DIR__ . '/../' . $printFront);
                         $hasPrintBack  = $printBack  !== '' && is_file(__DIR__ . '/../' . $printBack);
+                        // Sleeve and logo print files (set by the server on save, see custom-design-ajax.php).
+                        $extraLabels = [
+                            'left'  => ['Left sleeve',  "Sleeve artwork only, transparent background (the wearer's left sleeve)"],
+                            'right' => ['Right sleeve', "Sleeve artwork only, transparent background (the wearer's right sleeve)"],
+                            'logo'  => ['Logo',         'The corporate logo on its own, transparent background (it is also in the front print file)'],
+                        ];
+                        $extraPrints = [];
+                        $designFields = json_decode((string)($design['design_data'] ?? ''), true);
+                        foreach (array_keys($extraLabels) as $which) {
+                            $p = $designFields['extraPrints'][$which] ?? '';
+                            if (is_string($p) && preg_match('#^uploads/designs/[\w.-]+$#', $p) && is_file(__DIR__ . '/../' . $p)) {
+                                $extraPrints[$which] = $p;
+                            }
+                        }
                         ?>
 
-                        <?php if ($hasPrintFront || $hasPrintBack): ?>
+                        <?php if ($hasPrintFront || $hasPrintBack || $extraPrints): ?>
                         <div class="mb-2">
                             <div style="font-size:0.68rem; font-weight:700; letter-spacing:0.06em; color:#2d6a4f; text-transform:uppercase; margin-bottom:0.25rem;">
                                 Ready to print
@@ -389,6 +409,14 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
                                 <i class="fas fa-file-arrow-down me-1"></i> Print file · Back
                             </a>
                             <?php endif; ?>
+                            <?php foreach ($extraPrints as $which => $p): ?>
+                            <a href="../<?php echo htmlspecialchars($p); ?>"
+                               download="print_<?php echo (int)$design['id']; ?>_<?php echo $which === 'logo' ? 'logo' : 'sleeve_' . $which; ?>.png"
+                               class="btn btn-sm btn-success mb-1 w-100" style="border-radius:8px;"
+                               title="<?php echo htmlspecialchars($extraLabels[$which][1]); ?>">
+                                <i class="fas fa-file-arrow-down me-1"></i> Print file · <?php echo $extraLabels[$which][0]; ?>
+                            </a>
+                            <?php endforeach; ?>
                         </div>
                         <?php else: ?>
                         <div class="mb-2" style="font-size:0.7rem; color:#8a6d3b; background:#fff8e6; border:1px solid #f0e0b8; border-radius:8px; padding:0.35rem 0.5rem;">
@@ -421,7 +449,7 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
 
                     <!-- Actions -->
                     <div>
-                        <form method="POST" class="design-actions-form">
+                        <form method="POST" class="design-actions-form"><?php echo csrfTokenField(); ?>
                             <input type="hidden" name="design_id" value="<?php echo (int)$design['id']; ?>">
                             <select name="status" class="form-select form-select-sm">
                                 <option value="pending" <?php echo $design['status'] === 'pending' ? 'selected' : ''; ?>>Pending</option>

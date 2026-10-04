@@ -216,6 +216,14 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
 
     <!-- Main Content -->
     <div class="admin-main-content">
+        <!-- Phones/tablets: a top bar holds the menu button and the bell, so
+             they no longer sit on top of each page's heading. -->
+        <div class="ad-mobilebar d-lg-none">
+            <img class="ad-logo logo-light" src="../images/logo/logo_sm.png" alt="">
+            <img class="ad-logo logo-dark" src="../images/logo/logo_white_sm.png" alt="">
+            <span class="ad-mobilebar-title">Thread &amp; Press <span>Admin</span></span>
+        </div>
+
         <!-- Mobile sidebar toggle -->
         <button class="sidebar-toggle d-lg-none" id="sidebarToggle" type="button" aria-label="Open menu"><?php echo adminIcon('menu'); ?></button>
 
@@ -305,3 +313,31 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
             setInterval(poll, 30000); // every 30s
         })();
         </script>
+
+        <!-- AI Insights: read-only store analytics assistant (admin/ai-assistant-ajax.php). -->
+        <button type="button" id="adAiToggle" class="ad-ai-toggle<?php echo $currentPage === 'support-chat.php' ? ' ad-ai-raise' : ''; ?>"
+                aria-label="Open AI Insights" aria-expanded="false" aria-controls="adAiPanel">
+            <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i><span>AI Insights</span>
+        </button>
+        <section id="adAiPanel" class="ad-ai-panel<?php echo $currentPage === 'support-chat.php' ? ' ad-ai-raise' : ''; ?>" role="dialog" aria-label="AI Insights" hidden
+                 data-endpoint="ai-assistant-ajax.php" data-csrf="<?php echo htmlspecialchars(generateCsrfToken(), ENT_QUOTES); ?>">
+            <header class="ad-ai-head">
+                <span class="ad-ai-badge"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i></span>
+                <div class="ad-ai-title"><b>AI Insights</b><span>Live store data · read-only · Gemini</span></div>
+                <button type="button" class="ad-ai-icon" id="adAiClear" title="New chat" aria-label="Start a new chat"><i class="fas fa-rotate-left" aria-hidden="true"></i></button>
+                <button type="button" class="ad-ai-icon" id="adAiClose" title="Close" aria-label="Close AI Insights"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            </header>
+            <div class="ad-ai-log" id="adAiLog" aria-live="polite"></div>
+            <div class="ad-ai-chips" id="adAiChips">
+                <button type="button" data-q="What needs my attention today?">Needs attention</button>
+                <button type="button" data-q="How are sales this week compared to last week?">Sales this week</button>
+                <button type="button" data-q="What are the best sellers this month?">Best sellers</button>
+                <button type="button" data-q="Which products are low on stock or not selling?">Stock check</button>
+                <button type="button" data-q="Give me a short summary of custom orders and designs.">Custom orders</button>
+            </div>
+            <form class="ad-ai-form" id="adAiForm">
+                <textarea id="adAiInput" rows="1" maxlength="1000" placeholder="Ask about sales, orders, stock…" aria-label="Ask AI Insights"></textarea>
+                <button type="submit" id="adAiSend" aria-label="Send"><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
+            </form>
+        </section>
+        <script src="../js/admin-ai.js?v=<?php echo @filemtime(__DIR__ . '/../js/admin-ai.js'); ?>" defer></script>

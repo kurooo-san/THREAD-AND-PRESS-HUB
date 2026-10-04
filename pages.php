@@ -103,15 +103,14 @@ $pageTitle = 'Pages';
 
     <div id="about" class="mb-5">
         <h3 style="font-weight: 700; margin-bottom: 1.5rem;">About Thread and Press Hub</h3>
-        <p>Thread and Press Hub is your ultimate destination for premium quality apparel and fashion-forward styles. Founded with a passion for bringing together style, comfort, and excellence, we've built a community of customers who trust us for their everyday wear and special occasion outfits.</p>
-        <p>Our mission is simple: to provide the highest quality garments at fair prices, backed by exceptional customer service and a commitment to sustainability. We carefully curate our collection from trusted suppliers and emerging designers to ensure every piece meets our strict quality standards.</p>
-        <h5 style="font-weight: 700; margin-top: 2rem; margin-bottom: 1rem;">Why Choose Us?</h5>
+        <p>Thread and Press Hub is an apparel shop based in Rizal. It sells ready-to-wear clothing for men, women and kids, and prints customers' own designs on shirts, hoodies and polos.</p>
+        <h5 style="font-weight: 700; margin-top: 2rem; margin-bottom: 1rem;">What You Can Do Here</h5>
         <ul>
-            <li><strong>Premium Quality:</strong> All items are made from high-quality fabrics and materials</li>
-            <li><strong>Diverse Selection:</strong> From classic wardrobe staples to trendy pieces for every style</li>
-            <li><strong>Customer-Focused:</strong> 24/7 support and hassle-free returns</li>
-            <li><strong>Fair Pricing:</strong> Great value for money with regular promotions</li>
-            <li><strong>Fast Shipping:</strong> Metro Manila delivery in 1-2 days, provincial in 3-5 days</li>
+            <li><strong>Shop ready-to-wear:</strong> dresses, tees, hoodies, pants and accessories, with the colors and sizes in stock on each product</li>
+            <li><strong>Print your own design:</strong> T-shirts, hoodies, polos, couple sets and company uniforms in the Design Studio</li>
+            <li><strong>Try it on first:</strong> AI Try-On on your own photo, plus a size finder that works from your height and weight</li>
+            <li><strong>Get your discount:</strong> PWD and Senior Citizen accounts get 20% off at checkout</li>
+            <li><strong>Delivery or pickup:</strong> shipped anywhere in the Philippines, or picked up at the store for free (see Shipping below)</li>
         </ul>
     </div>
 

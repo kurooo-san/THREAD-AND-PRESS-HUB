@@ -135,3 +135,105 @@
     .size-filter-btn { transition: none !important; }
     .product-card:hover .product-image { transform: none; }
 }
+
+/* ===== Filters: "Shop for" and "Type" as combinable pills ===== */
+.filter-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.filter-pill {
+    padding: 0.4rem 0.85rem;
+    border: 1px solid var(--border-light, #e8e8e8);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--text-medium, #555);
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.18s ease;
+}
+.filter-pill:hover { border-color: var(--primary, #1a1a1a); color: var(--primary, #1a1a1a); transform: translateY(-1px); }
+.filter-pill.active { background: var(--primary, #1a1a1a); border-color: var(--primary, #1a1a1a); color: #fff; }
+
+/* Colour filter swatches are buttons (keyboard + screen readers) */
+button.color-swatch { padding: 0; appearance: none; -webkit-appearance: none; }
+.color-swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent, #c8a96e); transform: scale(1.12); }
+
+/* ===== Active filters: one removable chip each ===== */
+.active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+.active-chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.8rem; border-radius: 999px;
+    background: var(--primary, #1a1a1a); color: #fff;
+    font-size: 0.8rem; font-weight: 500; text-decoration: none;
+    transition: opacity 0.15s ease;
+}
+.active-chip:hover { color: #fff; opacity: 0.85; }
+.active-chip i { font-size: 0.7rem; opacity: 0.8; }
+.active-chip-swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.6); }
+.active-chip-clear { font-size: 0.8rem; color: var(--text-medium, #555); text-decoration: underline; margin-left: 0.2rem; }
+
+/* ===== Product cards ===== */
+/* Try On: always visible on wearable items (the quick-add button only shows on hover) */
+.tryon-chip {
+    position: absolute; top: 10px; left: 10px; z-index: 2;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.3rem 0.65rem; border-radius: 999px;
+    background: rgba(17, 17, 17, 0.78); color: #fff;
+    font-size: 0.72rem; font-weight: 600; text-decoration: none;
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.tryon-chip:hover { background: var(--accent, #c8a96e); color: #16140f; transform: translateY(-1px); }
+
+.card-options { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.45rem; }
+.card-options:empty { display: none; }
+.color-option {
+    display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid #e0e0e0;
+}
+.size-option {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    background: #f0f0f0; border: 1px solid transparent;
+    font-size: 0.72rem; font-weight: 500; color: #333;
+}
+.size-option:hover { border-color: var(--primary, #1a1a1a); }
+
+.card-btn { border-radius: 8px; font-size: 0.8rem; }
+.card-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.card-btn-buy {
+    font-weight: 600; background: var(--accent, #c8a96e);
+    border: 1px solid var(--accent, #c8a96e); color: #16140f;
+}
+.card-btn-buy:hover { background: #b89555; border-color: #b89555; color: #16140f; }
+
+/* ===== Dark mode ===== */
+html.dark-mode .filter-pill { background: #24242c; border-color: #3a3a44; color: #ccc; }
+html.dark-mode .filter-pill:hover { border-color: var(--accent, #c8a96e); color: var(--accent, #c8a96e); }
+html.dark-mode .filter-pill.active { background: var(--accent, #c8a96e); border-color: var(--accent, #c8a96e); color: #16140f; }
+html.dark-mode .active-chip { background: var(--accent, #c8a96e); color: #16140f; }
+html.dark-mode .active-chip-swatch { border-color: rgba(0,0,0,0.35); }
+html.dark-mode .active-chip-clear { color: #bbb; }
+html.dark-mode .color-option { border-color: #3a3a44; }
+html.dark-mode .size-option { background: #2a2a31; color: #ddd; }
+html.dark-mode .size-option:hover { border-color: var(--accent, #c8a96e); }
+/* The chosen colour's ring is --primary (near-black) in style.css: invisible on dark cards */
+html.dark-mode .color-option.selected {
+    border-color: var(--accent, #c8a96e) !important;
+    box-shadow: 0 0 0 2px var(--accent, #c8a96e);
+}
+.color-option:focus-visible, .size-option:focus-visible, .filter-pill:focus-visible, .active-chip:focus-visible {
+    outline: 2px solid var(--accent, #c8a96e); outline-offset: 2px;
+}
+
+/* ---------- Phones & tablets: app layout ---------- */
+@media (max-width: 991.98px) {
+    /* The tab bar and filter chips do the navigating; Design is the centre tab. */
+    .shop-head { margin-bottom: 1rem !important; }
+    .shop-head nav,
+    .shop-design-cta { display: none !important; }
+    .shop-head h1 { font-size: 1.5rem !important; }
+}
+/* Phones: clean cards like a shopping app. The bag button opens the Quick Add
+   sheet, which picks colour/size and has Add to Cart + Buy Now. */
+@media (max-width: 575.98px) {
+    .product-card .card-options,
+    .product-card .card-buttons { display: none; }
+}

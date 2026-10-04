@@ -30,6 +30,8 @@ async function getChatbotResponse(message) {
             }
             
             return data.message;
+        } else if (data.rate_limited) {
+            return '⚠️ ' + data.error;
         } else {
             console.error('Gemini API Error:', data.error);
             return "⚠️ I'm having trouble connecting right now. Please try again in a moment, or contact us at support@threadpresshub.com for immediate help.";
@@ -434,7 +436,40 @@ function initChatbot() {
     const sendBtn = document.getElementById('chat-send');
     const toggleBtn = document.getElementById('chatbot-toggle');
     const closeBtn = document.getElementById('chat-close');
-    
+    if (!chatWidget) return;
+
+    // Everything that follows "is the chat open", however it was opened or
+    // closed: the button icon, aria-expanded, and html.chat-open (phones lock
+    // the page behind the full-screen chat).
+    const toggleIcon = document.getElementById('chatbot-toggle-icon');
+    function syncOpenState() {
+        const open = chatWidget.classList.contains('active');
+        document.documentElement.classList.toggle('chat-open', open);
+        if (toggleIcon) toggleIcon.className = open ? 'fas fa-chevron-down' : 'fas fa-comment-dots';
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            toggleBtn.setAttribute('aria-label', open ? 'Close chat' : 'Open chat');
+        }
+    }
+    new MutationObserver(syncOpenState).observe(chatWidget, { attributes: true, attributeFilter: ['class'] });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && chatWidget.classList.contains('active')) chatWidget.classList.remove('active');
+    });
+
+    // Phones: fit the full-screen chat to the visible area, so the on-screen
+    // keyboard never covers the message box.
+    const vv = window.visualViewport;
+    if (vv) {
+        const fit = function () {
+            chatWidget.style.setProperty('--chat-vh', vv.height + 'px');
+            chatWidget.style.setProperty('--chat-top', vv.offsetTop + 'px');
+        };
+        vv.addEventListener('resize', fit);
+        vv.addEventListener('scroll', fit);
+        fit();
+    }
+    const isPhone = function () { return window.matchMedia('(max-width: 767.98px)').matches; };
+
     // If user is not logged in, chat elements won't exist — only toggle/close work
     if (!chatInput || !sendBtn || !chatMessages) {
         if (toggleBtn) {
@@ -453,7 +488,9 @@ function initChatbot() {
     // Toggle chat window
     toggleBtn.addEventListener('click', function() {
         chatWidget.classList.toggle('active');
-        if (chatWidget.classList.contains('active')) {
+        // On a phone, focusing would throw the keyboard over the chat the
+        // moment it opens; let the customer tap the box when ready.
+        if (chatWidget.classList.contains('active') && !isPhone()) {
             chatInput.focus();
         }
     });
@@ -512,8 +549,11 @@ function initChatbot() {
     function addBotMessage(message) {
         const msgDiv = document.createElement('div');
         msgDiv.className = 'chat-message bot-message';
-        // Support markdown-like formatting
-        let formatted = message
+        // Escape first: the reply is model output and must never be parsed as HTML.
+        const escaped = document.createElement('div');
+        escaped.textContent = message;
+        // Then support markdown-like formatting
+        let formatted = escaped.innerHTML
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/\n/g, '<br>');

@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $userId = $_SESSION['user_id'];
-$isAdmin = ($_SESSION['user_type'] === 'admin');
+$isAdmin = (($_SESSION['user_type'] ?? '') === 'admin');
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 switch ($action) {

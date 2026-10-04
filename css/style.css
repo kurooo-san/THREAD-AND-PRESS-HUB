@@ -1085,6 +1085,11 @@ body.home-page {
     z-index: 2;
     pointer-events: none;
 }
+.input-icon-wrapper .pw-toggle { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); z-index: 2; border: 0; background: none;
+    padding: 0.35rem 0.5rem; color: var(--text-light, #999); cursor: pointer; line-height: 1; border-radius: 8px; transition: color .2s; }
+.input-icon-wrapper .pw-toggle:hover, .input-icon-wrapper .pw-toggle:focus-visible { color: var(--primary, #1a1a1a); }
+html.dark-mode .input-icon-wrapper .pw-toggle:hover, html.dark-mode .input-icon-wrapper .pw-toggle:focus-visible { color: #fff; }
+.input-icon-wrapper:has(.pw-toggle) .form-control { padding-right: 2.75rem; }
 
 .form-check-input { border-color: var(--border-medium); border-radius: 3px; }
 .form-check-input:checked { background-color: var(--primary); border-color: var(--primary); }
@@ -1249,6 +1254,44 @@ body.home-page {
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     padding: 1.5rem;
+}
+
+.shop-filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px; height: 20px;
+    padding: 0 6px;
+    margin-left: 4px;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.7rem;
+    vertical-align: middle;
+}
+.shop-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 36px;
+    padding: 0 0.9rem;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.shop-filter-toggle i { font-size: 0.7rem; transition: transform 0.2s ease; }
+html.dark-mode .shop-filter-count { background: var(--accent, #c8a96e); color: #1a1a1a; }
+.shop-sidebar.open .shop-filter-toggle i { transform: rotate(180deg); }
+
+/* Phones and tablets: products first, filters on demand. */
+@media (max-width: 991.98px) {
+    .shop-sidebar { padding: 0.85rem 1.1rem; }
+    .shop-sidebar:not(.open) .filter-section { display: none; }
+    .shop-sidebar:not(.open) .shop-filter-head { margin-bottom: 0 !important; }
+    .shop-sidebar.open .shop-filter-head { margin-bottom: 1rem !important; }
 }
 
 .filter-section {
@@ -1774,6 +1817,16 @@ body.admin-page .cafe-navbar { position: relative; }
 .table tbody td { padding: 0.8rem 1rem; border-color: var(--border-light); vertical-align: middle; font-size: 0.88rem; }
 .table tbody tr:hover { background-color: var(--bg-light); }
 
+/* Phones: a scrolling table beats one squeezed until "T-Shirt" breaks into
+   four lines and "₱50.00" loses its last digit. Keep the first column
+   readable and the rest on one line; .table-responsive scrolls the excess. */
+@media (max-width: 575.98px) {
+    .table-responsive > .table th,
+    .table-responsive > .table td { white-space: nowrap; }
+    .table-responsive > .table th:first-child,
+    .table-responsive > .table td:first-child { white-space: normal; min-width: 140px; }
+}
+
 /* ===== Buttons ===== */
 .btn {
     border-radius: var(--radius-sm);
@@ -2265,9 +2318,63 @@ body.admin-page .cafe-navbar { position: relative; }
 .chat-messages::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 10px; }
 .chat-messages::-webkit-scrollbar-thumb:hover { background: var(--border-medium); }
 
-@media (max-width: 768px) {
-    .chatbot-widget { width: calc(100% - 20px); height: 440px; bottom: 90px; right: 10px; left: 10px; }
-    .chatbot-toggle { bottom: 20px; right: 20px; width: 48px; height: 48px; font-size: 1.15rem; }
+/* Chatbot on tablets and phones. The button always floats. Tablets open a
+   larger floating card; phones open a full-screen sheet that slides up like a
+   messaging app, and the floating button steps aside while it is open (the
+   header has the close button). --chat-vh / --chat-top come from js/chatbot.js
+   (the visible area, so the keyboard never hides the message box). */
+@media (max-width: 1199.98px) {
+    .chatbot-toggle {
+        width: 56px; height: 56px;
+        right: calc(20px + env(safe-area-inset-right));
+        bottom: calc(20px + env(safe-area-inset-bottom));
+        box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+    }
+    .chatbot-widget {
+        right: calc(20px + env(safe-area-inset-right));
+        bottom: calc(88px + env(safe-area-inset-bottom));
+        width: 400px;
+        height: min(640px, calc(100dvh - 120px));
+        border-radius: 20px;
+        box-shadow: 0 18px 60px rgba(0,0,0,0.22);
+    }
+    .chat-header { padding: 0.95rem 1.1rem; }
+    .chat-close-btn { width: 40px; height: 40px; font-size: 1.15rem; opacity: 0.9; }
+    .chat-tab { min-height: 44px; }
+    .chat-quick-actions { scrollbar-width: none; }
+    .chat-quick-actions::-webkit-scrollbar { display: none; }
+    .chat-quick-action { padding: 0.45rem 0.85rem; font-size: 0.78rem; }
+    .chat-message { font-size: 0.88rem; border-radius: 18px; }
+    .bot-message { border-bottom-left-radius: 6px; }
+    .user-message { border-bottom-right-radius: 6px; }
+    .chat-input-area { padding: 0.7rem 0.85rem; gap: 0.5rem; }
+    .chat-input { font-size: 16px; padding: 0.6rem 1rem; } /* under 16px, iOS zooms the page on focus */
+    .chat-send-btn, .chat-attach-btn { width: 42px; height: 42px; }
+}
+@media (max-width: 767.98px) {
+    .chatbot-widget {
+        top: var(--chat-top, 0);
+        left: 0; right: 0; bottom: auto;
+        width: 100%;
+        height: var(--chat-vh, 100dvh);
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        z-index: 1070;
+        transform: translateY(100%);
+        transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
+    }
+    .chatbot-widget.active { transform: none; }
+    .chat-header { padding: calc(0.8rem + env(safe-area-inset-top)) 1rem 0.8rem; }
+    .chat-messages { padding: 1rem 0.85rem; }
+    .chat-message { max-width: 82%; }
+    .chat-input-area { padding-bottom: calc(0.7rem + env(safe-area-inset-bottom)); }
+    .chat-footer-note { display: none; } /* the header already says it is Gemini */
+    html.chat-open, html.chat-open body { overflow: hidden; }
+    html.chat-open .chatbot-toggle { opacity: 0; transform: scale(0.6); pointer-events: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .chatbot-widget { transition: opacity 0.15s ease; }
 }
 
 /* Color and Size options */
@@ -2291,7 +2398,8 @@ body.admin-page .cafe-navbar { position: relative; }
 .animate-in { animation: fadeInUp 0.5s ease-out; }
 
 /* ===== SUPPORT CHAT SYSTEM ===== */
-.support-chat-container { padding: 0; margin: -12px -12px 0; }
+/* No negative margin: it pushed the chat 12px past the screen edge (sideways scroll at every width). */
+.support-chat-container { padding: 0; margin: 0; }
 
 .support-chat-wrapper {
     display: flex;
@@ -2344,6 +2452,41 @@ body.admin-page .cafe-navbar { position: relative; }
 .support-unread-badge { font-size: 0.68rem; padding: 2px 6px; border-radius: 10px; }
 
 .support-main-chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.support-sidebar-close {
+    width: 36px; height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Phones: one pane at a time, like a messaging app. With a conversation open
+   the chat fills the screen and the list slides in from the left (the back
+   arrow; js/support-chat.js toggles .show). Without one, the list shows. */
+@media (max-width: 767.98px) {
+    .support-chat-wrapper { position: relative; height: calc(100dvh - 150px); min-height: 460px; }
+    .support-sidebar {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        width: 100%;
+        min-width: 0;
+        border-right: 0;
+    }
+    .support-chat-wrapper.has-active .support-sidebar {
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.25s ease, visibility 0.25s;
+    }
+    .support-chat-wrapper.has-active .support-sidebar.show { transform: none; visibility: visible; }
+    .support-chat-wrapper:not(.has-active) .support-main-chat { display: none; }
+    /* This page is already a chat; the floating AI button would sit on the send button. */
+    body.support-chat-page .chatbot-toggle { display: none; }
+}
 .support-chat-header { padding: 12px 18px; background: #fff; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; }
 .support-chat-info h6 { margin: 0; font-weight: 700; color: var(--text-dark); }
 .support-chat-info small { font-size: 0.75rem; }
@@ -2440,6 +2583,9 @@ body.admin-page .cafe-navbar { position: relative; }
 
     /* Container padding */
     .container { padding-left: 12px !important; padding-right: 12px !important; }
+    /* A 3rem gutter row needs 24px of container padding; with 12px it pokes
+       out of the screen (sideways scroll on About and Contact). */
+    .row.g-5, .row.gx-5 { --bs-gutter-x: 1.5rem; }
 
     /* Tables become horizontally scrollable */
     .table-responsive { -webkit-overflow-scrolling: touch; }
@@ -2492,12 +2638,16 @@ body.admin-page .cafe-navbar { position: relative; }
 
 /* Always-on touch-friendly tap targets */
 @media (pointer: coarse) {
-    .btn, .form-control, .form-check-input { min-height: 38px; }
+    .btn, .form-control { min-height: 38px; }
+    /* A min-height on a checkbox stretches it into a tall empty bar; make it
+       a slightly bigger square instead. */
+    .form-check-input { width: 1.25em; height: 1.25em; }
     a.sidebar-link { min-height: 44px; }
 }
 
 /* Real logo image replaces the old TP badge. */
 img.brand-logo, img.ad-logo { object-fit: cover; background: #000 !important; }
+.form-brand .brand-logo { width: 56px; height: 56px; }
 
 
 /* =========================================================
@@ -2520,6 +2670,39 @@ html { scroll-padding-top: var(--tp-nav-h, 96px); }
 
 /* Tactile press on buttons */
 .btn:not(:disabled):not(.disabled):active { transform: scale(0.97); }
+
+/* Stitched seam under section titles: the "thread" in Thread & Press.
+   Static for everyone; when the heading scrolls in (tp-reveal-in from
+   animations.js, reveal-in on the home page) it is sewn from the centre out.
+   0.55s total, inside the 0.6s heading reveal, so removing tp-reveal-in at
+   the end never cuts it short. */
+.section-heading h2::after {
+    content: '';
+    display: block;
+    width: 48px;
+    margin: 0.65rem auto 0;
+    border-top: 2px dashed var(--accent);
+}
+.section-heading.text-start h2::after { margin-left: 0; }
+@keyframes tpStitch { from { clip-path: inset(0 50%); } to { clip-path: inset(0); } }
+@keyframes tpStitchLeft { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+
+/* Cart badge pops when the count goes up (js/app-shell.js adds .tp-bump). */
+@keyframes tpBump {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .section-heading.tp-reveal-in h2::after,
+    .section-heading.reveal-in h2::after {
+        animation: tpStitch 0.45s 0.1s cubic-bezier(0.65, 0, 0.35, 1) backwards;
+    }
+    .section-heading.text-start.tp-reveal-in h2::after,
+    .section-heading.text-start.reveal-in h2::after { animation-name: tpStitchLeft; }
+    .tp-bump { animation: tpBump 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+}
 
 @media (prefers-reduced-motion: no-preference) {
     /* Smooth crossfade between pages (View Transitions API; browsers without

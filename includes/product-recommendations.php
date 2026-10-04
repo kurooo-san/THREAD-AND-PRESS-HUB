@@ -27,7 +27,8 @@ try {
     if ($conn->connect_error) {
         throw new Exception('Database connection failed');
     }
-    
+    configureDbConnection($conn);
+
     // Keyword mapping for product categories
     $keywordMap = [
         'shirt' => ['shirts', 't-shirt', 'tee', 'polo'],

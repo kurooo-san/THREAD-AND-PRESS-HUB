@@ -8,6 +8,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
     exit();
 }
 
+// Every POST form on this page carries csrf_token (csrfTokenField()); refuse anything else.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken()) {
+    http_response_code(403);
+    exit('Your session expired or the form was invalid. Go back, refresh the page and try again.');
+}
+
 $pageTitle = 'Contact Management';
 
 // Handle actions
@@ -219,8 +225,8 @@ $categories = getContactCategories();
                     <div class="col-md-7">
                         <h6 class="mb-1">
                             <?php echo htmlspecialchars($msg['subject']); ?>
-                            <span class="badge badge-status badge-<?php echo $msg['status']; ?>">
-                                <?php echo ucfirst($msg['status']); ?>
+                            <span class="badge badge-status badge-<?php echo htmlspecialchars($msg['status'], ENT_QUOTES); ?>">
+                                <?php echo htmlspecialchars(ucfirst($msg['status'])); ?>
                             </span>
                         </h6>
                         <small class="text-muted">
@@ -232,8 +238,8 @@ $categories = getContactCategories();
                         </small>
                     </div>
                     <div class="col-md-2 text-end">
-                        <span class="badge badge-priority-<?php echo $msg['priority']; ?>">
-                            <?php echo ucfirst($msg['priority']); ?> Priority
+                        <span class="badge badge-priority-<?php echo htmlspecialchars($msg['priority'], ENT_QUOTES); ?>">
+                            <?php echo htmlspecialchars(ucfirst($msg['priority'])); ?> Priority
                         </span><br>
                         <small class="text-muted d-block mt-2">
                             <i class="fas fa-tag"></i> <?php echo htmlspecialchars($msg['category']); ?>
@@ -273,11 +279,11 @@ $categories = getContactCategories();
                 </small>
             </div>
             <div class="col-md-4 text-end">
-                <span class="badge badge-status badge-<?php echo $message['status']; ?>" style="font-size: 1rem;">
-                    <?php echo ucfirst($message['status']); ?>
+                <span class="badge badge-status badge-<?php echo htmlspecialchars($message['status'], ENT_QUOTES); ?>" style="font-size: 1rem;">
+                    <?php echo htmlspecialchars(ucfirst($message['status'])); ?>
                 </span><br>
-                <span class="badge badge-priority-<?php echo $message['priority']; ?>" style="font-size: 0.9rem; margin-top: 5px;">
-                    <?php echo ucfirst($message['priority']); ?> Priority
+                <span class="badge badge-priority-<?php echo htmlspecialchars($message['priority'], ENT_QUOTES); ?>" style="font-size: 0.9rem; margin-top: 5px;">
+                    <?php echo htmlspecialchars(ucfirst($message['priority'])); ?> Priority
                 </span><br>
                 <small class="text-muted d-block mt-2">
                     Category: <strong><?php echo htmlspecialchars($message['category']); ?></strong>
@@ -295,7 +301,7 @@ $categories = getContactCategories();
         </div>
         
         <!-- Admin Response Form -->
-        <form method="POST" action="contact-management.php">
+        <form method="POST" action="contact-management.php"><?php echo csrfTokenField(); ?>
             <input type="hidden" name="action" value="update_status">
             <input type="hidden" name="id" value="<?php echo $message['id']; ?>">
             
@@ -335,7 +341,7 @@ $categories = getContactCategories();
         <hr>
         
         <!-- Delete Option -->
-        <form method="POST" action="contact-management.php" onsubmit="return confirm('Delete this message?');" style="display: inline;">
+        <form method="POST" action="contact-management.php" onsubmit="return confirm('Delete this message?');" style="display: inline;"><?php echo csrfTokenField(); ?>
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="<?php echo $message['id']; ?>">
             <button type="submit" class="btn btn-danger btn-sm">

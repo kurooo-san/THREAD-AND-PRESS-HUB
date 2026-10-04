@@ -166,6 +166,10 @@ $requestData = [
     ],
 ];
 
+if (!aiQuotaAllows($conn, 'stylist', 30)) {
+    suggest_fail(AI_QUOTA_MESSAGE, 429);
+}
+
 $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'
     . SUGGEST_MODEL . ':generateContent?key=' . urlencode($apiKey);
 

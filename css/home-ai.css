@@ -299,3 +299,189 @@
         max-width: 480px;
     }
 }
+
+/* =========================================================
+   3D Design Studio spotlight — the light twin of the AI card
+   above (cream in light mode, dark in dark mode), with a shirt
+   mock that turns gently and can be recoloured.
+   ========================================================= */
+.studio-spotlight {
+    background: radial-gradient(120% 120% at 15% 0%, #fffdf8 0%, #f6f0e4 55%, #ece3d1 100%);
+    color: #1a1a1a;
+    border: 1px solid rgba(200, 169, 110, 0.3);
+}
+.studio-spotlight .ai-glow-1 { top: auto; bottom: -160px; right: auto; left: -80px; opacity: 0.35; }
+.studio-spotlight .ai-title { color: #1a1a1a; }
+.studio-spotlight .ai-accent { color: #a8864a; }
+.studio-spotlight .ai-sub { color: #5c574c; }
+.studio-spotlight .ai-badge { color: #8a6d3b; background: rgba(200, 169, 110, 0.16); }
+.studio-spotlight .ai-step strong { color: #1a1a1a; }
+.studio-spotlight .ai-step small { color: #7a7466; }
+.studio-spotlight .btn-ai-ghost { background: rgba(26, 26, 26, 0.04); border-color: rgba(26, 26, 26, 0.18); color: #1a1a1a !important; }
+.studio-spotlight .btn-ai-ghost:hover { border-color: #a8864a; color: #8a6d3b !important; }
+
+.studio-stage {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    max-width: 420px;
+    margin: 0 auto;
+    border-radius: 20px;
+    background: radial-gradient(80% 60% at 50% 35%, #ffffff 0%, #efe8da 75%);
+    border: 1px solid rgba(200, 169, 110, 0.35);
+    box-shadow: 0 30px 60px rgba(90, 70, 30, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 900px;
+    overflow: hidden;
+}
+.studio-turn {
+    width: 74%;
+    margin-top: -6%;
+    transform-style: preserve-3d;
+    animation: studio-turn 7s ease-in-out infinite;
+}
+@keyframes studio-turn {
+    0%, 100% { transform: rotateY(-18deg); }
+    50% { transform: rotateY(18deg); }
+}
+.studio-shirt { width: 100%; height: auto; display: block; filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.22)); }
+.studio-shirt-fill { fill: #FF4136; transition: fill 0.4s ease; }
+.studio-print { fill: #FFFFFF; transition: fill 0.4s ease; font-family: Arial, Helvetica, sans-serif; }
+
+.studio-tag {
+    position: absolute; top: 14px; left: 14px; z-index: 3;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.7rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+    background: rgba(26, 26, 26, 0.85); color: var(--accent, #c8a96e);
+}
+.studio-chip {
+    position: absolute; z-index: 4;
+    background: #1a1a1a; color: #fff;
+    font-size: 0.72rem; font-weight: 700; padding: 6px 11px; border-radius: 10px;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    animation: vf-float 3s ease-in-out infinite;
+}
+.studio-chip i { color: var(--accent, #c8a96e); }
+.studio-chip-1 { top: 22%; right: 12px; }
+.studio-chip-2 { bottom: 20%; left: 12px; animation-delay: 1.2s; }
+
+.studio-swatches {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 4;
+    display: flex; gap: 8px; padding: 6px 10px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+.studio-swatch {
+    width: 22px; height: 22px; border-radius: 50%; padding: 0; cursor: pointer;
+    border: 2px solid rgba(0, 0, 0, 0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.studio-swatch:hover { transform: scale(1.12); }
+.studio-swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent, #c8a96e); }
+
+@media (max-width: 991px) {
+    .studio-stage { margin-top: 2.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .studio-turn, .studio-chip { animation: none; }
+}
+
+/* Dark mode: the studio card goes dark like the AI card */
+html.dark-mode .studio-spotlight {
+    background: radial-gradient(120% 120% at 15% 0%, #20201d 0%, #141413 45%, #0d0d0c 100%);
+    color: #f5f3ee;
+}
+html.dark-mode .studio-spotlight .ai-title,
+html.dark-mode .studio-spotlight .ai-step strong { color: #fff; }
+html.dark-mode .studio-spotlight .ai-accent { color: var(--accent, #c8a96e); }
+html.dark-mode .studio-spotlight .ai-sub { color: #c9c6bd; }
+html.dark-mode .studio-spotlight .ai-step small { color: #9a978e; }
+html.dark-mode .studio-spotlight .ai-badge { color: var(--accent, #c8a96e); }
+html.dark-mode .studio-spotlight .btn-ai-ghost { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.18); color: #f5f3ee !important; }
+html.dark-mode .studio-stage { background: radial-gradient(80% 60% at 50% 35%, #2a2a27 0%, #1a1a18 75%); box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); }
+html.dark-mode .studio-swatches { background: rgba(26, 26, 26, 0.85); }
+
+/* =========================================================
+   Phones: app-style home. A compact banner instead of a
+   full-screen poster, flat sections, and swipeable rails for
+   the perks, categories and new arrivals (.home-rail).
+   ========================================================= */
+@media (max-width: 767.98px) {
+    /* Hero */
+    body.home-page .hero { min-height: 0; }
+    body.home-page .hero .row { min-height: 0 !important; padding: 0.5rem 0 1.5rem; }
+    body.home-page .hero .hero-panel { padding: 1.35rem; border-radius: 20px; }
+    body.home-page .hero .hero-badge { margin-bottom: 0.9rem; font-size: 11.5px; padding: 5px 12px; }
+    body.home-page .hero h1 { font-size: 1.65rem; margin-bottom: 0.6rem; }
+    body.home-page .hero .hero-subtitle { font-size: 0.86rem; line-height: 1.55; margin-bottom: 1.1rem; }
+    body.home-page .hero .hero-buttons { width: 100%; gap: 0.5rem; }
+    body.home-page .hero .btn-hero,
+    body.home-page .hero .btn-hero-ai { flex: 1 1 100%; justify-content: center; height: 46px; }
+    body.home-page .hero .hero-learn-more { display: none; }
+
+    /* Flat sections: no boxed card inside the page, less air between them */
+    body.home-page .home-section.py-5 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+    body.home-page .home-surface,
+    html.dark-mode body.home-page .home-surface {
+        padding: 0; border: 0; border-radius: 0; box-shadow: none;
+        background: transparent !important; backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
+    body.home-page .section-heading { text-align: left; margin-bottom: 0.85rem; }
+    body.home-page .section-heading h2 { font-size: 1.2rem; margin: 0; }
+    body.home-page .section-heading p { display: none; }
+    body.home-page .section-heading-split { margin-bottom: 0.85rem !important; align-items: center !important; }
+
+    /* Rails: one swipeable row that bleeds to the screen edges */
+    body.home-page .home-rail {
+        --bs-gutter-x: 0.75rem;
+        --bs-gutter-y: 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin: 0 -12px;
+        padding: 2px 6px 6px;
+        scroll-snap-type: x mandatory;
+        scroll-padding: 0 12px;
+        scrollbar-width: none;
+    }
+    body.home-page .home-rail::-webkit-scrollbar { display: none; }
+    body.home-page .home-rail > * { flex: 0 0 44%; width: 44%; max-width: 44%; scroll-snap-align: start; }
+    body.home-page .home-rail > .col-12 { flex-basis: 100%; width: 100%; max-width: 100%; }
+    body.home-page .home-rail .product-card { margin-bottom: 0; height: 100%; }
+
+    /* Perks: small pills */
+    body.home-page .home-features-section { padding: 1rem 0 0.25rem; border-bottom: 0; }
+    body.home-page .home-rail-features > * { flex: 0 0 auto; width: auto; max-width: none; margin-bottom: 0 !important; }
+    body.home-page .home-rail-features .feature-item {
+        gap: 0.5rem; padding: 0.4rem 0.9rem 0.4rem 0.4rem;
+        border: 1px solid var(--border-light); border-radius: 999px; background: rgba(127, 127, 127, 0.06);
+    }
+    body.home-page .home-rail-features .feature-icon { width: 30px; height: 30px; }
+    body.home-page .home-rail-features .feature-icon i { font-size: 0.8rem; }
+    body.home-page .home-rail-features h6 { white-space: nowrap; font-size: 0.78rem; }
+    body.home-page .home-rail-features p { display: none; }
+
+    /* Categories: shorter story-style tiles */
+    body.home-page .home-rail-cats > * { flex-basis: 36%; width: 36%; max-width: 36%; }
+    body.home-page .home-rail-cats .category-card { height: 180px; border-radius: 16px; }
+    body.home-page .home-rail-cats .category-overlay { padding: 0.75rem; }
+    body.home-page .home-rail-cats .category-overlay h4 { font-size: 0.95rem; }
+    body.home-page .home-rail-cats .category-overlay span { font-size: 0.7rem; }
+
+    /* Spotlights: rounded app cards, tighter */
+    body.home-page .ai-spotlight { border-radius: 22px; padding: 2rem 0; margin: 1rem 0; }
+    body.home-page .ai-viewfinder,
+    body.home-page .studio-stage { margin-top: 1.5rem; }
+    /* Steps read top to bottom instead of wrapping mid-row */
+    body.home-page .ai-steps { flex-direction: column; align-items: flex-start; gap: 0.6rem; margin-bottom: 1.5rem; }
+    body.home-page .ai-step-arrow { display: none; }
+
+    /* Discounts: two compact cards side by side */
+    body.home-page .home-discounts { --bs-gutter-x: 0.75rem; }
+    body.home-page .home-discounts > * { flex: 0 0 50%; width: 50%; max-width: 50%; }
+    body.home-page .home-discounts .discount-card { padding: 1rem 0.75rem; height: 100%; }
+    body.home-page .home-discounts .discount-icon { width: 44px; height: 44px; font-size: 1.1rem; margin-bottom: 0.6rem; }
+    body.home-page .home-discounts h5 { font-size: 0.82rem; }
+    body.home-page .home-discounts .discount-rate { font-size: 1.35rem; margin-bottom: 0.25rem; }
+    body.home-page .home-discounts .discount-copy { font-size: 0.7rem; margin: 0; }
+}

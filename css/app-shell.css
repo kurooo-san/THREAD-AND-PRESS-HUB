@@ -1,0 +1,445 @@
+/* =========================================================
+   App shell for phones and tablets (below 992px): the storefront behaves
+   like a shopping app instead of a website.
+     - bottom tab bar (Home / Shop / Design / Cart / Account)
+     - compact header that hides while scrolling down
+     - bottom sheets (Account menu, Quick Add in shop.php)
+     - sticky Add to Cart / Buy Now bar on product.php
+   Markup: includes/header/header.php, includes/footer/footer.php.
+   Behaviour: js/app-shell.js. Desktop (992px+) is unchanged except that
+   .app-sheet also works there as a centred dialog (Quick Add).
+   ========================================================= */
+
+:root {
+    --app-tabbar-h: 64px;
+    --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --app-bar-bg: rgba(19, 19, 21, 0.94);
+    --app-bar-line: rgba(255, 255, 255, 0.08);
+    --app-bar-text: rgba(244, 242, 238, 0.62);
+    --app-bar-active: #f4f2ee;
+    --app-accent: var(--accent, #c8a96e);
+    --app-sheet-bg: #ffffff;
+    --app-sheet-text: var(--text-dark, #1a1a1a);
+    --app-sheet-muted: var(--text-light, #888);
+    --app-sheet-line: var(--border-light, #e8e8e8);
+    --app-sheet-soft: var(--bg-light, #f8f8f8);
+}
+html.dark-mode {
+    --app-sheet-bg: #1b1b21;
+    --app-sheet-text: #ecebe8;
+    --app-sheet-muted: #9a978f;
+    --app-sheet-line: #2e2e36;
+    --app-sheet-soft: #24242c;
+}
+
+/* ---------- Bottom tab bar ---------- */
+.app-tabbar { display: none; }
+
+@media (max-width: 991.98px) {
+    .app-tabbar {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 1030;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        align-items: end;
+        height: calc(var(--app-tabbar-h) + var(--app-safe-bottom));
+        padding: 0 6px var(--app-safe-bottom);
+        background: var(--app-bar-bg);
+        -webkit-backdrop-filter: saturate(160%) blur(16px);
+        backdrop-filter: saturate(160%) blur(16px);
+        border-top: 1px solid var(--app-bar-line);
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
+    }
+    .app-tabbar > a,
+    .app-tabbar > button {
+        position: relative;
+        height: var(--app-tabbar-h);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        border: 0;
+        background: none;
+        color: var(--app-bar-text);
+        font: 600 11px/1 'Instrument Sans', 'Inter', Helvetica, Arial, sans-serif;
+        letter-spacing: 0.01em;
+        text-decoration: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.2s ease;
+    }
+    .app-tabbar > a > i,
+    .app-tabbar > button > i,
+    .app-tab-icon > i { font-size: 19px; line-height: 1; }
+    .app-tabbar .is-active { color: var(--app-bar-active); }
+    .app-tabbar .is-active > i,
+    .app-tabbar .is-active .app-tab-icon > i { color: var(--app-accent); }
+    /* A small pill marks the current tab. */
+    .app-tabbar > .is-active:not(.app-tab-center)::before {
+        content: '';
+        position: absolute;
+        top: 6px;
+        width: 22px; height: 3px;
+        border-radius: 3px;
+        background: var(--app-accent);
+    }
+
+    /* Centre Design button: a raised gold circle, the app's signature action. */
+    .app-tab-center { justify-content: flex-end !important; padding-bottom: 9px; }
+    .app-tab-fab {
+        position: absolute;
+        top: -18px;
+        width: 52px; height: 52px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #e3c68c, #b8914f);
+        color: #16140f;
+        font-size: 20px;
+        box-shadow: 0 8px 20px rgba(184, 145, 79, 0.45), 0 0 0 4px var(--app-bar-bg);
+    }
+
+    .app-tab-icon { position: relative; display: inline-flex; }
+    .app-tab-badge {
+        position: absolute;
+        top: -7px; right: -11px;
+        min-width: 18px; height: 18px;
+        padding: 0 5px;
+        border-radius: 9px;
+        background: #ef4444;
+        color: #fff;
+        font-size: 10.5px;
+        font-weight: 700;
+        line-height: 18px;
+        text-align: center;
+        box-shadow: 0 0 0 2px var(--app-bar-bg);
+    }
+    .app-tab-badge[hidden] { display: none; }
+
+    /* Page content, the floating chat button and bottom-anchored banners all
+       clear the tab bar. A spacer, not body padding: style.css resets
+       html/body padding with !important. */
+    body:not(.admin-page)::after {
+        content: '';
+        display: block;
+        height: calc(var(--app-tabbar-h) + var(--app-safe-bottom));
+    }
+    body:not(.admin-page) .chatbot-toggle { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 16px); }
+    body:not(.admin-page) #tph-cookie-banner { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 12px) !important; }
+    /* Toasts drop in from the top, like app notifications: at the bottom
+       they covered the tab bar and the buttons of an open sheet. */
+    body:not(.admin-page) .toast-container {
+        top: calc(8px + env(safe-area-inset-top)) !important;
+        bottom: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+    }
+    body:not(.admin-page) .toast-container .toast { pointer-events: auto; max-width: calc(100vw - 24px); }
+    body:not(.admin-page) .tryon-toast { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 16px); }
+    /* Support chat (phones) is sized to the screen; take the tab bar out too. */
+    body.support-chat-page .support-chat-wrapper { height: calc(100dvh - 150px - var(--app-tabbar-h) - var(--app-safe-bottom)); }
+    /* Apps have no site footer; its links live in the Account sheet instead. */
+    body:not(.admin-page) .footer-features,
+    body:not(.admin-page) .site-footer { display: none; }
+    /* Native feel: no grey tap flash, no double-tap zoom delay on controls. */
+    body:not(.admin-page) { -webkit-tap-highlight-color: transparent; }
+    body:not(.admin-page) :is(a, button, input, select, textarea, label, summary) { touch-action: manipulation; }
+
+    /* ---------- Compact header ---------- */
+    .tp-nav .navbar-toggler,
+    .tp-nav .navbar-collapse { display: none !important; }
+    .app-head-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .app-head-actions .tp-icon-btn {
+        width: 40px; height: 40px;
+        border: 0;
+        border-radius: 50%;
+        background: var(--nv-surface-soft, rgba(255, 255, 255, 0.06));
+        color: var(--nv-icon, rgba(244, 242, 238, 0.8));
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+    /* Slides away while scrolling down, back on the way up (js/app-shell.js). */
+    .tp-nav { transition: transform 0.28s ease; }
+    .tp-nav.app-nav-hidden { transform: translateY(-110%); }
+}
+
+@media (min-width: 992px) {
+    .app-head-actions { display: none !important; }
+}
+/* Tablets: the chat card opens above the (now raised) chat button. Phones
+   use the full-screen chat, which covers the tab bar. */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    body:not(.admin-page) .chatbot-widget {
+        bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 84px);
+        height: min(600px, calc(100dvh - var(--app-tabbar-h) - 200px));
+    }
+}
+
+/* Search overlay: a close button (phones had no way out but Escape). */
+.search-bar .search-close {
+    padding: 0;
+    width: 36px; height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-light, #888);
+    font-size: 1rem;
+}
+
+/* ---------- Bottom sheets ---------- */
+.app-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 1060;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.app-sheet[hidden] { display: none; }
+.app-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+.app-sheet-panel {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 8px 18px calc(18px + var(--app-safe-bottom));
+    border-radius: 22px 22px 0 0;
+    background: var(--app-sheet-bg);
+    color: var(--app-sheet-text);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.2);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.app-sheet.is-open .app-sheet-backdrop { opacity: 1; }
+.app-sheet.is-open .app-sheet-panel { transform: none; }
+.app-sheet-handle {
+    width: 40px; height: 5px;
+    margin: 4px auto 14px;
+    border-radius: 3px;
+    background: var(--app-sheet-line);
+    touch-action: none;
+}
+html.app-sheet-open,
+html.app-sheet-open body { overflow: hidden; }
+
+/* Desktop: the same sheet shows as a centred dialog. */
+@media (min-width: 992px) {
+    .app-sheet { align-items: center; }
+    .app-sheet-panel {
+        max-width: 440px;
+        border-radius: 20px;
+        padding-bottom: 20px;
+        transform: translateY(24px) scale(0.97);
+        opacity: 0;
+        transition: transform 0.25s ease, opacity 0.2s ease;
+    }
+    .app-sheet.is-open .app-sheet-panel { opacity: 1; }
+    .app-sheet-handle { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .app-sheet-panel, .app-sheet-backdrop, .tp-nav { transition: none !important; }
+}
+
+/* Account sheet contents */
+.app-account-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.app-account-avatar {
+    width: 48px; height: 48px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e3c68c, #b8914f);
+    color: #16140f;
+    font-weight: 700;
+    font-size: 16px;
+}
+.app-account-name { font-weight: 700; font-size: 1.02rem; line-height: 1.25; }
+.app-account-sub { font-size: 0.8rem; color: var(--app-sheet-muted); word-break: break-all; }
+.app-account-auth { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+
+.app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 16px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    font-weight: 700;
+    font-size: 0.92rem;
+    text-decoration: none;
+    cursor: pointer;
+}
+.app-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.app-btn-primary { background: var(--primary, #1a1a1a); color: #fff; }
+.app-btn-primary:hover { color: #fff; }
+.app-btn-accent { background: var(--app-accent); color: #16140f; }
+.app-btn-ghost { background: transparent; color: var(--app-sheet-text); border-color: var(--app-sheet-line); }
+html.dark-mode .app-btn-primary { background: #f2f0ec; color: #16140f; }
+
+.app-sheet-label {
+    margin: 4px 0 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--app-sheet-muted);
+}
+.app-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.app-chips a {
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: var(--app-sheet-soft);
+    border: 1px solid var(--app-sheet-line);
+    color: var(--app-sheet-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.app-list { border-top: 1px solid var(--app-sheet-line); }
+.app-list > a,
+.app-list > button {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 4px;
+    border: 0;
+    border-bottom: 1px solid var(--app-sheet-line);
+    background: none;
+    color: var(--app-sheet-text);
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+}
+.app-list > a > i:first-child,
+.app-list > button > i:first-child { width: 22px; text-align: center; color: var(--app-sheet-muted); }
+.app-list > a > span,
+.app-list > button > span:first-of-type { flex: 1; }
+.app-list .fa-chevron-right,
+.app-list .fa-download { font-size: 0.75rem; color: var(--app-sheet-muted); }
+.app-list > [hidden] { display: none; }
+/* dark-mode.css tints every link gold; menu rows keep the sheet's text colour. */
+html.dark-mode .app-list > a,
+html.dark-mode .app-chips a,
+html.dark-mode .app-btn-ghost { color: var(--app-sheet-text) !important; }
+html.dark-mode .app-btn-primary { color: #16140f !important; }
+.app-list .app-list-danger,
+.app-list .app-list-danger > i:first-child { color: #ef4444 !important; }
+
+/* Dark-mode switch mirrors html.dark-mode. */
+.app-switch {
+    position: relative;
+    flex: 0 0 auto !important;
+    width: 42px; height: 24px;
+    border-radius: 12px;
+    background: var(--app-sheet-line);
+    transition: background 0.2s ease;
+}
+.app-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s ease;
+}
+html.dark-mode .app-switch { background: var(--app-accent); }
+html.dark-mode .app-switch::after { transform: translateX(18px); }
+
+/* ---------- Quick Add sheet (shop.php) ---------- */
+.qa-product { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.qa-product img {
+    width: 64px; height: 64px;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: 12px;
+    background: var(--app-sheet-soft);
+}
+.qa-name { font-weight: 700; line-height: 1.3; }
+.qa-price { font-weight: 700; color: var(--app-sheet-muted); margin-top: 2px; }
+.qa-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.qa-color {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--app-sheet-line);
+    cursor: pointer;
+    position: relative;
+}
+.qa-color.is-selected { box-shadow: 0 0 0 2px var(--app-sheet-bg), 0 0 0 4px var(--app-accent); }
+.qa-size {
+    min-width: 48px; height: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid var(--app-sheet-line);
+    background: var(--app-sheet-soft);
+    color: var(--app-sheet-text);
+    font-weight: 600;
+}
+.qa-size.is-selected { background: var(--primary, #1a1a1a); border-color: var(--primary, #1a1a1a); color: #fff; }
+html.dark-mode .qa-size.is-selected { background: var(--app-accent); border-color: var(--app-accent); color: #16140f; }
+.qa-qty { display: inline-flex; align-items: center; border: 1px solid var(--app-sheet-line); border-radius: 12px; overflow: hidden; margin-bottom: 18px; }
+.qa-qty button { width: 44px; height: 42px; border: 0; background: var(--app-sheet-soft); color: var(--app-sheet-text); font-size: 1.1rem; }
+.qa-qty span { min-width: 48px; text-align: center; font-weight: 700; }
+.qa-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Touch screens have no hover, so the card's Quick Add bag stays visible. */
+@media (hover: none) {
+    .product-card .product-actions { opacity: 1; transform: none; }
+}
+
+/* ---------- Product page: sticky buy bar ---------- */
+.app-buybar { display: none; }
+@media (max-width: 991.98px) {
+    .app-buybar {
+        position: fixed;
+        left: 0; right: 0;
+        bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom));
+        z-index: 1029;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        /* Extra bottom room: the raised Design button pokes 18px above the tab bar. */
+        padding: 10px 14px 26px;
+        background: var(--app-sheet-bg);
+        border-top: 1px solid var(--app-sheet-line);
+        box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
+        transform: translateY(120%);
+        transition: transform 0.25s ease;
+    }
+    .app-buybar.is-visible { transform: none; }
+    .app-buybar-price { font-weight: 800; font-size: 1.05rem; color: var(--app-sheet-text); margin-right: auto; white-space: nowrap; }
+    .app-buybar .app-btn { min-height: 44px; padding: 0 14px; font-size: 0.86rem; }
+    /* The chat button would sit on the bar; lift it while the bar shows. */
+    html.app-buybar-on body:not(.admin-page) .chatbot-toggle { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 96px); }
+}
+
+/* Installed app (standalone): no browser chrome above the header. */
+@media (display-mode: standalone) {
+    .tp-nav { padding-top: env(safe-area-inset-top); }
+    /* No rubber-band bounce / glow past the page ends in the installed app. */
+    html, body { overscroll-behavior-y: none; }
+}

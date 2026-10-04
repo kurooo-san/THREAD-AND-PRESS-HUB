@@ -1,7 +1,7 @@
 <?php
 require '../includes/support-chat-config.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
+if (!isset($_SESSION['user_id']) || ($_SESSION['user_type'] ?? '') !== 'admin') {
     header("Location: ../login.php");
     exit();
 }
@@ -11,8 +11,12 @@ $pageTitle = 'Support Chat Management';
 
 // Handle status toggle
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
-    $convId = intval($_POST['conversation_id']);
-    $newStatus = $_POST['new_status'] === 'closed' ? 'closed' : 'open';
+    $convId = intval($_POST['conversation_id'] ?? 0);
+    if (!verifyCsrfToken()) {
+        header("Location: support-chat.php?conversation=" . $convId);
+        exit();
+    }
+    $newStatus = ($_POST['new_status'] ?? '') === 'closed' ? 'closed' : 'open';
     updateConversationStatus($conn, $convId, $newStatus);
     header("Location: support-chat.php?conversation=" . $convId);
     exit();
@@ -39,7 +43,9 @@ $totalUnread = getAdminUnreadCount($conn);
 <?php include '../includes/admin-sidebar.php'; ?>
 
 <div class="support-chat-container admin-support">
-    <div class="support-chat-wrapper">
+    <!-- has-active: phones show the open chat and slide the list in on demand;
+         without one they show the list. -->
+    <div class="support-chat-wrapper<?php echo $activeConversation ? ' has-active' : ''; ?>">
         <!-- Sidebar: All Conversations -->
         <div class="support-sidebar" id="supportSidebar">
             <div class="support-sidebar-header">
@@ -49,6 +55,10 @@ $totalUnread = getAdminUnreadCount($conn);
                         <span class="badge bg-danger"><?php echo $totalUnread; ?></span>
                     <?php endif; ?>
                 </h5>
+                <?php if ($activeConversation): ?>
+                <button type="button" class="support-sidebar-close d-md-none" aria-label="Back to chat"
+                        onclick="document.getElementById('supportSidebar').classList.remove('show')"><i class="fas fa-xmark"></i></button>
+                <?php endif; ?>
             </div>
             <!-- Filter -->
             <div class="support-filter px-3 py-2">
@@ -99,8 +109,8 @@ $totalUnread = getAdminUnreadCount($conn);
             <?php if ($activeConversation): ?>
                 <!-- Chat Header -->
                 <div class="support-chat-header">
-                    <button class="btn btn-sm btn-outline-secondary d-md-none me-2" id="toggleSidebar">
-                        <i class="fas fa-bars"></i>
+                    <button class="btn btn-sm btn-outline-secondary d-md-none me-2" id="toggleSidebar" type="button" aria-label="All conversations">
+                        <i class="fas fa-arrow-left"></i>
                     </button>
                     <div class="support-chat-info flex-grow-1">
                         <h6><?php echo htmlspecialchars($activeConversation['subject']); ?></h6>
@@ -114,6 +124,7 @@ $totalUnread = getAdminUnreadCount($conn);
                         </small>
                     </div>
                     <form method="POST" class="d-inline">
+                        <?php echo csrfTokenField(); ?>
                         <input type="hidden" name="conversation_id" value="<?php echo $activeConversation['id']; ?>">
                         <?php if ($activeConversation['status'] === 'open'): ?>
                             <input type="hidden" name="new_status" value="closed">
@@ -170,6 +181,13 @@ $totalUnread = getAdminUnreadCount($conn);
                         <form id="supportChatForm" enctype="multipart/form-data">
                             <input type="hidden" name="conversation_id" value="<?php echo $activeConversation['id']; ?>">
                             <div class="support-input-wrapper">
+                                <!-- AI drafts a reply into the box below; the admin edits and sends it. -->
+                                <div class="support-ai-bar">
+                                    <button type="button" class="support-ai-suggest" id="aiSuggestBtn" data-conversation="<?php echo (int)$activeConversation['id']; ?>">
+                                        <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> <span>Suggest reply</span>
+                                    </button>
+                                    <span class="support-ai-note" id="aiSuggestNote" aria-live="polite">AI drafts it — you review and send.</span>
+                                </div>
                                 <div class="support-image-preview" id="imagePreview" style="display: none;">
                                     <img id="previewImg" src="" alt="Preview">
                                     <button type="button" class="btn-close" id="removeImage"></button>

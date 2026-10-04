@@ -1,6 +1,7 @@
 <?php
 require 'includes/config.php';
 require_once 'includes/reviews.php';
+redirectToLogin(); // same rule as shop.php: sign in before browsing products
 
 $productId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($productId <= 0) {
@@ -102,7 +103,7 @@ function pdStarSvg(): string
         <div class="pd-media">
             <img src="images/products/<?php echo htmlspecialchars($product['image']); ?>"
                  alt="<?php echo htmlspecialchars($product['name']); ?>"
-                 onerror="this.src='https://placehold.co/600x750/f0f0f0/999?text=<?php echo urlencode($product['name']); ?>'">
+                 onerror="this.onerror=null;this.src='https://placehold.co/600x750/f0f0f0/999?text=<?php echo urlencode($product['name']); ?>'">
         </div>
 
         <div class="pd-info">
@@ -305,7 +306,7 @@ function pdStarSvg(): string
             <?php foreach ($related as $rp): ?>
             <a class="pd-related-card" href="product.php?id=<?php echo (int) $rp['id']; ?>">
                 <img src="<?php echo htmlspecialchars(productThumb($rp['image'])); ?>" loading="lazy" decoding="async" alt="<?php echo htmlspecialchars($rp['name']); ?>"
-                     onerror="this.src='https://placehold.co/300x375/f0f0f0/999?text=<?php echo urlencode($rp['name']); ?>'">
+                     onerror="this.onerror=null;this.src='https://placehold.co/300x375/f0f0f0/999?text=<?php echo urlencode($rp['name']); ?>'">
                 <div>
                     <h6><?php echo htmlspecialchars($rp['name']); ?></h6>
                     <b>₱<?php echo number_format((float) $rp['price'], 2); ?></b>

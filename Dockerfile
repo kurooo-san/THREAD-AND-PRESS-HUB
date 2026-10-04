@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # above can leave a second one enabled, so the others are explicitly
 # disabled before prefork (the MPM mod_php requires) is turned back on.
 RUN a2dismod mpm_event mpm_worker mpm_prefork 2>/dev/null || true; \
-    a2enmod mpm_prefork rewrite headers \
+    a2enmod mpm_prefork rewrite headers remoteip \
     && echo "MPMs enabled: $(ls /etc/apache2/mods-enabled/ | grep -c '^mpm_.*\.load$') (must be 1)" \
     && test "$(ls /etc/apache2/mods-enabled/ | grep -c '^mpm_.*\.load$')" = "1"
 
@@ -71,6 +71,10 @@ RUN { \
         echo '# TLS ends at the Railway proxy; tell PHP the request was https'; \
         echo '# so FORCE_HTTPS does not redirect-loop and cookies stay Secure.'; \
         echo 'SetEnvIf X-Forwarded-Proto "^https$" HTTPS=on'; \
+        echo '# Real client IP instead of the Railway proxy (100.64.0.0/10), so'; \
+        echo '# login rate limiting and the audit log see the actual visitor.'; \
+        echo 'RemoteIPHeader X-Forwarded-For'; \
+        echo 'RemoteIPInternalProxy 100.64.0.0/10'; \
         echo '# Small worker pool: the free plan caps RAM at ~0.5 GB.'; \
         echo '<IfModule mpm_prefork_module>'; \
         echo '    StartServers 2'; \
