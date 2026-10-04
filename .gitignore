@@ -76,3 +76,6 @@ images/models/*
 images/models/basic/
 images/models/corporate-model/
 images/models/couple-model/
+
+# Database dumps hold real customer data; never commit them
+database/dumps/

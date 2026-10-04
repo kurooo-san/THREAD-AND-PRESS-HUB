@@ -24,7 +24,7 @@ scripts/remove_product.php
 scripts/migrate.php
 
 # ---- Real customer data (RA 10173) ---------------------------------
-database/dumps/
+database/
 **/threadpresshub*.sql
 **/backup_*.sql
 **/*.dump
