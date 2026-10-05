@@ -134,14 +134,6 @@ if ($cc && $cc->num_rows > 0) {
     }
 }
 
-function couponStatus(array $c) {
-    if ((int)$c['is_active'] !== 1)                                          return ['Inactive', 'secondary'];
-    if ($c['valid_until'] && strtotime($c['valid_until']) < time())          return ['Expired', 'danger'];
-    if ($c['max_uses'] !== null && (int)$c['times_used'] >= (int)$c['max_uses']) return ['Used up', 'warning'];
-    if ($c['valid_from'] && strtotime($c['valid_from']) > time())            return ['Scheduled', 'info'];
-    return ['Active', 'success'];
-}
-
 $liveCount = count(array_filter($coupons, fn($c) => couponStatus($c)[0] === 'Active'));
 
 // Form contents: what was just posted if it failed, else the coupon opened

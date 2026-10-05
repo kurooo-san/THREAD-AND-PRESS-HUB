@@ -91,6 +91,15 @@ function aia_peso(float $v): string
     return paymentFormatPeso($v);
 }
 
+/** "10% off" / "₱50.00 off", plus the minimum subtotal when there is one. */
+function aia_coupon_off(array $c): string
+{
+    $off = $c['discount_type'] === 'percent'
+        ? rtrim(rtrim((string) $c['discount_value'], '0'), '.') . '% off'
+        : aia_peso((float) $c['discount_value']) . ' off';
+    return $off . ((float) $c['min_subtotal'] > 0 ? ', min. subtotal ' . aia_peso((float) $c['min_subtotal']) : '');
+}
+
 function aia_label(?string $v): string
 {
     return ucwords(str_replace('_', ' ', (string) $v));
@@ -258,6 +267,34 @@ if ($action === 'insights') {
         $snap .= "- " . paymentMethodLabel($r['payment_method']) . ": " . (int) $r['n'] . " orders, " . aia_peso((float) $r['s']) . "\n";
     }
 
+    $snap .= "\nDISCOUNTS GIVEN THIS MONTH (non-cancelled regular orders)\n";
+    $dc = aia_rows($conn, "SELECT COALESCE(SUM(discount_amount),0) AS pwd, COALESCE(SUM(coupon_discount),0) AS cpn,
+        SUM(coupon_code IS NOT NULL) AS cpn_orders FROM orders WHERE status != 'cancelled' AND created_at >= ? AND created_at < ?", 'ss', $monthStart, $tomorrow);
+    $snap .= $dc
+        ? "- PWD/Senior: " . aia_peso((float) $dc[0]['pwd']) . " | Coupons: " . aia_peso((float) $dc[0]['cpn']) . " on " . (int) $dc[0]['cpn_orders'] . " orders\n"
+        : "- (not available)\n";
+
+    // 'status' is what a customer gets typing the code now; 'used' counts every
+    // checkout that claimed it, 'given' only non-cancelled orders.
+    $snap .= "\nCOUPONS (managed on the Coupons page; customers enter the code at checkout)\n";
+    $given = [];
+    foreach (aia_rows($conn, "SELECT coupon_code, COUNT(*) AS n, SUM(coupon_discount) AS s FROM orders
+        WHERE status != 'cancelled' AND coupon_code IS NOT NULL GROUP BY coupon_code") as $r) {
+        $given[$r['coupon_code']] = $r;
+    }
+    $coupons = aia_rows($conn, "SELECT code, description, discount_type, discount_value, min_subtotal, max_uses, times_used,
+        valid_from, valid_until, is_active FROM coupons ORDER BY created_at DESC LIMIT 25");
+    if (!$coupons) $snap .= "- (no coupons)\n";
+    foreach ($coupons as $c) {
+        $g = $given[$c['code']] ?? ['n' => 0, 's' => 0];
+        $snap .= "- " . $c['code'] . " | " . couponStatus($c)[0]
+            . " | " . aia_coupon_off($c)
+            . " | used " . (int) $c['times_used'] . ($c['max_uses'] !== null ? " of " . (int) $c['max_uses'] : " (no limit)")
+            . " | " . ($c['valid_until'] ? "until " . date('M d, Y', strtotime($c['valid_until'])) : "no expiry")
+            . " | given " . aia_peso((float) $g['s']) . " on " . (int) $g['n'] . " non-cancelled orders"
+            . ($c['description'] ? " | \"" . mb_substr($c['description'], 0, 80) . "\"" : '') . "\n";
+    }
+
     $snap .= "\nREGULAR ORDERS BY STATUS (all time)\n";
     foreach (aia_rows($conn, "SELECT status, COUNT(*) AS n FROM orders GROUP BY status ORDER BY n DESC") as $r) {
         $snap .= "- " . aia_label($r['status']) . ": " . (int) $r['n'] . "\n";
@@ -386,8 +423,9 @@ if ($action === 'insights') {
     $system = "You are 'AI Insights', the analytics assistant inside the ADMIN panel of Thread & Press Hub, a Philippine apparel shop with a custom-print Design Studio.
 
 RULES:
-- Answer ONLY from the STORE DATA SNAPSHOT below. Never invent or estimate a number that is not in it. If the answer is not in the snapshot, say so plainly and name the admin page where they can check it (Dashboard, Products, Orders, Users, Payments, Custom Designs, Custom Orders, Contact Messages, Support Chat, Audit Log).
-- You are READ-ONLY. You cannot change orders, products, prices, stock or users. If asked to change something, explain which admin page to use.
+- Answer ONLY from the STORE DATA SNAPSHOT below. Never invent or estimate a number that is not in it. If the answer is not in the snapshot, say so plainly and name the admin page where they can check it (Dashboard, Products, Orders, Users, Payments, Custom Designs, Custom Orders, Coupons, Sales Report, Contact Messages, Support Chat, Audit Log).
+- For a custom date range, a full order list, or a printable / CSV (Excel) report, point the admin to the Sales Report page.
+- You are READ-ONLY. You cannot change orders, products, prices, stock, coupons or users. If asked to change something, explain which admin page to use.
 - When you compare periods, do the math carefully and give the difference and the % change (say 'new' when the earlier value is zero). Remember this week and this month are still in progress.
 - Money: pesos with the ₱ sign and commas, e.g. ₱1,250.00.
 - Be concise and scannable: a one-line answer first, then short bullets. Use **bold** for the key figures. No tables, no headings.
@@ -476,11 +514,21 @@ if ($action === 'suggest_reply') {
     $online = (paymongoIsConfigured() && paymongoTableExists())
         ? 'Pay Online through PayMongo (' . implode(', ', array_map(fn($m) => $methodLabels[$m] ?? aia_label($m), paymongoMethods())) . '), confirmed automatically, nothing to upload'
         : 'online payment is switched off right now';
+    // Only codes a customer could use right now (already public on promotion.php).
+    $promos = array_filter(
+        aia_rows($conn, "SELECT code, discount_type, discount_value, min_subtotal, max_uses, times_used, valid_from, valid_until, is_active FROM coupons"),
+        fn($c) => couponStatus($c)[0] === 'Active'
+    );
+    $promoLine = $promos
+        ? 'Usable codes now: ' . implode('; ', array_map(fn($c) => $c['code'] . ' (' . aia_coupon_off($c)
+            . ($c['valid_until'] ? ', until ' . date('M d, Y', strtotime($c['valid_until'])) : '') . ')', $promos)) . '.'
+        : 'There are no usable promo codes right now.';
     $facts = "STORE FACTS:
 - Contact: " . SUPPORT_EMAIL . " or the Live Support chat. No phone number or street address is published; never invent one.
 - Delivery: Rizal and Metro Manila 1-2 business days; Bulacan, Cavite, Laguna, Batangas, Quezon and Pampanga 2-3 business days; rest of Luzon, Visayas and Mindanao 3-5 business days. Fees by area: " . implode('; ', $zones) . ". Store Pickup is free. No free-shipping promo.
 - Payment: " . $online . "; or cash (Cash on Delivery / Cash on Pickup). Store Pickup is cash only. No manual QR / screenshot uploads anymore.
 - 12% VAT is added at checkout. PWD / Senior Citizen: 20% off with a verified ID.
+- Promo codes: entered in the coupon box at checkout, one per order; PWD/Senior accounts get both. All current promos are on the Promotions page. " . $promoLine . "
 - Returns/exchanges: within 30 days, unused with original tags; free shipping on exchanges.
 - Cancelling: only while the order is still Pending, done by the shop on request.
 - Custom (Design Studio) orders take 5-7 business days to produce after payment is confirmed. Custom statuses: Pending Payment -> Payment Uploaded / Verified -> Processing -> Printing -> Ready for Pickup -> Delivered.

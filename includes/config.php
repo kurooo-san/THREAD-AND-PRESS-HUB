@@ -462,6 +462,16 @@ function incrementCouponUsage($couponId) {
     return $ok;
 }
 
+// [label, Bootstrap colour] for a coupon row: what a customer would get if
+// they typed the code right now. Shared by the Coupons page and AI Insights.
+function couponStatus(array $c) {
+    if ((int)$c['is_active'] !== 1)                                          return ['Inactive', 'secondary'];
+    if ($c['valid_until'] && strtotime($c['valid_until']) < time())          return ['Expired', 'danger'];
+    if ($c['max_uses'] !== null && (int)$c['times_used'] >= (int)$c['max_uses']) return ['Used up', 'warning'];
+    if ($c['valid_from'] && strtotime($c['valid_from']) > time())            return ['Scheduled', 'info'];
+    return ['Active', 'success'];
+}
+
 // =============================================================
 // Stock helpers
 // =============================================================

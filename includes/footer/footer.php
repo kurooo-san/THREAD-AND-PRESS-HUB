@@ -182,6 +182,7 @@
                 <button class="chat-quick-action" onclick="sendQuickChat('Style Advice')"><i class="fas fa-magic"></i> Style Advice</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('Track my recent orders')"><i class="fas fa-box"></i> Track My Orders</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('What payment options do you have?')"><i class="fas fa-credit-card"></i> Payment Options</button>
+                <button class="chat-quick-action" onclick="sendQuickChat('What promo codes can I use right now, and how do I apply one?')"><i class="fas fa-ticket-alt"></i> Promos &amp; Coupons</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('How do I order a custom design?')"><i class="fas fa-palette"></i> Custom Design</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('What can I do in the 3D Design Studio? Tell me about templates, sleeves and the logo designer.')"><i class="fas fa-cube"></i> 3D Design Studio</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('How does the Virtual Try-On work?')"><i class="fas fa-camera"></i> Virtual Try-On</button>
