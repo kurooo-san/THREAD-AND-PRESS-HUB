@@ -66,37 +66,6 @@ if ($hasCustomOrders) {
 usort($rows, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
 // ---------------------------------------------------------------
-// CSV export — same rows, before any HTML is sent.
-// ---------------------------------------------------------------
-if (($_GET['export'] ?? '') === 'csv') {
-    logAudit('report_export', 'report', null, "$from to $to");
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="sales-report_' . $from . '_to_' . $to . '.csv"');
-    $out = fopen('php://output', 'w');
-    fwrite($out, "\xEF\xBB\xBF"); // BOM so Excel reads ₱ and ñ correctly
-    fputcsv($out, ['Sales Report', "$from to $to"]);
-    fputcsv($out, ['Order', 'Date', 'Customer', 'Type', 'Status', 'Payment', 'Subtotal', 'Discount', 'Coupon', 'Coupon discount', 'Delivery fee', 'Total']);
-    foreach ($rows as $r) {
-        fputcsv($out, [
-            ($r['kind'] === 'Custom' ? 'C-' : '#') . $r['id'],
-            $r['created_at'],
-            $r['fullname'] ?? '(deleted user)',
-            $r['kind'],
-            $r['status'],
-            strtoupper($r['payment_method']),
-            number_format((float)$r['subtotal'], 2, '.', ''),
-            number_format((float)$r['discount_amount'], 2, '.', ''),
-            $r['coupon_code'] ?? '',
-            number_format((float)$r['coupon_discount'], 2, '.', ''),
-            number_format((float)$r['delivery_fee'], 2, '.', ''),
-            number_format((float)$r['total'], 2, '.', ''),
-        ]);
-    }
-    fclose($out);
-    exit();
-}
-
-// ---------------------------------------------------------------
 // Totals. Sales exclude cancelled orders, same rule as the dashboard.
 // ---------------------------------------------------------------
 $sum = ['sales' => 0.0, 'orders' => 0, 'discounts' => 0.0, 'coupons' => 0.0, 'delivery' => 0.0, 'cancelled' => 0, 'cancelled_value' => 0.0];
@@ -123,7 +92,7 @@ foreach ($rows as $r) {
         $byDay[$day]['orders']++;
         $byDay[$day]['sales'] += $total;
     }
-    $pm = $r['kind'] === 'Custom' ? 'Custom orders' : strtoupper($r['payment_method']);
+    $pm = $r['kind'] === 'Custom' ? 'Custom orders' : paymentMethodLabel($r['payment_method']);
     $byPayment[$pm] = ($byPayment[$pm] ?? ['orders' => 0, 'sales' => 0.0]);
     $byPayment[$pm]['orders']++;
     $byPayment[$pm]['sales'] += $total;
@@ -146,7 +115,127 @@ $topProducts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 $rangeLabel = date('M d, Y', strtotime($from)) . ' – ' . date('M d, Y', strtotime($to));
-$exportUrl  = 'reports.php?' . http_build_query(['from' => $from, 'to' => $to, 'export' => 'csv']);
+
+// ---------------------------------------------------------------
+// Excel export: the same figures as the page, one sheet per section.
+// ---------------------------------------------------------------
+if (($_GET['export'] ?? '') === 'xlsx') {
+    require_once __DIR__ . '/../includes/xlsx-writer.php';
+    $period = 'Period: ' . $rangeLabel;
+    $made   = 'Generated ' . date('M d, Y g:i A');
+    $label  = fn($v) => ucwords(str_replace('_', ' ', (string)$v));
+    $m      = fn($v) => ['v' => round((float)$v, 2), 's' => 'money'];
+    $hdr    = fn(array $cols) => array_map(fn($c) => ['v' => $c, 's' => 'header'], $cols);
+
+    // Summary
+    $summary = [
+        [['v' => 'Thread & Press Hub — Sales Report', 's' => 'title']],
+        [['v' => $period, 's' => 'muted']],
+        [['v' => $made, 's' => 'muted']],
+        [],
+        $hdr(['Summary', 'Value']),
+        ['Total sales', $m($sum['sales'])],
+        ['Orders', ['v' => $sum['orders'], 's' => 'int']],
+        ['Average order', $m($avgOrder)],
+        ['PWD / Senior discounts', $m($sum['discounts'])],
+        ['Coupon discounts', $m($sum['coupons'])],
+        ['Delivery fees', $m($sum['delivery'])],
+        ['Cancelled orders', ['v' => $sum['cancelled'], 's' => 'int']],
+        ['Value of cancelled orders', $m($sum['cancelled_value'])],
+        [],
+        [['v' => 'Sales = totals of non-cancelled shop and custom orders, the same rule as the Dashboard.', 's' => 'muted']],
+        [],
+        $hdr(['Payment method', 'Orders', 'Sales']),
+    ];
+    foreach ($byPayment as $method => $v) {
+        $summary[] = [$method, ['v' => $v['orders'], 's' => 'int'], $m($v['sales'])];
+    }
+    $summary[] = [['v' => 'Total', 's' => 'total'], ['v' => $sum['orders'], 's' => 'totalInt'], ['v' => round($sum['sales'], 2), 's' => 'totalMoney']];
+
+    // Orders: header on row 5, data from row 6, totals skip cancelled rows.
+    $orders = [
+        [['v' => 'Orders', 's' => 'title']],
+        [['v' => $period, 's' => 'muted']],
+        [['v' => 'Cancelled orders are listed but left out of the totals row.', 's' => 'muted']],
+        [],
+        $hdr(['Order', 'Date', 'Customer', 'Type', 'Status', 'Payment', 'Payment status', 'Subtotal', 'PWD/Senior discount', 'Coupon', 'Coupon discount', 'Delivery fee', 'Total']),
+    ];
+    foreach ($rows as $r) {
+        $orders[] = [
+            ($r['kind'] === 'Custom' ? 'C-' : '#') . $r['id'],
+            ['v' => xlsxDate($r['created_at']), 's' => 'datetime'],
+            $r['fullname'] ?? '(deleted user)',
+            $r['kind'],
+            $label($r['status']),
+            $r['kind'] === 'Custom' ? 'Custom order' : paymentMethodLabel($r['payment_method']),
+            $r['payment_status'] ? $label($r['payment_status']) : '',
+            $m($r['subtotal']),
+            $m($r['discount_amount']),
+            $r['coupon_code'] ?? '',
+            $m($r['coupon_discount']),
+            $m($r['delivery_fee']),
+            $m($r['total']),
+        ];
+    }
+    $first = 6;
+    $last  = 5 + count($rows);
+    if ($rows) {
+        $sumIf = fn($col) => ['f' => "SUMIFS({$col}{$first}:{$col}{$last},E{$first}:E{$last},\"<>Cancelled\")", 's' => 'totalMoney'];
+        $orders[] = [
+            ['v' => 'Total (excl. cancelled)', 's' => 'total'], ['v' => '', 's' => 'total'], ['v' => '', 's' => 'total'],
+            ['v' => '', 's' => 'total'], ['v' => '', 's' => 'total'], ['v' => '', 's' => 'total'], ['v' => '', 's' => 'total'],
+            $sumIf('H'), $sumIf('I'), ['v' => '', 's' => 'total'], $sumIf('K'), $sumIf('L'), $sumIf('M'),
+        ];
+    } else {
+        $orders[] = [['v' => 'No orders in this period.', 's' => 'muted']];
+    }
+
+    // Top products
+    $products = [
+        [['v' => 'Top Products', 's' => 'title']],
+        [['v' => $period, 's' => 'muted']],
+        [],
+        $hdr(['Rank', 'Product', 'Qty sold', 'Sales']),
+    ];
+    foreach ($topProducts as $i => $p) {
+        $products[] = [$i + 1, $p['name'], ['v' => (int)$p['qty'], 's' => 'int'], $m($p['sales'])];
+    }
+    if (!$topProducts) $products[] = [['v' => 'No products sold in this period.', 's' => 'muted']];
+    $products[] = [];
+    $products[] = [['v' => 'Item prices before discounts, VAT and delivery. Shop orders only.', 's' => 'muted']];
+
+    // Daily sales
+    $daily = [
+        [['v' => 'Daily Sales', 's' => 'title']],
+        [['v' => $period, 's' => 'muted']],
+        [],
+        $hdr(['Date', 'Orders', 'Sales']),
+    ];
+    foreach ($byDay as $day => $v) {
+        $daily[] = [['v' => xlsxDate($day), 's' => 'date'], ['v' => $v['orders'], 's' => 'int'], $m($v['sales'])];
+    }
+    $daily[] = [['v' => 'Total', 's' => 'total'], ['v' => $sum['orders'], 's' => 'totalInt'], ['v' => round($sum['sales'], 2), 's' => 'totalMoney']];
+
+    $file = xlsxBuild([
+        ['name' => 'Summary',      'widths' => [30, 18, 18],                                               'rows' => $summary],
+        ['name' => 'Orders',       'widths' => [10, 22, 26, 9, 18, 24, 18, 13, 23, 13, 19, 14, 14], 'rows' => $orders,
+         'freeze' => 5, 'filter' => $rows ? "A5:M{$last}" : null],
+        ['name' => 'Top Products', 'widths' => [8, 40, 12, 16],                                           'rows' => $products, 'freeze' => 4],
+        ['name' => 'Daily Sales',  'widths' => [22, 10, 16],                                              'rows' => $daily, 'freeze' => 4],
+    ]);
+    if ($file === null) {
+        http_response_code(500);
+        exit('Excel export needs the PHP zip extension, which is not enabled on this server.');
+    }
+    logAudit('report_export', 'report', null, "$from to $to");
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="sales-report_' . $from . '_to_' . $to . '.xlsx"');
+    header('Content-Length: ' . filesize($file));
+    readfile($file);
+    unlink($file);
+    exit();
+}
+$exportUrl  = 'reports.php?' . http_build_query(['from' => $from, 'to' => $to, 'export' => 'xlsx']);
 $peso = fn($n) => '₱' . number_format((float)$n, 2);
 ?>
 
@@ -194,7 +283,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
             </div>
             <div class="ms-auto d-flex gap-2">
                 <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
-                <a href="<?php echo htmlspecialchars($exportUrl); ?>" class="btn btn-sm btn-outline-success"><i class="fas fa-file-csv"></i> Export CSV</a>
+                <a href="<?php echo htmlspecialchars($exportUrl); ?>" class="btn btn-sm btn-outline-success"><i class="fas fa-file-excel"></i> Export Excel</a>
             </div>
         </form>
         <div class="rp-presets mt-2">
@@ -309,7 +398,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
                         <td class="small"><?php echo date('M d, Y H:i', strtotime($r['created_at'])); ?></td>
                         <td><?php echo htmlspecialchars($r['fullname'] ?? '(deleted user)'); ?></td>
                         <td class="small"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $r['status']))); ?></td>
-                        <td class="small"><?php echo $isCustom ? 'Custom order' : htmlspecialchars(strtoupper($r['payment_method'])); ?></td>
+                        <td class="small"><?php echo $isCustom ? 'Custom order' : htmlspecialchars(paymentMethodLabel($r['payment_method'])); ?></td>
                         <td class="text-end small">
                             <?php $disc = (float)$r['discount_amount'] + (float)$r['coupon_discount']; echo $disc > 0 ? '-' . $peso($disc) : '—'; ?>
                             <?php if (!empty($r['coupon_code'])): ?><br><span class="text-muted"><?php echo htmlspecialchars($r['coupon_code']); ?></span><?php endif; ?>
