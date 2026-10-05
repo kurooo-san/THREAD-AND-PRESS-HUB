@@ -16,7 +16,11 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 - **Quick Add**: Pick colour, size and quantity in a bottom sheet, then Add to Cart or Buy Now
 - **Shopping Cart**: Add/remove items with quantity management
 - **Product Reviews**: Star ratings and reviews on product pages
-- **Coupons**: Discount codes checked at checkout
+- **Coupons / Promo Codes**: Type a code in the "Have a coupon code?" box at checkout and the discount shows in the order summary before placing the order
+  - Percent or fixed discounts, optional minimum subtotal, usage limit and validity dates, all set by the admin
+  - One code per order; works together with the PWD/Senior discount
+  - Checked again on the server when the order is placed, so a code that expired or ran out in the meantime stops the order with a clear message instead of charging a price the customer did not see
+  - Current codes are listed on the **Promotions** page
 - **Special Discounts**:
   - PWD Discount: 20% off with valid PWD ID
   - Senior Citizen Discount: 20% off with valid Senior ID
@@ -31,7 +35,7 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 - **Email Notifications**: Welcome email, order and custom-order confirmations, and status updates
 
 ### 🤖 AI Features (Google Gemini)
-- **AI Chatbot**: Floating shopping assistant that answers with real store data and recommends products; past conversations are saved in **Chat History**
+- **AI Chatbot**: Floating shopping assistant that answers with real store data and recommends products; past conversations are saved in **Chat History**. It knows the promo codes usable right now (live from the database) and how to apply them, with a **Promos & Coupons** quick button
 - **Virtual Try-On (LiveLook)**: Uses the camera (or an uploaded photo) and shows an AI-generated preview of the customer wearing the selected product. Includes an **AI Stylist** and a size suggestion from height and weight (with a formula fallback when the AI is unavailable)
 - **AI Design Generator**: Describe an idea in the Design Studio and Gemini creates a print-ready graphic, for the front, back or sleeves
 - **Hourly limits**: Every Gemini call costs money and anyone can register, so each customer has an hourly limit per feature. Admins have no limit
@@ -72,18 +76,23 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 ### 👨‍💼 Admin Features
 - **Dashboard**: Overview of sales, users, products, and orders
 - **Product Management**: Add, edit, and manage products and stock
-- **Order Management**: View all orders and update their status
+- **Order Management**: View all orders and update their status; the coupon and its discount show on each order
+- **Coupons**: Create, edit, activate/deactivate and delete promo codes. Shows each code's status (Active, Scheduled, Expired, Used up, Inactive), how many times it was used and the total discount given. The code itself is fixed once created, since orders and the totals are matched by it
+- **Sales Report**: Sales for any date range (with This month, Last month, Last 30 days and This year shortcuts): total sales, orders, average order, discounts given (PWD/Senior and coupons), delivery fees, cancelled orders, a daily sales chart, top products, sales by payment method and the full order list
+  - **Export Excel**: A formatted `.xlsx` with Summary, Orders, Top Products and Daily Sales sheets (peso formatting, real dates, frozen headers, filters and totals)
+  - **Print**: Printer-friendly layout with its own report header
+  - Counts sales the same way as the Dashboard: non-cancelled shop and custom orders
 - **User Management**: Monitor customer accounts
 - **AI Assistant** (read-only):
-  - **AI Insights**: Ask questions like "best seller this month?" or "what needs my attention?". Answers come from a fixed data snapshot; the AI never writes SQL and never sees customer emails, phones, addresses or payment details
-  - **Suggest Reply**: Drafts a support-chat reply that the admin reviews before sending
+  - **AI Insights**: Ask questions like "best seller this month?", "what needs my attention?" or "how much discount did we give this month?". Answers come from a fixed data snapshot (sales, orders, stock, coupons and discounts, reviews); the AI never writes SQL and never sees customer emails, phones, addresses or payment details
+  - **Suggest Reply**: Drafts a support-chat reply that the admin reviews before sending; it can quote the promo codes usable right now
 - **AI Product Generator**: Type a product idea; Gemini drafts the details, print artwork and product photo, and the admin approves before it goes live
 - **Custom Orders & Designs**: Review customer designs and manage custom orders
 - **Support Chat**: Reply to customer conversations
 - **Chatbot FAQ**: Manage the answers the chatbot uses
 - **Contact Management**: Read and handle contact-form messages
 - **Payment Settings & Verification**: Configure payment options and review manual payment proofs (approve/reject with a reason; duplicate reference numbers are blocked)
-- **Audit Log**: Every important action (logins, payment approvals, etc.) is recorded with filters and pagination
+- **Audit Log**: Every important action (logins, payment approvals, coupon changes, report exports, etc.) is recorded with filters and pagination
 
 ### 🎨 Design Features
 - Modern fashion look with a gold accent, light and dark mode
@@ -111,7 +120,7 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 
 ## Requirements
 
-- PHP 8.0 or higher (with GD, mysqli and fileinfo)
+- PHP 8.0 or higher (with GD, mysqli, fileinfo and zip; zip is used by the PDF invoices and the Excel sales report)
 - MySQL/MariaDB
 - Apache web server (XAMPP works)
 - Composer (for the PHP dependencies)
@@ -185,8 +194,10 @@ Register a normal account, then set its `user_type` to `admin` in the `users` ta
 2. **Dashboard**: View key metrics, or ask the AI Assistant
 3. **Manage Products**: Add new apparel items (by hand or with the AI Product Generator) and manage existing ones
 4. **Manage Orders**: View and update order and custom-order statuses, and review customer designs
-5. **Payments**: Verify payment proofs
-6. **Support**: Answer support chats and contact messages
+5. **Coupons**: Create promo codes; they appear on the Promotions page and in the chatbot right away
+6. **Sales Report**: Pick a date range, then Print or Export Excel
+7. **Payments**: Verify payment proofs left from the old manual payment flow
+8. **Support**: Answer support chats and contact messages
 
 ## Payment Integration
 
@@ -205,8 +216,9 @@ The older GCash/Maya/QR payment pages (`payment_gcash.php`, `payment_maya.php`, 
 - **Senior Citizens**: 20% discount
   - Requires valid Senior ID during checkout
 - **Regular Users**: No discount
+- **Coupons**: Any account can add one promo code per order, on top of the PWD/Senior discount
 
-Discounts are applied at checkout and included in order total.
+At checkout the order is worked out as: item subtotal − PWD/Senior discount − coupon, then 12% VAT on what is left, then the delivery fee. The PWD/Senior discount and a percent coupon are both worked out on the item subtotal, and a coupon never applies to the delivery fee. Custom (Design Studio) orders do not take promo codes.
 
 ## Database Tables
 
@@ -216,7 +228,8 @@ Discounts are applied at checkout and included in order total.
 |---|---|
 | `users` | Accounts with roles (customer, admin) and PWD/Senior ID for discounts |
 | `products` | Apparel with category, gender, colours, sizes, price, stock and image |
-| `orders`, `order_items` | Shop orders with totals, discounts, and the colour/size of each item |
+| `orders`, `order_items` | Shop orders with totals, discounts, the coupon used, and the colour/size of each item |
+| `coupons` | Promo codes with discount type and value, minimum subtotal, usage limit and count, and validity dates |
 | `custom_designs`, `custom_orders` | Design Studio designs and their orders |
 | `audit_log` | Record of important actions |
 | `ai_usage` | One row per AI call, for the hourly limits. Not in `schema.sql`: it is created automatically on the first AI request |

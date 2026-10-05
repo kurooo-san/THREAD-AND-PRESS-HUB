@@ -1,6 +1,6 @@
 # 🎓 Thread & Press Hub — Capstone Defense Demo Script
 
-**Total demo time:** ~13–15 minutes (adjust per panel rules)
+**Total demo time:** ~15–17 minutes (adjust per panel rules)
 **Kailangan:** 2 browser tabs — Tab 1: customer (naka-login), Tab 2: admin
 
 ---
@@ -13,7 +13,9 @@
 - [ ] Camera permission **granted na** sa browser (para walang permission popup sa demo)
 - [ ] Maayos ang ilaw sa demo area (para maganda ang try-on result)
 - [ ] Empty ang cart ng customer account (malinis na simula)
-- [ ] May 1 order na naka-"pending verification" na payment (para may ma-verify si admin live) — o gagawa ka live sa Step 5
+- [ ] Walang active coupon na **DEMO20** pa (gagawin mo ito live sa Step 5) — kung meron na galing sa practice run, i-delete muna sa Admin → Coupons
+- [ ] May laman na orders ngayong buwan (para may maipakita ang Sales Report sa Step 6) — i-check sa Admin → Sales Report → "This month"
+- [ ] Na-test na ang **Export Excel** sa mismong computer na gagamitin (dapat may Excel o kahit Google Sheets na mabubuksan)
 - [ ] **BACKUP:** screen-record ang isang successful run ng buong demo. Kung mag-fail ang internet/AI sa defense, may video ka.
 - [ ] Backup ng database (export sa phpMyAdmin) + kopya ng buong folder + `.env`
 - [ ] Isara ang mga hindi kailangang tabs/apps (para walang notification na sisingit)
@@ -74,30 +76,56 @@
 2. **I-drag, i-resize, i-rotate** ang artwork; ipakita ang **Layers panel** (reorder/delete)
 3. Magdagdag ng text (pangalan ng panelist? 😄) → ipakita sa **Live 3D Preview** → pindutin **Spin** at **Flip**
 4. Ituro ang **Price Estimate** na live nag-a-update
-5. **Submit & Proceed to Order** → ipakita ang order summary → **Proceed to Payment** → ipakita na **parehong QR payment flow** (InstaPay/GCash mula sa admin settings) ang custom orders at regular orders
+5. **Submit & Proceed to Order** → ipakita ang order summary → **Proceed to Payment** → ipakita na **parehong payment options** ang custom at regular orders: **Pay Online (PayMongo)** o **Cash on Delivery**
 
 ---
 
-### 5. Checkout — VAT, Discounts, Payment (1–2 min)
-**Balik sa cart** (may laman na galing sa try-on Add to Cart)
+### 5. Coupon + Checkout — VAT, Discounts, Payment (3 min)
 
-**Gawin:**
-- Proceed to Checkout → ituro ang breakdown: **Subtotal → Discount (PWD/Senior 20%) → VAT 12% → Delivery fee → Total**
-  > "May suporta po kami sa PWD at Senior Citizen discounts na may ID verification, at transparent po ang 12% VAT computation."
-- Piliin ang **E-Wallet Pay** → Place Order → ipakita ang **QR payment page** (scan → exact amount → upload receipt + reference number + consent)
-- I-upload ang isang sample receipt screenshot → Submit
-  > "Ang payment proof po ay dadaan sa admin verification — makikita natin 'yan ngayon."
+**A. Gumawa ng coupon (Tab 2, Admin → Coupons)**
+- Code: **DEMO20** · Type: **Percent** · Value: **20** · Max uses: **5** · Valid until: bukas → **Create coupon**
+  > "Ang admin po ay kayang gumawa ng promo code anumang oras — percent o fixed na discount, may minimum order, limit sa dami ng gamit, at expiry date. Hindi na po kailangang galawin ang code."
+
+**B. Lumabas agad sa customer (Tab 1)**
+- Buksan ang **Promotions** page → refresh → nandoon na ang DEMO20
+  > "Dynamic po — galing sa database, kaya pagka-save ng admin, lumalabas agad."
+
+**C. Gamitin sa checkout**
+- **Balik sa cart** (may laman na galing sa try-on Add to Cart) → Proceed to Checkout
+- Sa **"Have a coupon code?"** i-type ang **demo20** (small letters para makita na hindi case-sensitive) → **Apply**
+  - Lalabas ang ✓ at may bagong linya sa summary: **Coupon (DEMO20)**
+- Ituro ang breakdown: **Subtotal → Discount (PWD/Senior 20%) → Coupon → VAT 12% → Delivery fee → Total**
+  > "Transparent po ang computation. Pwede pong pagsabayin ang PWD/Senior discount at coupon, at ang 12% VAT ay kinukuwenta pagkatapos ng discounts."
+- *Optional:* i-type ang **MALI123** → Apply → lalabas ang "Invalid coupon code" → ibalik sa demo20
+  > "Bawat code po ay chine-check sa server — expiry, limit, minimum order. Kahit baguhin pa sa browser, hindi po ito tatanggapin kung hindi valid."
+
+**D. Place order**
+- Piliin ang **Cash on Delivery** → **Place Order** (pinakamabilis at walang aasahang internet)
+  > "May **Pay Online** din po through PayMongo — GCash, Maya, GrabPay o card. Sa secure page po ng PayMongo nagbabayad, kaya wala kaming hinahawakang card details, at awtomatikong nakukumpirma ang bayad."
+- Sa Order Confirmation, ituro ang **Coupon (DEMO20)** line → *"Naka-record din po ito sa invoice at sa confirmation email."*
 
 ---
 
-### 6. Admin Side (3 min)
+### 6. Admin Side (4 min)
 **Lipat sa Tab 2 (Admin)**
 
 **Gawin (sunud-sunod):**
 1. **Dashboard** — ipakita ang KPIs + Revenue Trends chart (5 sec lang)
-2. **Payments** → hanapin ang kaka-submit lang na payment → ipakita ang proof → **Verify** ✅
-   > "May human verification po ang lahat ng manual payments, may audit log pa po."
-3. **⭐ AI Generate Product — ang pang-finale:**
+2. **Orders** → buksan ang kaka-place lang na order → ituro ang **Coupon (DEMO20)** line → palitan ang status sa **Confirmed**
+   > "Nakikita po ng admin ang bawat discount na ibinigay, at naka-log sa Audit Log ang mga pagbabago."
+3. **Coupons** → ituro ang DEMO20: **Used 1 / 5** at ang **Given** na halaga
+   > "Awtomatiko pong nabibilang ang gamit. Kapag naabot ang limit, hindi na po ito tatanggapin — kahit sabay pang mag-checkout ang dalawang customer sa huling slot."
+   - *Optional:* pindutin ang **Edit** o **Deactivate** para ipakitang buo ang management
+4. **Sales Report** (1 min)
+   - Pindutin ang **This month** → ituro ang Total sales, Orders, Average order, at ang hati ng **Discounts given** (PWD/Senior vs Coupons)
+   - I-scroll: **Daily sales chart → Top products → By payment method → Orders list**
+     > "Ito po ang sagot kung paano malalaman ng may-ari ang benta sa kahit anong petsa — hindi na po kailangang mag-compute nang mano-mano."
+   - Pindutin ang **Export Excel** → buksan ang file → ipakita ang 4 na sheet (Summary, Orders, Top Products, Daily Sales)
+     > "Naka-format na po ito para sa accounting — may peso formatting, filters, at totals na hindi kasama ang cancelled orders."
+   - *Kung kapos sa oras:* **Print** na lang ang ipakita (may sariling report header)
+5. **AI Insights** (pindutin ang "AI Insights" button sa admin panel) → i-type: **"magkano discount natin this month?"**
+   > "Pati po ang AI assistant ng admin ay alam ang coupons at discounts — galing sa totoong data, hindi hula."
+6. **⭐ AI Generate Product — ang pang-finale:**
    > "Ito po ang pang-apat naming AI feature. Sir/Ma'am, **anong product po ang gusto niyong idagdag sa store?**"
    - I-type ang sagot ng panelist → **Generate** → ~8-10 sec → lalabas ang draft (photo, name, price, description)
    - > "AI ang nag-draft, pero admin ang nag-a-approve — human oversight po."
@@ -110,13 +138,14 @@
 ### 7. AI Chatbot (1 min, pang-sara)
 **Sa Tab 1:** buksan ang chat widget (💬)
 
-**I-type:** "How does the virtual try-on work?" o "Is there VAT?"
+**Pindutin ang quick button na "Promos & Coupons"** — sasagot ang bot ng mga code na magagamit ngayon (kasama ang DEMO20 na kakagawa lang) at kung paano gamitin.
+**O i-type:** "How does the virtual try-on work?" o "Is there VAT?"
 > "Ang chatbot po namin ay Gemini-powered at may kaalaman sa buong system — features, products, at maging sa orders ng naka-login na customer."
 
 ---
 
 ### 8. Closing (30 sec)
-> "Sa kabuuan po: isang kumpletong e-commerce platform na may **limang AI features** — Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generation, at AI Support — na may human oversight sa bawat AI decision, secure na server-side AI integration, at kumpletong admin operations mula payment verification hanggang audit logging. Salamat po!"
+> "Sa kabuuan po: isang kumpletong e-commerce platform na may **limang AI features** — Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generation, at AI Support — na may human oversight sa bawat AI decision, secure na server-side AI integration, at kumpletong admin operations — promo codes, sales reports na nae-export sa Excel, hanggang audit logging. Salamat po!"
 
 ---
 
@@ -133,6 +162,12 @@
 | **"Ano ang kinaiba niyo sa Shopee/Lazada?"** | Hindi kami marketplace — specialized print shop na may AI-powered fitting at design tools na wala sa kanila |
 | **"Bakit walang VAT ang custom orders?"** | Quote-based po ang custom pricing at VAT-inclusive na — ibang pricing model sa retail products |
 | **"Made to Order pero may stock?"** | Ang stock po ng concept products ay production capacity — kung ilan ang kaya naming i-produce sa isang batch |
+| **"Paano kung dalawang customer ang sabay gumamit ng huling coupon?"** | Atomic po ang pag-claim: iisang UPDATE na may kondisyong `times_used < max_uses`. Isa lang ang makakakuha; ang isa ay hindi matutuloy ang order at sasabihan kung bakit — hindi siya masisingil ng presyong hindi niya nakita |
+| **"Pwede bang dayain ang coupon sa browser?"** | Hindi po. Ang browser ay pang-display lang; sa pag-place ng order, kinukuwenta ulit ng server ang presyo mula sa database at chine-check ulit ang coupon |
+| **"Bakit hindi mapalitan ang code kapag na-edit?"** | Naka-save po ang code sa bawat order at doon nakabatay ang "Given" totals — kapag pinalitan, masisira ang tracking. Gumawa na lang po ng bagong coupon |
+| **"Pwede bang pagsabayin ang PWD at coupon?"** | Opo. Parehong kinukuwenta sa item subtotal, tapos ang 12% VAT ay sa natitira. Hindi po kasama ang delivery fee sa coupon |
+| **"Paano malalaman ng may-ari ang benta?"** | Sales Report: kahit anong date range, summary, daily chart, top products, by payment method, at Export Excel / Print. Pareho ang patakaran sa Dashboard: hindi kasama ang cancelled orders |
+| **"Bakit hindi kasama ang cancelled sa benta?"** | Walang perang pumasok sa cancelled — pero nakalista pa rin ito (naka-strikethrough) at may hiwalay na bilang para transparent |
 
 ## 🚨 CONTINGENCY PLANS
 
