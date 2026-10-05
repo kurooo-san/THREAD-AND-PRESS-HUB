@@ -1,0 +1,43 @@
+%% Security layers. Matches docs/SYSTEM_ARCHITECTURE.md section 8.
+flowchart LR
+    C["Client"] --> AU
+    subgraph AU["1. Authentication"]
+        direction TB
+        a1["bcrypt passwords<br/>one strong-password rule"]
+        a2["New session ID on login<br/>HttpOnly · SameSite cookie"]
+        a3["Login rate limiting"]
+        a4["Hashed remember-me tokens<br/>one-time reset links"]
+    end
+    AU --> RQ
+    subgraph RQ["2. Request Integrity"]
+        direction TB
+        r1["CSRF tokens"]
+        r2["Admin check on every<br/>admin page & endpoint"]
+        r3["Same-site redirects only"]
+    end
+    RQ --> PR
+    subgraph PR["3. Pricing & Payment"]
+        direction TB
+        p1["Prices recomputed<br/>from the database"]
+        p2["Coupons re-checked on server<br/>usage claimed atomically"]
+        p3["PayMongo hosted checkout<br/>signed webhook"]
+    end
+    PR --> DB
+    subgraph DB["4. Database"]
+        direction TB
+        d1["Prepared statements"]
+        d2["Transactions for<br/>order + stock + coupon"]
+        d3["Foreign keys · utf8mb4"]
+    end
+    DB --> FU
+    subgraph FU["5. Files & AI"]
+        direction TB
+        f1["Real file-type check<br/>5MB limit · random names"]
+        f2["Private folders blocked"]
+        f3["AI keys server-side<br/>hourly AI limits"]
+    end
+    FU --> AD
+    subgraph AD["6. Audit"]
+        direction TB
+        l1["audit_log: user, action,<br/>IP, details"]
+    end

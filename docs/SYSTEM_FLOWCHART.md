@@ -31,8 +31,8 @@ Standard flowchart notation. The same four shapes carry the same meaning in ever
 
 ## Figure 1 — User Side
 
-From landing page to review. Both payment methods produce an order; only the online route waits
-on an administrator first.
+From landing page to review. Both payment methods produce an order; an online payment is confirmed
+by PayMongo automatically, with no administrator step.
 
 ```mermaid
 flowchart TD
@@ -45,10 +45,12 @@ flowchart TD
     F -- "No" --> E
     F -- "Yes" --> G["Select product, colour and size"]
     G --> H["Add to cart"]
-    H --> I["Checkout — discount and coupon applied"]
-    I --> J{"Payment method?"}
+    H --> I["Checkout — PWD/Senior discount, coupon code, 12% VAT"]
+    I --> V{"Coupon still valid?"}
+    V -- "No" --> I
+    V -- "Yes or none" --> J{"Payment method?"}
     J -- "Cash on Delivery" --> L
-    J -- "GCash / Maya" --> K["Upload payment proof for admin verification"]
+    J -- "Pay Online" --> K["Pay on PayMongo's secure page — confirmed automatically"]
     K --> L[("Order recorded")]
     L --> M["Track order status"]
     M --> N["Receive order and leave a review"]
@@ -59,7 +61,7 @@ flowchart TD
 
 ## Figure 2 — Admin Side
 
-One sign-in, one dashboard, five areas of work. Every task returns to the dashboard, so the shape
+One sign-in, one dashboard, seven areas of work. Every task returns to the dashboard, so the shape
 is a loop rather than a line.
 
 ```mermaid
@@ -71,15 +73,14 @@ flowchart TD
     E --> F{"Select a task"}
     F -- "Products" --> G["Add, edit or restock catalogue items"]
     F -- "Orders" --> H["Update order status"]
-    F -- "Payments" --> I{"Payment proof valid?"}
-    I -- "Yes" --> J["Approve — order proceeds"]
-    I -- "No" --> K["Reject — customer re-uploads"]
+    F -- "Coupons" --> I["Create, edit, activate or delete promo codes"]
+    F -- "Sales Report" --> J["Pick a date range — Print or Export Excel"]
     F -- "Custom orders" --> L["Approve design, advance to printing"]
     F -- "Users" --> M["Edit, ban or remove"]
     G --> N[("Database updated")]
     H --> N
-    J --> N
-    K --> N
+    I --> N
+    J --> O
     L --> N
     M --> N
     N --> O{"More tasks?"}
@@ -120,16 +121,23 @@ flowchart TD
 
     HUB -- "Buy ready-made" --> PICK["Choose colour, size,<br/>quantity"]
     PICK --> CART["Add to cart"]
-    CART --> CHK["Checkout<br/>delivery or pickup,<br/>Senior / PWD 20% discount,<br/>coupon code"]
-    CHK --> PAY{"Payment method?"}
+    CART --> CHK["Checkout<br/>delivery or pickup,<br/>Senior / PWD 20% discount,<br/>coupon code, 12% VAT"]
+    CHK --> CPN{"Coupon entered?"}
+    CPN -- "Yes" --> CPV{"Server: still valid<br/>and a use left?"}
+    CPV -- "No" --> CHK
+    CPV -- "Yes" --> CPDB[("coupons.times_used + 1<br/>orders.coupon_code saved")]
+    CPDB --> PAY
+    CPN -- "No" --> PAY{"Payment method?"}
 
     PAY -- "Cash on Delivery" --> ORD1[("orders<br/>status = pending")]
     ORD1 --> CONF["Order confirmation"]
 
-    PAY -- "GCash / Maya" --> QR["Scan merchant QR,<br/>upload receipt screenshot<br/>+ reference number"]
-    QR --> PROOF[("payment_submissions<br/>payment_status =<br/>pending_verification")]
-    PROOF --> WAIT["Awaiting admin verification"]
-    WAIT --> CONF
+    PAY -- "Pay Online" --> PM["PayMongo hosted checkout<br/>GCash, Maya, GrabPay or card"]
+    PM --> PMOK{"Paid?"}
+    PMOK -- "Cancelled / failed" --> RETRY["Nothing charged;<br/>order waits, 'Try paying again'"]
+    RETRY --> PM
+    PMOK -- "Yes" --> HOOK[("PayMongo webhook:<br/>payment_status = verified,<br/>status = confirmed")]
+    HOOK --> CONF
 
     CONF --> TRACK["Track order<br/>pending → confirmed → preparing<br/>→ out for delivery → completed"]
     TRACK --> GOT{"Order received?"}
@@ -147,8 +155,9 @@ flowchart TD
     CDDB --> SUM["Order summary<br/>base + print + colour cost"]
     SUM --> CPAY{"Payment method?"}
     CPAY -- "Cash on Delivery" --> CO[("custom_orders<br/>status = payment_uploaded")]
-    CPAY -- "GCash / Maya" --> CPROOF["Upload receipt<br/>+ reference number"]
-    CPROOF --> CO
+    CPAY -- "Pay Online" --> CPM["PayMongo hosted checkout"]
+    CPM --> CPAID[("custom_orders<br/>status = payment_verified")]
+    CPAID --> CTRACK
     CO --> CTRACK["Track custom order<br/>payment verified → processing →<br/>printing → ready for pickup → delivered"]
     CTRACK --> E
 
@@ -162,9 +171,9 @@ flowchart TD
 
 ## Reference B — Full admin path
 
-Payment verification is the only place a customer-facing order state changes without the customer
-acting, and rejection loops the customer back to re-upload rather than cancelling the order. The AI
-product generator writes nothing until the draft is approved.
+Online payments are confirmed by the PayMongo webhook, not by an administrator. The Payments page
+remains only for proofs left from the old manual flow. The AI product generator writes nothing until
+the draft is approved, and the Sales Report only reads.
 
 ```mermaid
 flowchart TD
@@ -184,7 +193,20 @@ flowchart TD
     PDB --> PMAINT["Edit, set stock,<br/>download print file,<br/>deactivate"]
     PMAINT --> DASH
 
-    TASK -- "Payments" --> VIEWP["Open the submitted<br/>receipt and reference number"]
+    TASK -- "Coupons" --> CPACT{"Action?"}
+    CPACT -- "Create or edit" --> CPCHK{"Valid input?<br/>code, value, dates"}
+    CPCHK -- "No" --> CPACT
+    CPCHK -- "Yes" --> CPDB2[("coupons")]
+    CPACT -- "Activate / deactivate<br/>or delete" --> CPDB2
+    CPDB2 --> DASH
+
+    TASK -- "Sales Report" --> RANGE["Pick a date range<br/>totals, discounts, daily chart,<br/>top products, payment methods"]
+    RANGE --> REXP{"Output?"}
+    REXP -- "Print" --> DASH
+    REXP -- "Export Excel" --> XLSX["Download .xlsx<br/>(logged in audit_log)"]
+    XLSX --> DASH
+
+    TASK -- "Legacy payments" --> VIEWP["Open a receipt left from<br/>the old manual flow"]
     VIEWP --> VALID{"Payment<br/>legitimate?"}
     VALID -- "Yes" --> APPR[("payment_status = verified<br/>order released to fulfilment")]
     VALID -- "No" --> REJ[("payment_status = rejected<br/>customer asked to re-upload")]
@@ -231,8 +253,11 @@ to a specific branch in a specific file.
 | --- | --- | --- |
 | Credentials valid? | `login.php` | `password_verify()`, the `users.status` column, and a 5-attempt limit from `login_attempts` |
 | Administrator account? | `login.php` | `user_type === 'admin'` routes to the admin dashboard |
-| Payment method? | `checkout.php` | Cash on Delivery confirms immediately; other methods redirect to the QR page |
-| Payment proof valid? | `admin/payment-verification.php` | Approve sets `verified`; reject sets `rejected` |
+| Coupon still valid? | `checkout.php`, `includes/config.php` | `validateCoupon()` re-checks the code on submit; `incrementCouponUsage()` claims a use only while `times_used < max_uses` |
+| Payment method? | `checkout.php` | Cash on Delivery confirms immediately; Pay Online redirects to `paymongo-checkout.php` |
+| Paid? | `paymongo-webhook.php`, `includes/paymongo-fulfil.php` | A signed PayMongo event sets `payment_status = verified` and moves a pending order to `confirmed` |
+| Payment proof valid? (legacy) | `admin/payment-verification.php` | Approve sets `verified`; reject sets `rejected` |
+| Valid coupon input? | `admin/coupons.php` | Code format, value range, max uses, and "valid until" after "valid from" |
 | Order received? | `orders.php` | The review form unlocks once the order reaches the customer |
 | Verified purchase? | `includes/reviews.php` | Requires a non-cancelled order containing that product |
 | Approve the draft? | `admin/ai-product-ajax.php` | Generation is a draft; nothing is inserted until Save |
@@ -254,8 +279,9 @@ pending → confirmed → preparing → out_for_delivery → completed
 **`orders.payment_status`**
 
 ```
-unpaid → pending_verification → verified
-                              ↘ rejected → (customer re-uploads)
+unpaid → verified                                   (Pay Online: PayMongo webhook)
+unpaid → (collected on delivery; admin updates)     (Cash on Delivery)
+unpaid → pending_verification → verified / rejected (legacy manual proofs only)
 ```
 
 **`custom_orders.status`**
@@ -271,7 +297,8 @@ pending_payment → payment_uploaded → payment_verified → processing
 ## Scope note
 
 The `mfa_otps` and `gcash_transactions` tables exist in the schema, but no code path currently
-reaches them, so they are not drawn.
+reaches them, so they are not drawn. The full table list and relationships are in
+`docs/system-architecture/ERD.png`.
 
 Showing a step the build does not perform is the one thing that turns a flowchart into a liability
 during a defence.

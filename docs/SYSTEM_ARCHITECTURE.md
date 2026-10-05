@@ -6,24 +6,27 @@
 
 ## 1. System Overview
 
-**Thread & Press Hub** is a full-stack e-commerce web application for selling apparel products (t-shirts, hoodies, pants, dresses, accessories) with an integrated **custom apparel design system**, **AI-powered chatbot**, **real-time support chat**, **contact management system**, and **admin management dashboard**.
+**Thread & Press Hub** is a full-stack e-commerce web application for selling apparel (t-shirts, hoodies, pants, dresses, accessories) with an integrated **custom apparel Design Studio** (2D canvas + live 3D preview), **AI features powered by Google Gemini** (chatbot, Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generator, admin AI Insights), **online payment through PayMongo**, **promo codes (coupons)**, **sales reporting**, **support chat**, and an **admin dashboard**.
+
+Live deployment: Railway (Docker, Apache + PHP 8.2). Local development: XAMPP.
 
 ---
 
 ## 2. Technology Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| **Backend Language** | PHP (Procedural) | 8.2.12 |
-| **Database** | MySQL / MariaDB | 10.4.32 |
-| **Web Server** | Apache (XAMPP) | — |
-| **Frontend Framework** | Bootstrap | 5.3.0 |
-| **JavaScript** | Vanilla JS (ES6) | — |
-| **Icons** | Font Awesome | 6.4.0 |
-| **Font** | Google Fonts (Inter) | — |
-| **AI Integration** | Google Gemini 2.0 Flash API | — |
-| **Email** | PHP mail() / PHPMailer (SMTP) | — |
-| **Payment** | GCash / Maya / Cash on Delivery | — |
+| Layer | Technology |
+|-------|-----------|
+| **Backend Language** | PHP (procedural), 8.0+ (XAMPP 8.0, Railway image 8.2) |
+| **Database** | MySQL / MariaDB 10.4 |
+| **Web Server** | Apache (XAMPP locally, `php:8.2-apache` Docker image on Railway) |
+| **Frontend** | Bootstrap 5, Vanilla JavaScript, Three.js (3D garment preview), Chart.js (admin charts) |
+| **Icons / Fonts** | Font Awesome, Google Fonts |
+| **AI** | Google Gemini API: `gemini-2.5-flash` (text) and `gemini-2.5-flash-image` (images) |
+| **Payment** | PayMongo hosted checkout (GCash, Maya, GrabPay, cards) and Cash on Delivery / Pickup |
+| **Email** | PHPMailer (SMTP) |
+| **PDF** | Dompdf (invoices) |
+| **Excel** | Built-in `.xlsx` writer (`includes/xlsx-writer.php`, uses PHP's zip extension) |
+| **PWA** | Web app manifest + service worker (installable on phones and tablets) |
 
 ---
 
@@ -31,244 +34,71 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        CLIENT LAYER (Browser)                       │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────┐  ┌────────────┐ │
-│  │  Bootstrap 5 │  │  Vanilla JS  │  │ Font      │  │ CSS Custom │ │
-│  │  (UI Layout) │  │  (ES6)       │  │ Awesome   │  │ Properties │ │
-│  └─────────────┘  └──────────────┘  └───────────┘  └────────────┘ │
+│                        CLIENT LAYER (Browser / PWA)                 │
+│   Bootstrap 5 · Vanilla JS · Three.js (3D) · Chart.js · Service Worker│
 └──────────────────────────┬──────────────────────────────────────────┘
-                           │ HTTP / AJAX (POST/GET)
+                           │ HTTPS · page requests + AJAX (JSON)
                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     APPLICATION LAYER (Apache/PHP)                   │
+│                   APPLICATION LAYER (Apache + PHP)                  │
 │                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                     PUBLIC MODULES                            │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐  │   │
-│  │  │ Shop &   │ │ Cart &   │ │ User     │ │ Custom Design  │  │   │
-│  │  │ Catalog  │ │ Checkout │ │ Auth     │ │ System         │  │   │
-│  │  └──────────┘ └──────────┘ └──────────┘ └────────────────┘  │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌────────────────┐              │   │
-│  │  │ Order    │ │ Contact  │ │ AI Chatbot     │              │   │
-│  │  │ Tracking │ │ Form     │ │ (Gemini)       │              │   │
-│  │  └──────────┘ └──────────┘ └────────────────┘              │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐                   │   │
-│  │  │ Support  │ │ Password │ │ Pages /  │                   │   │
-│  │  │ Chat     │ │ Reset    │ │ Info Hub │                   │   │
-│  │  └──────────┘ └──────────┘ └──────────┘                   │   │
-│  └──────────────────────────────────────────────────────────────┘   │
+│  CUSTOMER MODULES                                                   │
+│   Shop & Product pages · Cart & Checkout (VAT, PWD/Senior, coupons) │
+│   Accounts & Addresses · Orders & Invoices · Promotions             │
+│   Design Studio (2D + 3D) · Virtual Try-On + AI Stylist             │
+│   AI Chatbot · Support Chat · Contact Form · Reviews                │
 │                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                     ADMIN MODULES                             │   │
-│  │  ┌───────────┐ ┌──────────┐ ┌──────────┐ ┌───────────────┐  │   │
-│  │  │ Dashboard │ │ Product  │ │ Order    │ │ User          │  │   │
-│  │  │ & Stats   │ │ Mgmt     │ │ Mgmt     │ │ Mgmt          │  │   │
-│  │  └───────────┘ └──────────┘ └──────────┘ └───────────────┘  │   │
-│  │  ┌───────────┐ ┌──────────┐ ┌───────────┐ ┌─────────────┐  │   │
-│  │  │ Custom    │ │ Contact  │ │ Support   │ │ Audit       │  │   │
-│  │  │ Orders    │ │ Mgmt     │ │ Chat Mgmt │ │ Log         │  │   │
-│  │  └───────────┘ └──────────┘ └───────────┘ └─────────────┘  │   │
-│  └──────────────────────────────────────────────────────────────┘   │
+│  ADMIN MODULES                                                      │
+│   Dashboard · Products (+ AI Product Generator) · Orders · Users    │
+│   Coupons · Sales Report (Print / Excel) · Payments (legacy proofs) │
+│   Custom Designs · Custom Orders · Contact · Support Chat           │
+│   Chatbot FAQ · Audit Log · AI Insights / Suggest Reply             │
 │                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                     AJAX / API ENDPOINTS                      │   │
-│  │  • gemini_api.php          → AI Chatbot Responses             │   │
-│  │  • product-recommendations.php → Smart Product Search         │   │
-│  │  • custom-design-ajax.php  → Save/Load Designs, AI artwork    │   │
-│  │  • order-lookup.php        → Order Status Lookup              │   │
-│  │  • support-chat-ajax.php   → Real-time Support Messages       │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                     SHARED COMPONENTS                         │   │
-│  │  • includes/header/header.php  → Shared navigation bar        │   │
-│  │  • includes/footer/footer.php  → Shared footer                │   │
-│  │  • includes/admin-sidebar.php  → Admin sidebar with badges    │   │
-│  │  • includes/email-helper.php   → Email notification system    │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└──────────────────────────┬──────────────────────────────────────────┘
-                           │ MySQLi (Prepared Statements)
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                       DATA LAYER (MySQL/MariaDB)                    │
-│                                                                     │
-│  ┌─────────────────────┐  ┌───────────────────────────────────────┐ │
-│  │  threadpresshub DB  │  │  threadpresshub_contact DB            │ │
-│  │  ├─ users           │  │  ├─ contact_messages                  │ │
-│  │  ├─ products        │  │  ├─ contact_categories                │ │
-│  │  ├─ orders          │  │  └─ contact_messages_responses        │ │
-│  │  ├─ order_items     │  └───────────────────────────────────────┘ │
-│  │  ├─ gcash_trans     │                                            │
-│  │  ├─ custom_designs  │  ┌───────────────────────────────────────┐ │
-│  │  ├─ custom_orders   │  │  FILE STORAGE                         │ │
-│  │  ├─ custom_order_   │  │  ├─ /images/products/  (Product imgs) │ │
-│  │  │  payments        │  │  ├─ /images/hero/      (Banner imgs)  │ │
-│  │  ├─ chat_history    │  │  ├─ /uploads/designs/  (Custom design)│ │
-│  │  ├─ support_        │  │  ├─ /uploads/payments/ (Payment proof)│ │
-│  │  │  conversations   │  │  └─ /uploads/support/  (Chat images)  │ │
-│  │  ├─ support_        │  └───────────────────────────────────────┘ │
-│  │  │  messages        │                                            │
-│  │  ├─ audit_log       │                                            │
-│  │  ├─ password_resets │                                            │
-│  │  └─ login_attempts  │                                            │
-│  └─────────────────────┘                                            │
-└─────────────────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    EXTERNAL SERVICES                                 │
-│  ┌─────────────────────────────┐  ┌──────────────────────────────┐  │
-│  │ Google Gemini 2.0 Flash API │  │ GCash / Maya Payment         │  │
-│  │ • Chatbot responses         │  │ • Reference number           │  │
-│  │ • Product recommendations   │  │   verification               │  │
-│  │ • Design suggestions        │  │ • Payment proof upload       │  │
-│  └─────────────────────────────┘  └──────────────────────────────┘  │
-│  ┌─────────────────────────────┐                                    │
-│  │ SMTP / PHP mail()           │                                    │
-│  │ • Password reset emails     │                                    │
-│  │ • Order notifications       │                                    │
-│  └─────────────────────────────┘                                    │
-└─────────────────────────────────────────────────────────────────────┘
+│  AJAX / API ENDPOINTS (see section 10)                              │
+│  SHARED: includes/config.php (DB, session, CSRF, helpers),          │
+│          header/footer, admin-sidebar, email-helper, paymongo       │
+└──────────┬───────────────────────────┬──────────────────────────────┘
+           │ MySQLi (prepared stmts)   │ HTTPS (server-side only;
+           ▼                           │ API keys never reach the browser)
+┌──────────────────────────────┐       ▼
+│ DATA LAYER                   │  ┌──────────────────────────────────┐
+│  MySQL `threadpresshub`      │  │ EXTERNAL SERVICES                │
+│  (25 tables, see section 4)  │  │  Google Gemini API               │
+│                              │  │  PayMongo (checkout + webhook)   │
+│  FILE STORAGE                │  │  SMTP mail server                │
+│  uploads/designs, design_    │  └──────────────────────────────────┘
+│  assets, tryon, support,     │
+│  payments · images/products  │
+│  (Railway: on a volume)      │
+└──────────────────────────────┘
 ```
 
 ---
 
 ## 4. Database Schema (Entity-Relationship)
 
-### 4.1 Main Database: `threadpresshub`
+One database, `threadpresshub`. `database/schema.sql` creates all **25 tables**; a 26th, `ai_usage` (one row per AI call, for the hourly limits), is created by the app on the first AI request.
 
-```
-┌──────────────┐       ┌──────────────────┐       ┌───────────────┐
-│    users     │       │     orders       │       │  order_items   │
-│──────────────│       │──────────────────│       │───────────────│
-│ PK id        │──┐    │ PK id            │──┐    │ PK id          │
-│ fullname     │  │    │ FK user_id       │  │    │ FK order_id    │
-│ email        │  ├───>│ subtotal         │  ├───>│ FK product_id  │
-│ phone        │  │    │ discount_amount  │  │    │ quantity       │
-│ password     │  │    │ discount_type    │  │    │ unit_price     │
-│ user_type    │  │    │ delivery_fee     │  │    │ subtotal       │
-│ (regular/pwd/│  │    │ total            │  │    │ color          │
-│  senior/     │  │    │ payment_method   │  │    │ size           │
-│  admin)      │  │    │ (gcash/maya/cod) │  │    │ custom_design  │
-│ pwd_id       │  │    │ payment_reference│  │    │  _id           │
-│ senior_id    │  │    │ delivery_address │  │    └───────────────┘
-│ street_      │  │    │ notes            │  │
-│  address     │  │    │ status           │  │    ┌───────────────────┐
-│ barangay     │  │    │ created_at       │  │    │ gcash_transactions│
-│ city         │  │    └──────────────────┘  │    │───────────────────│
-│ province     │  │                          └───>│ PK id             │
-│ zipcode      │  │                               │ FK order_id       │
-│ created_at   │  │                               │ reference_number  │
-└──────────────┘  │                               │ amount            │
-       │          │                               │ status            │
-       │          │    ┌──────────────────┐       └───────────────────┘
-       │          │    │  custom_designs  │
-       │          │    │──────────────────│       ┌───────────────────┐
-       │          ├───>│ PK id            │       │   products        │
-       │          │    │ FK user_id       │       │───────────────────│
-       │          │    │ product_type     │       │ PK id             │
-       │          │    │ design_image     │       │ name              │
-       │          │    │ design_image_back│       │ description       │
-       │          │    │ design_data(JSON)│       │ price             │
-       │          │    │ notes            │       │ category          │
-       │          │    │ status           │       │ gender (mens/     │
-       │          │    │ admin_notes      │       │  womens/kids)     │
-       │          │    │ order_id         │       │ available_colors  │
-       │          │    └──────────────────┘       │ available_sizes   │
-       │          │           │                   │ image             │
-       │          │           ▼                   │ status            │
-       │          │    ┌──────────────────┐       └───────────────────┘
-       │          │    │  custom_orders   │
-       │          │    │──────────────────│
-       │          ├───>│ PK id            │
-       │          │    │ FK user_id       │
-       │          │    │ FK design_id     │
-       │          │    │ design_image     │
-       │          │    │ product_type     │
-       │          │    │ apparel_color    │
-       │          │    │ size             │
-       │          │    │ quantity         │
-       │          │    │ base_price       │
-       │          │    │ print_cost       │
-       │          │    │ color_cost       │
-       │          │    │ subtotal         │
-       │          │    │ discount_type    │
-       │          │    │ discount_amount  │
-       │          │    │ total_price      │
-       │          │    │ status           │
-       │          │    └──────────────────┘
-       │          │           │
-       │          │           ▼
-       │          │    ┌──────────────────────┐
-       │          │    │ custom_order_payments │
-       │          │    │──────────────────────│
-       │          │    │ PK id                │
-       │          │    │ FK custom_order_id   │
-       │          │    │ payment_method       │
-       │          │    │ payment_proof        │
-       │          │    │ reference_number     │
-       │          │    │ amount               │
-       │          │    │ payment_status       │
-       │          │    └──────────────────────┘
-       │          │
-       │          │    ┌──────────────────┐       ┌──────────────────┐
-       │          │    │  chat_history    │       │ support_messages │
-       │          │    │──────────────────│       │──────────────────│
-       │          └───>│ PK id            │   ┌──>│ PK id            │
-       │               │ FK user_id       │   │   │ FK conversation  │
-       │               │ user_message     │   │   │    _id           │
-       │               │ bot_response     │   │   │ FK sender_id     │
-       │               │ created_at       │   │   │ sender_type      │
-       │               └──────────────────┘   │   │ message          │
-       │                                      │   │ image_path       │
-       │          ┌──────────────────────┐    │   │ is_read          │
-       │          │ support_conversations│    │   │ created_at       │
-       │          │──────────────────────│    │   └──────────────────┘
-       ├─────────>│ PK id               │────┘
-       │          │ FK user_id          │
-       │          │ subject             │
-       │          │ status (open/closed)│
-       │          └──────────────────────┘
-       │
-       │          ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-       │          │  audit_log       │  │ password_resets   │  │ login_attempts   │
-       │          │──────────────────│  │──────────────────│  │──────────────────│
-       ├─────────>│ PK id            │  │ PK id            │  │ PK id            │
-                  │ FK user_id       │  │ FK user_id       │  │ email            │
-                  │ action           │  │ token            │  │ ip_address       │
-                  │ entity_type      │  │ expires_at       │  │ attempted_at     │
-                  │ entity_id        │  │ used             │  └──────────────────┘
-                  │ details          │  │ created_at       │
-                  │ ip_address       │  └──────────────────┘
-                  │ user_agent       │
-                  │ created_at       │
-                  └──────────────────┘
-```
+**Full ERD:** `docs/system-architecture/ERD.png` (source: `ERD.mmd`, also `ERD.svg`). It is generated from the live schema: solid lines are FOREIGN KEY constraints, dashed lines are links the code uses without a constraint (for example `orders.coupon_code → coupons.code`).
 
-### 4.2 Contact Database: `threadpresshub_contact` (Separate DB)
+| Area | Tables |
+|---|---|
+| **Accounts** | `users` (role in `user_type`: regular, pwd, senior, admin; PWD/Senior ID), `user_addresses` (up to 3 saved addresses), `password_resets`, `remember_tokens`, `login_attempts` |
+| **Catalog** | `products` (gender, colours, sizes, price, stock, image, AI print file), `product_reviews` (1–5 stars, verified purchase) |
+| **Shop orders** | `orders` (subtotal, PWD/Senior discount, coupon code + discount, delivery fee, total, payment method/status), `order_items` |
+| **Promotions** | `coupons` (percent/fixed, minimum subtotal, max uses, times used, validity dates, active flag) |
+| **Custom design** | `custom_designs` (front/back images, editor data, print files), `custom_orders`, `custom_order_payments` |
+| **Payments** | `paymongo_sessions` (online checkout sessions for shop and custom orders), `payment_submissions` and `gcash_transactions` (legacy manual payments, kept for old orders) |
+| **Support** | `support_conversations`, `support_messages`, `chat_history` (AI chatbot), `chatbot_faq`, `contact_messages`, `contact_messages_responses`, `contact_categories` |
+| **Monitoring** | `audit_log` |
+| **Unused** | `mfa_otps` (left from an earlier version; no code reads or writes it) |
 
-```
-┌──────────────────────┐       ┌────────────────────────────┐
-│  contact_messages    │       │ contact_messages_responses  │
-│──────────────────────│       │────────────────────────────│
-│ PK id                │──────>│ PK id                      │
-│ name                 │       │ FK contact_id              │
-│ email                │       │ FK admin_id                │
-│ phone                │       │ response_message           │
-│ subject              │       │ attachments (JSON)         │
-│ message              │       │ created_at                 │
-│ category             │       └────────────────────────────┘
-│ priority (low/normal/│
-│  high/urgent)        │       ┌────────────────────────────┐
-│ status (new/read/    │       │  contact_categories        │
-│  responded/closed)   │       │────────────────────────────│
-│ ip_address           │       │ PK id                      │
-│ user_agent           │       │ name                       │
-│ admin_notes          │       │ description                │
-│ assigned_to          │       │ active                     │
-│ timestamps           │       └────────────────────────────┘
-└──────────────────────┘
-```
+Key relationships:
+- `users` 1—N `orders`, `custom_designs`, `custom_orders`, `product_reviews`, `user_addresses`, `support_conversations`, `chat_history`
+- `orders` 1—N `order_items`; `products` 1—N `order_items` and `product_reviews`
+- `custom_designs` 1—N `custom_orders`; `custom_orders` 1—N `custom_order_payments`
+- `coupons` 1—N `orders` (by `coupon_code`); each order keeps its own copy of the code and discount, so editing or deleting a coupon never changes a past order
+- `paymongo_sessions` → `orders` or `custom_orders` (by `order_kind` + `order_id`)
 
 ---
 
@@ -277,119 +107,117 @@
 ### 5.1 User Authentication Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Login | `login.php` | Email/password authentication with bcrypt |
-| Registration | `register.php` | Account creation with type selection (Regular/PWD/Senior) |
-| Profile | `profile.php` | Update personal info, address, password |
-| Forgot Password | `forgot-password.php` | Request password reset token via email |
-| Reset Password | `reset-password.php` | Validate reset token and update password |
+| Login | `login.php` | Email/password (bcrypt), rate-limited by email + device and by IP, optional "Remember me" (30 days) |
+| Registration | `register.php` | Account type (Regular/PWD/Senior), live password-rule checklist |
+| Profile | `profile.php` | Personal info, up to 3 saved addresses, password change |
+| Forgot / Reset Password | `forgot-password.php`, `reset-password.php` | Emailed one-time link; a reset signs out every remembered device |
 | Logout | `logout.php` | Session destruction |
-| Admin Gate | `includes/config.php` | Role-based access control |
+| Access helpers | `includes/config.php` | `isLoggedIn()`, `redirectToLogin()`, admin checks, CSRF tokens |
 
 ### 5.2 Product Catalog Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Homepage | `index.php` | Featured products, promotions |
-| Shop Page | `shop.php` | Product grid with gender/category/color/size filters |
-| Promotions | `promotion.php` | Promotions & deals page |
-| Pages | `pages.php` | Static information pages (About Us, Shipping Info, etc.) |
-| Product Images | `images/products/` | Product image storage |
+| Homepage | `index.php` | Hero, categories, new arrivals, AI Try-On spotlight |
+| Shop | `shop.php` | Filters (Men/Women/Kids, type, colour, size), search, sort, Quick Add |
+| Product page | `product.php` | Details, colours/sizes, stock, reviews (`includes/reviews.php`) |
+| Promotions | `promotion.php` | Active promo codes, read live from `coupons` |
+| Info pages | `pages.php`, `about.php`, `privacy-policy.php` | Size guide, FAQs, policies |
 
 ### 5.3 Shopping Cart & Checkout Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Cart | `cart.php` | localStorage-based cart with dynamic pricing |
-| Checkout | `checkout.php` | Address, delivery method, payment selection |
-| GCash Payment | `payment_gcash.php` | GCash reference number submission |
-| Maya Payment | `payment_maya.php` | Maya reference number submission |
-| Order Confirmation | `order_confirmation.php` | Post-purchase summary |
+| Cart | `cart.php` | Cart with selectable lines; Buy Now skips the cart (`js/buy-now.js`) |
+| Checkout | `checkout.php` | Saved address or new one, delivery area/fee (`includes/delivery-zones.php`), PWD/Senior discount, **coupon box**, 12% VAT, payment method. Prices are always recomputed from the database |
+| Coupon check | `includes/validate-coupon.php` | AJAX preview of a code; the server checks it again when the order is placed |
+| Online payment | `paymongo-checkout.php`, `paymongo-return.php`, `paymongo-webhook.php`, `includes/paymongo.php`, `includes/paymongo-fulfil.php` | PayMongo hosted checkout; the webhook marks the order paid |
+| Confirmation | `order_confirmation.php` | Summary with the full price breakdown |
 
 ### 5.4 Order Management Module
 | Component | File | Description |
 |-----------|------|-------------|
-| User Orders | `orders.php` | Order history for customers |
-| Order Details | `order_details.php` | Individual order breakdown |
-| Admin Orders | `admin/orders.php` | Status management, verification |
-| Admin Order Details | `admin/order_details.php` | Detailed order info with user data |
+| My Orders | `orders.php`, `order_details.php` | History, status, coupon/discount lines |
+| Invoices | `invoice.php`, `custom-invoice.php` | PDF invoices (Dompdf) |
+| Admin Orders | `admin/orders.php`, `admin/order_details.php` | Status updates, payment status, full breakdown |
 
-### 5.5 Custom Design Module
+### 5.5 Coupons & Promotions Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Design Tool | `custom-design.php` | Canvas-based apparel designer |
-| Design AJAX | `includes/custom-design-ajax.php` | Save/list/fetch designs |
-| Order Summary | `custom-order-summary.php` | Custom order review |
-| Custom Payment | `custom-payment.php` | Custom order payment |
-| Custom Orders | `my-custom-orders.php` | User's custom order list |
-| Order Tracking | `custom-order-tracking.php` | Real-time status tracking |
-| Admin Designs | `admin/custom-designs.php` | Review submitted designs |
-| Admin Orders | `admin/custom-orders.php` | Manage custom order workflow |
+| Admin Coupons | `admin/coupons.php` | Create, edit, activate/deactivate, delete; shows status, uses and discount given |
+| Rules | `includes/config.php` | `validateCoupon()`, `incrementCouponUsage()` (atomic: cannot exceed max uses), `couponStatus()` |
+| Customer side | `checkout.php`, `promotion.php`, chatbot | Apply at checkout; listed on Promotions; the chatbot quotes codes usable right now |
 
-### 5.6 AI Chatbot Module
+### 5.6 Sales Report Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Chat UI | `js/chatbot.js` | Floating chat widget, conversation flow |
-| Gemini API | `includes/gemini_api.php` | Google Gemini 2.0 Flash integration |
-| Recommendations | `includes/product-recommendations.php` | Context-aware product suggestions |
-| Order Lookup | `includes/order-lookup.php` | Order status via chatbot |
-| Chat History | `chat_history.php` | Past conversation viewer |
+| Sales Report | `admin/reports.php` | Any date range: totals, discounts, delivery fees, cancelled, daily chart, top products, by payment method, order list; Print layout |
+| Excel export | `includes/xlsx-writer.php` | Formatted `.xlsx`: Summary, Orders, Top Products, Daily Sales |
 
-### 5.7 Contact Form Module
+### 5.7 Custom Design Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Contact Page | `contact.php` | Multi-category contact form |
-| Contact Config | `includes/contact-config.php` | Separate DB connection |
-| Admin Mgmt | `admin/contact-management.php` | View, assign, respond |
+| Design Studio | `custom-design.php`, `js/design-3d.js` | Canvas designer with templates, sleeves, logo spot, live 3D model |
+| Design AJAX | `includes/custom-design-ajax.php` | Save/list/load designs, image uploads, AI artwork |
+| Apparel config | `includes/apparel-config.php` | Apparel types, prices, print areas |
+| Order flow | `custom-order-summary.php`, `custom-payment.php`, `my-custom-orders.php`, `custom-order-tracking.php` | Summary → payment → tracking |
+| Admin | `admin/custom-designs.php`, `admin/custom-orders.php` | Review designs, manage production status |
 
-### 5.8 Support Chat Module
+### 5.8 AI Module (Google Gemini)
 | Component | File | Description |
 |-----------|------|-------------|
-| User Chat | `support-chat.php` | Live support chat interface for customers |
-| Chat AJAX | `includes/support-chat-ajax.php` | Real-time message handling |
-| Chat Config | `includes/support-chat-config.php` | Support chat DB configuration & helpers |
-| Chat JS | `js/support-chat.js` | Client-side chat functionality |
-| Admin Chat | `admin/support-chat.php` | Admin support chat management |
+| Chatbot | `js/chatbot.js`, `includes/gemini_api.php` | Store-aware assistant (products, the customer's own orders, delivery, payment, promo codes) |
+| Virtual Try-On | `try-on.php`, `js/try-on.js`, `includes/tryon-ajax.php`, `tryon-save.php` | AI image of the customer wearing a product |
+| AI Stylist / Size finder | `includes/tryon-suggest.php`, `includes/tryon-size.php` | Product suggestions; size from height/weight (formula fallback) |
+| AI Design Generator | `includes/custom-design-ajax.php` | Artwork from a text prompt |
+| AI Product Generator | `admin/ai-product-ajax.php` | Drafts product details, print artwork and photo; admin approves |
+| AI Insights / Suggest Reply | `admin/ai-assistant-ajax.php`, `js/admin-ai.js` | Read-only answers from a fixed data snapshot (sales, stock, coupons, discounts); drafts support replies |
+| Hourly limits | `ai_usage` table | Per-customer, per-feature limits; admins unlimited |
 
-### 5.9 Admin Dashboard Module
+### 5.9 Support & Contact Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Dashboard | `admin/dashboard.php` | Stats, recent orders, quick actions |
-| Products | `admin/products.php` | CRUD operations for products |
-| Users | `admin/users.php` | Customer account management |
-| Audit Log | `admin/audit-log.php` | Security & activity logging viewer |
-| Admin Profile | `admin/profile.php` | Admin profile management |
-| Admin Sidebar | `includes/admin-sidebar.php` | Navigation sidebar with badge counts |
-| Sidebar JS | `js/admin-sidebar.js` | Responsive sidebar toggle |
-| Admin Logout | `admin/logout.php` | Admin session destruction |
+| Support Chat | `support-chat.php`, `js/support-chat.js`, `includes/support-chat-ajax.php`, `includes/support-chat-config.php` | Customer ↔ admin chat with images and unread counts |
+| Admin Chat | `admin/support-chat.php` | Conversations, AI Suggest Reply |
+| Contact Form | `contact.php`, `includes/contact-config.php`, `admin/contact-management.php` | Categorised messages, responses |
+| Chatbot FAQ | `admin/chatbot-faq.php` | Admin-managed answers the chatbot uses |
+| Chat History | `chat_history.php` | Past chatbot conversations |
+
+### 5.10 Admin Dashboard Module
+| Component | File | Description |
+|-----------|------|-------------|
+| Dashboard | `admin/dashboard.php` | KPIs with 30-day trends, revenue chart, top products, low stock |
+| Products | `admin/products.php` | CRUD, stock, AI Product Generator |
+| Users | `admin/users.php` | Customer accounts, ban/unlock |
+| Payments | `admin/payment-verification.php`, `admin/payment-settings.php` | Legacy manual payment proofs |
+| Audit Log | `admin/audit-log.php` | Logins, payments, coupon changes, report exports, and more |
+| Sidebar / notifications | `includes/admin-sidebar.php`, `includes/admin-notifications.php`, `js/admin-sidebar.js` | Navigation with badge counts |
 
 ---
 
 ## 6. User Roles & Access Control
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    ACCESS CONTROL MATRIX                  │
-├──────────────────┬──────────┬─────┬────────┬────────────┤
-│ Feature          │ Guest    │ User│ PWD/   │ Admin      │
-│                  │          │     │ Senior │            │
-├──────────────────┼──────────┼─────┼────────┼────────────┤
-│ Browse Products  │    ✓     │  ✓  │   ✓    │     ✓      │
-│ Add to Cart      │    ✓     │  ✓  │   ✓    │     ✓      │
-│ Checkout         │    ✗     │  ✓  │   ✓    │     ✓      │
-│ 20% Discount     │    ✗     │  ✗  │   ✓    │     ✗      │
-│ Custom Design    │    ✗     │  ✓  │   ✓    │     ✓      │
-│ AI Chatbot       │    ✓     │  ✓  │   ✓    │     ✓      │
-│ Contact Form     │    ✓     │  ✓  │   ✓    │     ✓      │
-│ Support Chat     │    ✗     │  ✓  │   ✓    │     ✓      │
-│ Order History    │    ✗     │  ✓  │   ✓    │     ✓      │
-│ Password Reset   │    ✓     │  ✓  │   ✓    │     ✓      │
-│ Admin Dashboard  │    ✗     │  ✗  │   ✗    │     ✓      │
-│ Manage Products  │    ✗     │  ✗  │   ✗    │     ✓      │
-│ Manage Orders    │    ✗     │  ✗  │   ✗    │     ✓      │
-│ Manage Users     │    ✗     │  ✗  │   ✗    │     ✓      │
-│ Verify Payments  │    ✗     │  ✗  │   ✗    │     ✓      │
-│ Audit Log        │    ✗     │  ✗  │   ✗    │     ✓      │
-│ Support Chat Mgmt│    ✗     │  ✗  │   ✗    │     ✓      │
-│ Contact Mgmt     │    ✗     │  ✗  │   ✗    │     ✓      │
-└──────────────────┴──────────┴─────┴────────┴────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                     ACCESS CONTROL MATRIX                     │
+├────────────────────────┬───────┬──────┬────────┬─────────────┤
+│ Feature                │ Guest │ User │ PWD/   │ Admin       │
+│                        │       │      │ Senior │             │
+├────────────────────────┼───────┼──────┼────────┼─────────────┤
+│ Browse shop / products │   ✓   │  ✓   │   ✓    │     ✓       │
+│ Promotions page        │   ✓   │  ✓   │   ✓    │     ✓       │
+│ Cart & Checkout        │   ✗   │  ✓   │   ✓    │     ✓       │
+│ Coupon at checkout     │   ✗   │  ✓   │   ✓    │     ✓       │
+│ 20% PWD/Senior discount│   ✗   │  ✗   │   ✓    │     ✗       │
+│ Design Studio          │   ✗   │  ✓   │   ✓    │     ✓       │
+│ Try-On (AI generation) │   ✗   │  ✓   │   ✓    │     ✓       │
+│ AI Chatbot             │   ✗   │  ✓   │   ✓    │     ✓       │
+│ Support Chat           │   ✗   │  ✓   │   ✓    │     ✓       │
+│ Contact Form           │   ✓   │  ✓   │   ✓    │     ✓       │
+│ Orders / Invoices      │   ✗   │  ✓   │   ✓    │     ✓       │
+│ Password Reset         │   ✓   │  ✓   │   ✓    │     ✓       │
+│ Admin panel (all pages)│   ✗   │  ✗   │   ✗    │     ✓       │
+│ Coupons / Sales Report │   ✗   │  ✗   │   ✗    │     ✓       │
+│ AI Insights            │   ✗   │  ✗   │   ✗    │     ✓       │
+└────────────────────────┴───────┴──────┴────────┴─────────────┘
 ```
 
 ---
@@ -398,59 +226,68 @@
 
 ### 7.1 Standard Order Flow
 ```
-┌──────┐    ┌──────────┐    ┌──────────┐    ┌─────────┐    ┌───────────┐
-│ User │───>│ Browse   │───>│ Add to   │───>│Checkout │───>│ Payment   │
-│      │    │ Products │    │ Cart     │    │         │    │ (GCash/   │
-└──────┘    └──────────┘    └──────────┘    └─────────┘    │ Maya/COD) │
-                                                           └─────┬─────┘
-                                                                 │
-  ┌─────────────┐    ┌─────────────┐    ┌──────────┐            │
-  │ Delivered / │<───│ Out for     │<───│Preparing │<───────────┘
-  │ Completed   │    │ Delivery    │    │          │  Admin confirms
-  └─────────────┘    └─────────────┘    └──────────┘
+┌──────┐   ┌────────┐   ┌──────┐   ┌───────────────────────────────┐
+│ User │──>│ Browse │──>│ Cart │──>│ Checkout                      │
+└──────┘   └────────┘   └──────┘   │ address → area fee            │
+                                   │ PWD/Senior 20% → coupon       │
+                                   │ → 12% VAT → total             │
+                                   └──────────────┬────────────────┘
+                                   Server re-prices from DB and
+                                   re-checks the coupon on submit
+                                                  │
+                         ┌────────────────────────┴───────────────┐
+                         ▼                                        ▼
+               ┌───────────────────┐                   ┌──────────────────┐
+               │ Pay Online        │                   │ Cash on Delivery │
+               │ PayMongo checkout │                   │ / Pickup         │
+               │ → webhook = paid  │                   └────────┬─────────┘
+               └─────────┬─────────┘                            │
+                         └──────────────┬───────────────────────┘
+                                        ▼
+  Pending → Confirmed → Preparing → Out for Delivery → Completed  (or Cancelled)
+                       (status set by admin)
 ```
 
 ### 7.2 Custom Design Order Flow
 ```
-┌──────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│ User │───>│ Design   │───>│ Save     │───>│ Create   │───>│ Upload   │
-│      │    │ Apparel  │    │ Design   │    │ Custom   │    │ Payment  │
-└──────┘    └──────────┘    └──────────┘    │ Order    │    │ Proof    │
-                 │                          └──────────┘    └────┬─────┘
-                 │ AI Suggest                                    │
-                 ▼                                               │
-          ┌──────────────┐                                       │
-          │ Gemini API   │                                       ▼
-          │ Suggestions  │    ┌──────────┐    ┌──────────┐  ┌──────────┐
-          └──────────────┘    │ Delivered │<───│ Ready    │<─│ Printing │
-                              └──────────┘    │ Pickup   │  └────┬─────┘
-                                              └──────────┘       │
-                                                            Admin verifies
-                                                            payment first
+┌──────┐   ┌─────────────────────┐   ┌──────────────┐   ┌───────────────┐
+│ User │──>│ Design Studio       │──>│ Order Summary│──>│ Payment       │
+└──────┘   │ templates · AI art  │   │ price, PWD/  │   │ PayMongo or   │
+           │ sleeves · logo · 3D │   │ Senior       │   │ COD           │
+           └─────────────────────┘   └──────────────┘   └──────┬────────┘
+                                                               ▼
+  Pending Payment → Payment Uploaded / Verified → Processing → Printing → Ready for Pickup → Delivered
+  (or Cancelled; status set by admin)
 ```
 
-### 7.3 AI Chatbot Flow
+### 7.3 Coupon Flow
 ```
-┌──────┐    ┌──────────┐    ┌──────────────┐    ┌──────────────────┐
-│ User │───>│ Chat     │───>│ Send to      │───>│ Gemini API       │
-│ asks │    │ Widget   │    │ Gemini API   │    │ processes with   │
-└──────┘    └──────────┘    │ with context │    │ system context   │
-                            └──────────────┘    └────────┬─────────┘
-                                                         │
-                                            ┌────────────┼────────────┐
-                                            │            │            │
-                                            ▼            ▼            ▼
-                                      ┌──────────┐ ┌─────────┐ ┌──────────┐
-                                      │ Product  │ │ Order   │ │ General  │
-                                      │ Catalog  │ │ History │ │ Response │
-                                      │ Context  │ │ Context │ │          │
-                                      └──────────┘ └─────────┘ └──────────┘
-                                                         │
-                                                         ▼
-                                                  ┌──────────────┐
-                                                  │ Save to      │
-                                                  │ chat_history │
-                                                  └──────────────┘
+Admin creates code (admin/coupons.php)
+   │
+   ├──> Promotions page and chatbot list it (only while usable)
+   ▼
+Customer types code at checkout ──> validate-coupon.php (preview)
+   │
+   ▼ Place Order
+Server: validateCoupon() again ──fail──> order stopped, reason shown
+   │ ok
+   ▼
+Inside the order transaction: incrementCouponUsage()
+   (UPDATE ... WHERE times_used < max_uses — only one checkout can take the last use)
+   │
+   ▼
+orders.coupon_code + coupon_discount saved → shown on order, invoice, email,
+Sales Report and AI Insights
+```
+
+### 7.4 AI Chatbot Flow
+```
+User message ──> includes/gemini_api.php
+                   │ builds context from the database:
+                   │  products · this customer's orders only · delivery fees
+                   │  payment options · promo codes usable now · admin FAQ
+                   ▼
+                 Gemini API (server-side key) ──> reply ──> saved to chat_history
 ```
 
 ---
@@ -459,45 +296,41 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    SECURITY LAYERS                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
 │  1. AUTHENTICATION                                          │
-│     • bcrypt password hashing (PASSWORD_BCRYPT)             │
-│     • Session-based auth ($_SESSION)                        │
-│     • Login redirect guards                                 │
-│     • Admin role verification                               │
-│     • Login attempt tracking (login_attempts table)         │
-│     • Token-based password reset (password_resets table)    │
+│     • bcrypt password hashing; one strong-password rule     │
+│     • New session ID on login; HttpOnly, SameSite=Lax cookie│
+│     • Login rate limiting (login_attempts)                  │
+│     • Remember-me tokens stored hashed (remember_tokens)    │
+│     • One-time, expiring password reset links               │
 │                                                             │
-│  2. INPUT VALIDATION                                        │
-│     • sanitizeInput() function (htmlspecialchars + trim)     │
-│     • Email format validation (FILTER_VALIDATE_EMAIL)       │
-│     • File type whitelisting (JPEG, PNG, GIF, WebP)         │
-│     • File size limits (5MB max)                            │
+│  2. REQUEST INTEGRITY                                       │
+│     • CSRF tokens on forms and admin AJAX                   │
+│     • Admin check on every admin page and endpoint          │
+│     • Safe post-login redirects (same site only)            │
 │                                                             │
-│  3. DATABASE SECURITY                                       │
-│     • Prepared statements with parameterized queries        │
-│     • mysqli_real_escape_string for dynamic queries         │
-│     • Foreign key constraints with CASCADE                  │
-│     • UTF8MB4 charset encoding                              │
+│  3. PRICING & PAYMENT                                       │
+│     • Order prices recomputed from the database             │
+│     • Coupons validated on the server; usage claimed        │
+│       atomically inside the order transaction               │
+│     • PayMongo amounts built from the database; webhook     │
+│       signature checked; card data never touches the site   │
 │                                                             │
-│  4. DISCOUNT VALIDATION                                     │
-│     • Client-side: Discount dropdown filtered by user_type  │
-│     • Server-side: Discount type verified against DB        │
-│     • Only PWD users can apply PWD discount                 │
-│     • Only Senior users can apply Senior discount           │
+│  4. DATABASE                                                │
+│     • Prepared statements; transactions for order + stock   │
+│     • Foreign keys with CASCADE; utf8mb4                    │
 │                                                             │
-│  5. FILE UPLOAD SECURITY                                    │
-│     • Random filename generation (uniqid + hex)             │
-│     • Extension whitelisting                                │
-│     • Directory isolation (/uploads/)                       │
-│     • Base64 validation for canvas designs                  │
+│  5. FILE UPLOADS                                            │
+│     • Real file type checked, 5MB limit, random names       │
+│     • Private folders blocked from the web                  │
 │                                                             │
-│  6. AUDIT & MONITORING                                      │
-│     • Audit log tracking (user actions, IP, user agent)     │
-│     • Admin audit log viewer with filters                   │
+│  6. AI                                                      │
+│     • Keys only on the server; login required               │
+│     • Hourly per-customer limits (ai_usage)                 │
+│     • Admin AI is read-only and never sees contact or       │
+│       payment details                                       │
 │                                                             │
+│  7. AUDIT                                                   │
+│     • audit_log: user, action, IP, user agent, details      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -507,124 +340,65 @@
 
 ```
 thread-and-presshub/
-│
-├── index.php                    # Homepage
-├── shop.php                     # Product catalog with filters
-├── cart.php                     # Shopping cart
-├── checkout.php                 # Checkout flow
-├── payment_gcash.php            # GCash payment processing
-├── payment_maya.php             # Maya payment processing
-├── order_confirmation.php       # Order success page
-├── orders.php                   # User order history
-├── order_details.php            # Single order details
-│
-├── login.php                    # User login
-├── register.php                 # User registration
-├── forgot-password.php          # Password reset request
-├── reset-password.php           # Password reset with token
-├── profile.php                  # User profile management
-├── logout.php                   # Session logout
-│
-├── custom-design.php            # Canvas-based design tool
-├── custom-order-summary.php     # Custom order review
-├── custom-order-tracking.php    # Track custom order status
-├── custom-payment.php           # Custom order payment
-├── my-custom-orders.php         # User's custom order list
-│
-├── chat_history.php             # AI chatbot history viewer
-├── contact.php                  # Contact form
-├── support-chat.php             # Live support chat
-├── about.php                    # About page
-├── promotion.php                # Promotions & deals
-├── pages.php                    # Static information pages
-│
-├── admin/                       # Admin panel
-│   ├── dashboard.php            # Admin dashboard with stats
-│   ├── products.php             # Product CRUD
-│   ├── orders.php               # Order management
-│   ├── order_details.php        # Detailed order view
-│   ├── users.php                # User management
-│   ├── custom-designs.php       # Design review
-│   ├── custom-orders.php        # Custom order management
-│   ├── contact-management.php   # Contact form management
-│   ├── support-chat.php         # Admin support chat management
-│   ├── audit-log.php            # Security & activity log viewer
-│   ├── profile.php              # Admin profile
-│   └── logout.php               # Admin session logout
-│
-├── includes/                    # Backend logic
-│   ├── config.php               # DB connection, session, helpers
-│   ├── contact-config.php       # Contact DB connection
-│   ├── gemini_api.php           # Gemini AI chatbot API
-│   ├── product-recommendations.php  # AI product search
-│   ├── custom-design-ajax.php   # Custom design AJAX handler
-│   ├── order-lookup.php         # Order status API
-│   ├── support-chat-ajax.php    # Support chat AJAX handler
-│   ├── support-chat-config.php  # Support chat DB config & helpers
-│   ├── email-helper.php         # Email notification system (mail/SMTP)
-│   ├── admin-sidebar.php        # Admin sidebar navigation component
-│   ├── header/header.php        # Shared header/navbar
-│   └── footer/footer.php        # Shared footer
-│
-├── js/                          # Client-side scripts
-│   ├── chatbot.js               # AI chatbot widget
-│   ├── support-chat.js          # Support chat client
-│   ├── admin-sidebar.js         # Admin sidebar toggle
-│   └── animations.js            # UI animations
-│
-├── css/
-│   └── style.css                # Main stylesheet
-│
-├── images/
-│   ├── hero/                    # Banner/promo images
-│   └── products/                # Product catalog images
-│
-└── uploads/
-    ├── designs/                 # Custom design files
-    ├── payments/                # Payment proof uploads
-    └── support/                 # Support chat attachments
+├── *.php                  Customer pages (index, shop, product, cart, checkout,
+│                          orders, custom-design, try-on, promotion, support-chat ...)
+├── paymongo-*.php         PayMongo checkout, return and webhook
+├── admin/                 Admin pages (dashboard, products, orders, users, coupons,
+│                          reports, custom-designs, custom-orders, support-chat,
+│                          chatbot-faq, contact-management, audit-log ...) and
+│                          admin AJAX (ai-assistant-ajax, ai-product-ajax)
+├── includes/              config, helpers, AJAX endpoints, header/footer,
+│                          paymongo, delivery-zones, apparel-config, xlsx-writer ...
+├── js/                    chatbot, try-on, design-3d, support-chat, admin-ai,
+│                          admin-sidebar, app-shell (PWA), buy-now ...
+├── css/                   Stylesheets (light + dark mode)
+├── images/                Product images, 3D models (images/models/web)
+├── uploads/               designs, design_assets, tryon, support, payments
+│                          (Railway: moved onto a volume by docker/start.sh)
+├── database/              schema.sql (25 tables) and migrate_*.sql
+├── docs/                  Guides and diagrams (system-architecture/ERD.png)
+├── scripts/               Command-line maintenance (migrate, seed, cleanup)
+├── tests/                 PHPUnit tests
+├── docker/ + Dockerfile   Railway container
+└── vendor/                Composer packages (PHPMailer, Dompdf)
 ```
 
 ---
 
 ## 10. API Endpoints
 
-| Endpoint | Method | Purpose | Auth Required |
-|----------|--------|---------|---------------|
-| `includes/gemini_api.php` | POST | AI chatbot conversation | Optional |
-| `includes/product-recommendations.php` | POST | Product search & suggestions | No |
-| `includes/custom-design-ajax.php` | POST | Save/list/fetch custom designs | Yes |
-| `includes/order-lookup.php` | POST | Order status by order ID | No |
-| `includes/support-chat-ajax.php` | POST | Real-time support chat messages | Yes |
+| Endpoint | Method | Purpose | Auth |
+|----------|--------|---------|------|
+| `includes/gemini_api.php` | POST | AI chatbot | Customer login |
+| `includes/validate-coupon.php` | POST | Preview a coupon at checkout | Customer login |
+| `includes/custom-design-ajax.php` | POST | Save/list/load designs, uploads, AI artwork | Customer login |
+| `includes/tryon-ajax.php`, `tryon-suggest.php`, `tryon-size.php`, `tryon-save.php` | POST | Try-On, AI Stylist, size finder, saved looks | Customer login |
+| `includes/support-chat-ajax.php` | POST | Support chat messages | Login |
+| `includes/product-recommendations.php` | POST | Product search & suggestions | — |
+| `includes/order-lookup.php` | POST | Order status lookup (the customer's own orders only) | Customer login |
+| `paymongo-webhook.php` | POST | PayMongo payment events (signature checked) | PayMongo |
+| `admin/ai-assistant-ajax.php` | POST | AI Insights, Suggest Reply | Admin + CSRF |
+| `admin/ai-product-ajax.php` | POST | AI Product Generator | Admin + CSRF |
+| `admin/reports.php?export=xlsx` | GET | Sales report Excel download | Admin |
 
 ---
 
 ## 11. Deployment Environment
 
 ```
-┌───────────────────────────────┐
-│         XAMPP Stack           │
-│  ┌─────────────────────────┐  │
-│  │ Apache Web Server       │  │
-│  │ Port: 80                │  │
-│  │ DocumentRoot: /htdocs/  │  │
-│  └─────────────────────────┘  │
-│  ┌─────────────────────────┐  │
-│  │ PHP 8.2.12              │  │
-│  │ Extensions: mysqli,     │  │
-│  │ json, curl, gd, mbstring│  │
-│  └─────────────────────────┘  │
-│  ┌─────────────────────────┐  │
-│  │ MariaDB 10.4.32         │  │
-│  │ Port: 3306              │  │
-│  │ Databases:              │  │
-│  │  • threadpresshub       │  │
-│  │  • threadpresshub_contact│ │
-│  └─────────────────────────┘  │
-└───────────────────────────────┘
+┌────────────────────────────┐        ┌──────────────────────────────────┐
+│ LOCAL (development)        │        │ RAILWAY (live)                   │
+│  XAMPP: Apache, PHP 8.0,   │  push  │  Dockerfile: php:8.2-apache      │
+│  MariaDB 10.4              │ ─────> │  extensions: mysqli, gd, zip,    │
+│  http://localhost/         │  main  │  mbstring, intl                  │
+│   thread-and-presshub/     │        │  MySQL service via MYSQL_URL     │
+│  or `npm start` (port 3000)│        │  Attach a Volume at /data so     │
+└────────────────────────────┘        │  uploads survive redeploys       │
+                                      │  (every push redeploys)          │
+                                      └──────────────────────────────────┘
 ```
 
 ---
 
-*Document generated for capstone/research documentation purposes.*
+*Document for capstone/research documentation purposes.*
 *Thread & Press Hub — E-Commerce Platform for Apparel & Custom Design*

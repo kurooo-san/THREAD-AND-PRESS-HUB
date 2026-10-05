@@ -1,0 +1,13 @@
+%% 3.1 Standard (shop) order flow. Render: see docs/SYSTEM_ARCHITECTURE.md section 7.
+flowchart LR
+    A[User] --> B[Browse Products] --> C[Add to Cart] --> D["Checkout<br/>PWD/Senior 20% · Coupon · 12% VAT<br/>Delivery fee by area"]
+    D --> E{Coupon still<br/>valid on submit?}
+    E -- No --> D
+    E -- "Yes / no coupon" --> F{Payment Method}
+    F -- Pay Online --> G["PayMongo Checkout<br/>GCash · Maya · GrabPay · Card"]
+    G --> H["PayMongo Webhook:<br/>Paid"]
+    H --> J[Order Confirmed]
+    F -- COD --> I[Order Pending]
+    I --> K[Admin Confirms Order]
+    K --> J
+    J --> L[Preparing] --> M[Out for Delivery] --> N[Completed]

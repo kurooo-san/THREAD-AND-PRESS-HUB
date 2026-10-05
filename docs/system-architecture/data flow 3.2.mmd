@@ -1,0 +1,15 @@
+%% 3.2 Custom design order flow.
+flowchart TD
+    A[User] --> B["Design Apparel<br/>templates · text · sleeves · logo · 3D preview"]
+    B --> C{Use AI Design<br/>Generator?}
+    C -- Yes --> D["Gemini API<br/>creates artwork"]
+    D --> B
+    C -- No --> E[Save Design]
+    E --> F["Order Summary<br/>price estimate · PWD/Senior 20%"]
+    F --> G{Payment Method}
+    G -- Pay Online --> H["PayMongo Checkout"]
+    H --> I[Payment Verified]
+    G -- COD --> J["Payment Uploaded<br/>(pay on delivery)"]
+    J --> K[Admin Verifies]
+    K --> I
+    I --> L[Processing] --> M[Printing] --> N[Ready for Pickup] --> O[Delivered]

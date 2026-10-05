@@ -1,0 +1,20 @@
+%% System architecture (layers). Matches docs/SYSTEM_ARCHITECTURE.md section 3.
+flowchart TB
+    CL["<b>CLIENT LAYER</b><br/>Browser / installable PWA<br/>Bootstrap 5 · Vanilla JS · Three.js (3D) · Chart.js · Service Worker"]
+
+    subgraph AL["APPLICATION LAYER — Apache + PHP"]
+        direction LR
+        PUB["<b>Customer Modules</b><br/>Shop & Product pages<br/>Cart & Checkout<br/>(VAT · PWD/Senior · Coupons)<br/>Accounts & Addresses<br/>Orders & Invoices<br/>Design Studio 2D + 3D<br/>Virtual Try-On + AI Stylist<br/>AI Chatbot<br/>Support Chat · Contact"]
+        ADM["<b>Admin Modules</b><br/>Dashboard<br/>Products + AI Product Generator<br/>Orders · Users<br/>Coupons<br/>Sales Report (Print / Excel)<br/>Custom Designs & Orders<br/>Support · Contact · Chatbot FAQ<br/>AI Insights<br/>Audit Log"]
+        API["<b>AJAX / API Endpoints</b><br/>gemini_api.php<br/>validate-coupon.php<br/>custom-design-ajax.php<br/>tryon-*.php<br/>support-chat-ajax.php<br/>ai-assistant-ajax.php<br/>ai-product-ajax.php<br/>paymongo-webhook.php"]
+    end
+
+    DB[("<b>DATA LAYER</b><br/>MySQL / MariaDB<br/>threadpresshub · 25 tables")]
+    FS["<b>FILE STORAGE</b><br/>uploads/ · images/products/<br/>(Railway volume)"]
+    EX["<b>EXTERNAL SERVICES</b><br/>Google Gemini API (2.5 Flash · 2.5 Flash Image)<br/>PayMongo (GCash · Maya · GrabPay · Card)<br/>SMTP mail"]
+
+    CL -- "HTTPS: pages + AJAX" --> AL
+    AL -- "MySQLi prepared statements" --> DB
+    AL -- "file uploads" --> FS
+    AL -- "server-side API calls (keys never sent to the browser)" --> EX
+    EX -- "PayMongo signed webhook" --> AL

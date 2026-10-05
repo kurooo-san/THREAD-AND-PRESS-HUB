@@ -1,0 +1,334 @@
+%% Thread & Press Hub - Entity Relationship Diagram
+%% Generated from the live schema (database/schema.sql). Solid lines are FOREIGN KEY
+%% constraints; dashed lines are links the code uses without a constraint.
+%% ai_usage (one row per AI call, for the hourly limits) is left out: it is not in
+%% schema.sql because the app creates it on the first AI request.
+erDiagram
+    audit_log {
+        int id PK
+        int user_id "ref users.id"
+        varchar action
+        varchar entity_type
+        int entity_id
+        text details
+        varchar ip_address
+        varchar user_agent
+        timestamp created_at
+    }
+    chat_history {
+        int id PK
+        int user_id FK
+        text user_message
+        text bot_response
+        timestamp created_at
+    }
+    chatbot_faq {
+        int id PK
+        varchar question
+        text answer
+        varchar category
+        int priority
+        tinyint active
+        timestamp created_at
+        timestamp updated_at
+        int created_by "ref users.id"
+    }
+    contact_categories {
+        int id PK
+        varchar name
+        text description
+        tinyint active
+    }
+    contact_messages {
+        int id PK
+        varchar name
+        varchar email
+        varchar phone
+        varchar subject
+        text message
+        varchar category "ref contact_categories.name"
+        varchar priority
+        varchar status
+        varchar ip_address
+        text user_agent
+        timestamp created_at
+        timestamp responded_at
+        timestamp closed_at
+        text admin_notes
+        int assigned_to
+    }
+    contact_messages_responses {
+        int id PK
+        int contact_id FK
+        int admin_id
+        text response_message
+        varchar attachments
+        timestamp created_at
+    }
+    coupons {
+        int id PK
+        varchar code UK
+        varchar description
+        enum discount_type
+        decimal discount_value
+        decimal min_subtotal
+        int max_uses
+        int times_used
+        datetime valid_from
+        datetime valid_until
+        tinyint is_active
+        timestamp created_at
+    }
+    custom_designs {
+        int id PK
+        int user_id FK
+        varchar product_type
+        text design_image
+        text design_image_back
+        varchar print_front
+        varchar print_back
+        text design_data
+        text notes
+        enum status
+        text admin_notes
+        int order_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    custom_order_payments {
+        int id PK
+        int custom_order_id FK
+        enum payment_method
+        varchar payment_proof
+        varchar reference_number
+        decimal amount
+        enum payment_status
+        text admin_notes
+        timestamp created_at
+        timestamp updated_at
+    }
+    custom_orders {
+        int id PK
+        int user_id FK
+        int design_id FK
+        varchar design_image
+        varchar product_type
+        varchar apparel_color
+        varchar size
+        int quantity
+        decimal base_price
+        decimal print_cost
+        decimal color_cost
+        decimal subtotal
+        varchar discount_type
+        decimal discount_amount
+        decimal total_price
+        enum status
+        text notes
+        text admin_notes
+        timestamp created_at
+        timestamp updated_at
+    }
+    gcash_transactions {
+        int id PK
+        int order_id FK
+        varchar reference_number
+        decimal amount
+        enum status
+        timestamp created_at
+        timestamp updated_at
+    }
+    login_attempts {
+        int id PK
+        varchar email
+        varchar ip_address
+        timestamp attempted_at
+    }
+    mfa_otps {
+        int id PK
+        int user_id "ref users.id"
+        char otp_hash
+        datetime expires_at
+        datetime used_at
+        varchar ip_address
+        timestamp created_at
+    }
+    order_items {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        decimal unit_price
+        decimal subtotal
+        varchar color
+        varchar size
+        int custom_design_id FK
+    }
+    orders {
+        int id PK
+        int user_id FK
+        decimal subtotal
+        decimal discount_amount
+        enum discount_type
+        varchar coupon_code "ref coupons.code"
+        decimal coupon_discount
+        decimal delivery_fee
+        decimal total
+        enum payment_method
+        varchar payment_reference
+        enum payment_status
+        varchar payment_proof
+        text delivery_address
+        text notes
+        enum status
+        timestamp created_at
+        timestamp updated_at
+    }
+    password_resets {
+        int id PK
+        int user_id "ref users.id"
+        varchar token
+        datetime expires_at
+        tinyint used
+        timestamp created_at
+    }
+    payment_submissions {
+        int id PK
+        int order_id "ref orders.id"
+        varchar channel
+        decimal amount
+        varchar reference_number
+        varchar proof_path
+        enum status
+        varchar reject_reason
+        timestamp submitted_at
+        int reviewed_by
+        datetime reviewed_at
+    }
+    paymongo_sessions {
+        int id PK
+        varchar session_id UK
+        enum order_kind
+        int order_id "ref orders.id or custom_orders.id"
+        int user_id "ref users.id"
+        decimal amount
+        enum status
+        text checkout_url
+        varchar payment_id
+        varchar payment_method_used
+        text raw_payload
+        timestamp created_at
+        timestamp updated_at
+    }
+    product_reviews {
+        int id PK
+        int product_id FK
+        int user_id FK
+        tinyint rating
+        varchar title
+        text body
+        tinyint is_verified
+        enum status
+        timestamp created_at
+        timestamp updated_at
+    }
+    products {
+        int id PK
+        varchar name
+        text description
+        decimal price
+        varchar category
+        enum gender
+        varchar available_colors
+        varchar available_sizes
+        varchar image
+        varchar design_asset
+        int stock
+        enum status
+        timestamp created_at
+        timestamp updated_at
+    }
+    remember_tokens {
+        int id PK
+        int user_id "ref users.id"
+        varchar selector UK
+        varchar token_hash
+        datetime expires_at
+        timestamp created_at
+    }
+    support_conversations {
+        int id PK
+        int user_id FK
+        varchar subject
+        enum status
+        timestamp created_at
+        timestamp updated_at
+    }
+    support_messages {
+        int id PK
+        int conversation_id FK
+        int sender_id "ref users.id"
+        enum sender_type
+        text message
+        varchar image_path
+        tinyint is_read
+        timestamp created_at
+    }
+    user_addresses {
+        int id PK
+        int user_id FK
+        varchar label
+        varchar street_address
+        varchar barangay
+        varchar city
+        varchar province
+        varchar zipcode
+        tinyint is_default
+        timestamp created_at
+        timestamp updated_at
+    }
+    users {
+        int id PK
+        varchar fullname
+        varchar email UK
+        varchar phone
+        varchar password
+        enum user_type
+        enum status
+        varchar pwd_id
+        varchar senior_id
+        varchar street_address
+        varchar barangay
+        varchar city
+        varchar province
+        varchar zipcode
+        timestamp created_at
+        timestamp updated_at
+    }
+    users ||--o{ orders : "places"
+    orders ||--|{ order_items : "contains"
+    products ||--o{ order_items : "sold as"
+    custom_designs |o--o{ order_items : "printed as"
+    users ||--o{ custom_designs : "creates"
+    orders |o--o{ custom_designs : "linked to"
+    users ||--o{ custom_orders : "places"
+    custom_designs ||--o{ custom_orders : "ordered as"
+    custom_orders ||--o{ custom_order_payments : "paid by"
+    orders ||--o{ gcash_transactions : "legacy payment"
+    users ||--o{ product_reviews : "writes"
+    products ||--o{ product_reviews : "receives"
+    users ||--o{ user_addresses : "saves"
+    users ||--o{ chat_history : "chats with bot"
+    users ||--o{ support_conversations : "opens"
+    support_conversations ||--o{ support_messages : "contains"
+    contact_messages ||--o{ contact_messages_responses : "answered by"
+    coupons |o..o{ orders : "applied to"
+    orders ||..o{ payment_submissions : "manual proof"
+    orders ||..o{ paymongo_sessions : "paid online"
+    custom_orders ||..o{ paymongo_sessions : "paid online"
+    users ||..o{ password_resets : "requests"
+    users ||..o{ remember_tokens : "stays signed in"
+    users ||..o{ mfa_otps : "verifies with"
+    users |o..o{ audit_log : "performs"
+    users |o..o{ chatbot_faq : "manages"
+    contact_categories |o..o{ contact_messages : "categorizes"

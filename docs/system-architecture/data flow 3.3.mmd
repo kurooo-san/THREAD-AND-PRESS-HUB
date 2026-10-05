@@ -1,0 +1,20 @@
+%% 3.3 AI chatbot flow. The admin FAQ is part of the context sent to Gemini (no separate FAQ shortcut).
+flowchart TD
+    A["User asks question<br/>(signed in)"] --> B[Chat Widget]
+    B --> C{Hourly limit<br/>reached?}
+    C -- Yes --> D["'Limit reached' message"]
+    D --> B
+    C -- No --> E["Build context from the database"]
+    E --> F[Product Catalog]
+    E --> G["This Customer's Orders<br/>(own account only)"]
+    E --> H["Delivery Fees &<br/>Payment Options"]
+    E --> I["Promo Codes<br/>usable now"]
+    E --> J[Admin FAQ]
+    F --> K["Send to Gemini API<br/>(server-side key)"]
+    G --> K
+    H --> K
+    I --> K
+    J --> K
+    K --> L[Return AI Answer]
+    L --> M[(chat_history)]
+    L --> B

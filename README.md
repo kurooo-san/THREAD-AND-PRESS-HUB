@@ -139,7 +139,7 @@ composer install
 
 1. Start Apache and MySQL in XAMPP and open phpMyAdmin (`http://localhost/phpmyadmin`)
 2. Create a database named `threadpresshub`
-3. Import `database/schema.sql` (all 22 tables)
+3. Import `database/schema.sql` (all 25 tables)
 4. If you are updating an older installation instead, run the `database/migrate_*.sql` files you are missing, or visit `scripts/migrate.php` once
 
 ### 3. Configuration (.env)
@@ -152,7 +152,7 @@ Copy `.env.example` to `.env` and fill in the values you need:
 | `GEMINI_API_KEY` | Chatbot, Try-On, AI Design, AI Assistant and AI Product Generator |
 | `PAYMONGO_SECRET_KEY`, `PAYMONGO_PUBLIC_KEY`, `PAYMONGO_WEBHOOK_SECRET` | Online payment |
 | `SMTP_*`, `MAIL_FROM*` | Password reset, order and welcome emails |
-| `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY` | reCAPTCHA on the forms |
+| `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY` | Reserved for reCAPTCHA: the helpers are in `includes/config.php`, but no form uses them yet |
 | `APP_URL`, `FORCE_HTTPS` | Production URL and HTTPS redirect |
 | `STORE_EMAIL` | The support email shown on the footer, contact page, privacy policy, invoices and chatbot (`js/chatbot.js` repeats it in two fallback messages) |
 | `SOCIAL_FACEBOOK_URL`, `SOCIAL_INSTAGRAM_URL`, `SOCIAL_TIKTOK_URL` | Footer social icons; each icon only appears once its URL is set |
@@ -222,7 +222,7 @@ At checkout the order is worked out as: item subtotal âˆ’ PWD/Senior discount âˆ
 
 ## Database Tables
 
-`database/schema.sql` creates all 22 tables. The main ones:
+`database/schema.sql` creates all 25 tables. The main ones:
 
 | Table | Holds |
 |---|---|
@@ -230,11 +230,14 @@ At checkout the order is worked out as: item subtotal âˆ’ PWD/Senior discount âˆ
 | `products` | Apparel with category, gender, colours, sizes, price, stock and image |
 | `orders`, `order_items` | Shop orders with totals, discounts, the coupon used, and the colour/size of each item |
 | `coupons` | Promo codes with discount type and value, minimum subtotal, usage limit and count, and validity dates |
+| `product_reviews` | Star ratings and reviews, one per customer per product |
+| `user_addresses` | Up to 3 saved delivery addresses per customer |
+| `paymongo_sessions` | Online checkout sessions for shop and custom orders |
 | `custom_designs`, `custom_orders` | Design Studio designs and their orders |
 | `audit_log` | Record of important actions |
 | `ai_usage` | One row per AI call, for the hourly limits. Not in `schema.sql`: it is created automatically on the first AI request |
 
-See `docs/SYSTEM_ARCHITECTURE.md` for the full picture.
+The full ERD of every table and relationship is `docs/system-architecture/ERD.png` (source `ERD.mmd`). See `docs/SYSTEM_ARCHITECTURE.md` for the full picture.
 
 ## Security Features
 
