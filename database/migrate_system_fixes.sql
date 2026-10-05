@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `coupons` (
 -- Seed sample coupons (valid for 1 year)
 INSERT IGNORE INTO `coupons` (`code`, `description`, `discount_type`, `discount_value`, `min_subtotal`, `max_uses`, `valid_from`, `valid_until`, `is_active`) VALUES
 ('SPRING40',  'Spring Sale 40% off',                  'percent', 40.00, 1000.00, 200, NOW(), DATE_ADD(NOW(), INTERVAL 1 YEAR), 1),
-('WELCOME10', '10% off your first order',             'percent', 10.00,    0.00, NULL, NOW(), DATE_ADD(NOW(), INTERVAL 1 YEAR), 1),
+('WELCOME10', '10% off your order',                   'percent', 10.00,    0.00, NULL, NOW(), DATE_ADD(NOW(), INTERVAL 1 YEAR), 1),
 ('FREESHIP',  'PHP 50 off (covers shipping)',         'fixed',   50.00,  500.00, NULL, NOW(), DATE_ADD(NOW(), INTERVAL 1 YEAR), 1),
 ('VIP15',     'VIP members 15% off',                  'percent', 15.00,    0.00, NULL, NOW(), DATE_ADD(NOW(), INTERVAL 1 YEAR), 1);
 

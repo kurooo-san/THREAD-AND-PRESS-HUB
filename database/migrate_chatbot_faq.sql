@@ -35,7 +35,7 @@ INSERT INTO `chatbot_faq` (`question`, `answer`, `category`, `priority`, `active
 -- Pricing & Discounts
 ('price cost how much', 'Our prices are very competitive! 💰\n• Most items: ₱699 - ₱2,999\n• Accessories: Starting from ₱499\n• Seasonal sales: Up to 40% OFF\n\nFree shipping on orders above ₱1,500! 🎁', 'pricing', 80, 1),
 
-('discount sale promo promotion', 'Great news! 🎉 We offer:\n• Regular promotions on seasonal items\n• Up to 40% off during sales\n• Free shipping on orders above ₱1,500\n• Special discounts for PWD & Senior Citizens\n• Loyalty rewards for frequent buyers\n\nCheck our Promotion page for current deals!', 'pricing', 80, 1),
+('discount sale promo promotion', 'Great news! 🎉 We offer:\n• Promo codes — see the Promotions page, then enter the code at checkout\n• 20% off for PWD & Senior Citizens (upload a valid ID at registration)\n\nCheck our Promotion page for current deals!', 'pricing', 80, 1),
 
 ('shipping delivery free', '🚚 Delivery Info:\n• Metro Manila: 1-2 business days\n• Provincial areas: 2-3 business days\n• Free shipping on orders above ₱1,500\n• Standard delivery fee: ₱50\n• All orders are carefully packaged', 'shipping', 75, 1),
 
