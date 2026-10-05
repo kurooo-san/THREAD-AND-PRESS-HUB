@@ -448,13 +448,18 @@ function validateCoupon($code, $subtotal) {
     return ['ok' => true, 'message' => 'Coupon applied.', 'coupon' => $coupon, 'discount' => $discount];
 }
 
+// Claims one use. Returns false when the limit was already reached, so two
+// simultaneous checkouts cannot both take the last use.
 function incrementCouponUsage($couponId) {
     global $conn;
-    if (!couponsTableExists()) return;
-    $stmt = $conn->prepare("UPDATE coupons SET times_used = times_used + 1 WHERE id = ?");
+    if (!couponsTableExists()) return true;
+    $stmt = $conn->prepare("UPDATE coupons SET times_used = times_used + 1
+                            WHERE id = ? AND (max_uses IS NULL OR times_used < max_uses)");
     $stmt->bind_param("i", $couponId);
     $stmt->execute();
+    $ok = $stmt->affected_rows === 1;
     $stmt->close();
+    return $ok;
 }
 
 // =============================================================

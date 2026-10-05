@@ -126,7 +126,7 @@ $gradients = [
                 <ul class="text-muted small">
                     <li>Only one coupon code may be applied per order.</li>
                     <li>Discounts apply to the subtotal only (before delivery fee).</li>
-                    <li>Coupons cannot be combined with PWD/Senior discounts unless stated.</li>
+                    <li>PWD/Senior accounts get both the 20% discount and the coupon.</li>
                     <li>Some coupons require a minimum order amount or are limited in number of uses.</li>
                     <li>Thread &amp; Press Hub reserves the right to modify or cancel promotions at any time.</li>
                 </ul>

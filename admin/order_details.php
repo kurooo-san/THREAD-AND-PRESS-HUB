@@ -138,6 +138,12 @@ $items_result = $items_stmt->get_result();
                         <span style="color: var(--accent-green); font-weight: 700;">-₱<?php echo number_format($order['discount_amount'], 2); ?></span>
                     </div>
                     <?php endif; ?>
+                    <?php if ((float)($order['coupon_discount'] ?? 0) > 0): ?>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd;">
+                        <span class="text-muted">Coupon (<?php echo htmlspecialchars($order['coupon_code'] ?? ''); ?>):</span>
+                        <span style="color: var(--accent-green); font-weight: 700;">-₱<?php echo number_format((float)$order['coupon_discount'], 2); ?></span>
+                    </div>
+                    <?php endif; ?>
                     <?php
                     // VAT shown as the reconciling difference so the breakdown always
                     // sums exactly to the stored total (pre-VAT orders: 0 → hidden).

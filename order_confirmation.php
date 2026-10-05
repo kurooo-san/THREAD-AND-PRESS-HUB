@@ -109,6 +109,12 @@ if ($successFlash !== null) {
                                 <span>-₱<?php echo number_format($order['discount_amount'], 2); ?></span>
                             </div>
                             <?php endif; ?>
+                            <?php if ((float)($order['coupon_discount'] ?? 0) > 0): ?>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; color: var(--accent-green);">
+                                <span class="text-muted">Coupon (<?php echo htmlspecialchars($order['coupon_code'] ?? ''); ?>):</span>
+                                <span>-₱<?php echo number_format((float)$order['coupon_discount'], 2); ?></span>
+                            </div>
+                            <?php endif; ?>
                             <?php
                             // VAT shown as the reconciling difference so the visible
                             // breakdown always sums exactly to the stored total

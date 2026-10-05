@@ -184,6 +184,7 @@ function sendOrderConfirmationEmail($conn, $orderId) {
     <table width="100%" style="font-size:13px;">
         <tr><td style="padding:4px 0;">Subtotal:</td><td style="text-align:right;">₱' . number_format($order['subtotal'], 2) . '</td></tr>'
         . ($order['discount_amount'] > 0 ? '<tr><td style="padding:4px 0;color:#27ae60;">Discount (' . strtoupper($order['discount_type']) . '):</td><td style="text-align:right;color:#27ae60;">-₱' . number_format($order['discount_amount'], 2) . '</td></tr>' : '')
+        . ((float)($order['coupon_discount'] ?? 0) > 0 ? '<tr><td style="padding:4px 0;color:#27ae60;">Coupon (' . htmlspecialchars($order['coupon_code'] ?? '') . '):</td><td style="text-align:right;color:#27ae60;">-₱' . number_format((float)$order['coupon_discount'], 2) . '</td></tr>' : '')
         . ($vatShown > 0.009 ? '<tr><td style="padding:4px 0;">VAT (12%):</td><td style="text-align:right;">₱' . number_format($vatShown, 2) . '</td></tr>' : '')
         . '<tr><td style="padding:4px 0;">Delivery Fee:</td><td style="text-align:right;">₱' . number_format($order['delivery_fee'], 2) . '</td></tr>
         <tr><td style="padding:8px 0;border-top:2px solid #333;font-weight:bold;font-size:15px;">Total:</td>

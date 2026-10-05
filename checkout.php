@@ -180,10 +180,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $coupon_discount = min($coupon_discount, $discounted_total);
                 $discounted_total -= $coupon_discount;
             } else {
-                // Don't block the order — just ignore the invalid coupon.
-                $coupon_warning = $cv['message'];
-                $coupon_discount = 0.0;
-                $coupon_row      = null;
+                // Stop here: the customer was shown the discounted total, so
+                // charging full price silently would be wrong.
+                $error = 'Coupon ' . $coupon_code_in . ': ' . $cv['message'] . ' Remove it or try another code.';
             }
         }
 
@@ -359,8 +358,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Increment coupon usage (inside the transaction)
-            if (!empty($coupon_row)) {
-                incrementCouponUsage((int)$coupon_row['id']);
+            if (!empty($coupon_row) && !incrementCouponUsage((int)$coupon_row['id'])) {
+                throw new Exception('This coupon has reached its usage limit.');
             }
 
             // Link any pending custom designs to this order
@@ -700,6 +699,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <small class="text-muted">
                         <i class="fas fa-lock"></i> Valid ID will be required for verification during delivery
                     </small>
+
+                    <?php // The typed box has no name: only a code the server accepted
+                          // (copied into the hidden coupon_code) is sent with the order. ?>
+                    <div class="mt-4">
+                        <label class="form-label fw-bold" for="couponCodeInput">Have a coupon code?</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="couponCodeInput" maxlength="50"
+                                   placeholder="Enter code" autocomplete="off" style="text-transform: uppercase;">
+                            <button type="button" class="btn btn-outline-dark" onclick="validateCouponClient()">Apply</button>
+                        </div>
+                        <input type="hidden" name="coupon_code" id="couponCodeHidden" value="">
+                        <div id="couponMessage" class="small mt-2" role="status" aria-live="polite"></div>
+                        <small class="text-muted"><a href="promotion.php" target="_blank" rel="noopener">See available promos</a></small>
+                    </div>
                 </div>
             </div>
 
@@ -796,6 +809,7 @@ function validateCouponClient() {
 
     if (!code) {
         appliedCoupon = { code: '', discount: 0 };
+        document.getElementById('couponCodeHidden').value = '';
         updateOrderSummary();
         return;
     }
@@ -810,10 +824,12 @@ function validateCouponClient() {
         .then(data => {
             if (data.ok) {
                 appliedCoupon = { code: data.code, discount: parseFloat(data.discount) || 0 };
+                document.getElementById('couponCodeHidden').value = data.code;
                 msg.textContent = '✓ ' + data.message + ' Discount: ₱' + appliedCoupon.discount.toFixed(2);
                 msg.classList.add('text-success');
             } else {
                 appliedCoupon = { code: '', discount: 0 };
+                document.getElementById('couponCodeHidden').value = '';
                 msg.textContent = '✗ ' + data.message;
                 msg.classList.add('text-danger');
             }
@@ -900,6 +916,20 @@ function updateOrderSummary() {
     const labels = {'regular': 'No Discount', 'pwd': 'PWD (20%)', 'senior': 'Senior (20%)'};
     document.getElementById('discountTypeLabel').textContent = labels[discountType];
 }
+
+// Enter in the coupon box applies the code instead of placing the order;
+// editing an applied code drops it until it is applied again.
+document.getElementById('couponCodeInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); validateCouponClient(); }
+});
+document.getElementById('couponCodeInput').addEventListener('input', function () {
+    if (appliedCoupon.code && this.value.trim().toUpperCase() !== appliedCoupon.code) {
+        appliedCoupon = { code: '', discount: 0 };
+        document.getElementById('couponCodeHidden').value = '';
+        document.getElementById('couponMessage').textContent = '';
+        updateOrderSummary();
+    }
+});
 
 // Listen for discount type changes
 document.querySelectorAll('input[name="discount_type"]').forEach(input => {

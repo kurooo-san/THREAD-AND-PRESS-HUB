@@ -114,6 +114,16 @@ $items_result = $items_stmt->get_result();
                             </div>
                         </div>
                         <?php endif; ?>
+                        <?php if ((float)($order['coupon_discount'] ?? 0) > 0): ?>
+                        <div class="row mb-2">
+                            <div class="col-md-6">
+                                Coupon (<span style="font-weight: 700;"><?php echo htmlspecialchars($order['coupon_code'] ?? ''); ?></span>):
+                            </div>
+                            <div class="col-md-6 text-end" style="color: var(--primary); font-weight: 700;">
+                                -₱<?php echo number_format((float)$order['coupon_discount'], 2); ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                         <?php
                         // VAT as the reconciling difference — breakdown always sums
                         // to the stored total; pre-VAT orders show no row.
