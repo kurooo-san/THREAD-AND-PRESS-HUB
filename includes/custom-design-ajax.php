@@ -4,6 +4,15 @@ require __DIR__ . '/apparel-config.php';
 
 header('Content-Type: application/json');
 
+// An uncaught error (PHP 8.1+ turns failed queries into exceptions) used to
+// end the request with an empty body, which the studio could only report as
+// "Network error". Answer in JSON instead and keep the detail in the log.
+set_exception_handler(function (Throwable $e) {
+    error_log('[custom-design] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    if (!headers_sent()) http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Something went wrong on our side while saving. Please try again.']);
+});
+
 if (!isLoggedIn()) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Please log in to use the design tool.']);
@@ -353,16 +362,24 @@ function handleSave($conn, $userId) {
     }
     $designData = json_encode($designFields);
 
-    // Add design_image_back column if it doesn't exist
-    $conn->query("ALTER TABLE custom_designs ADD COLUMN IF NOT EXISTS design_image_back LONGTEXT DEFAULT NULL AFTER design_image");
-    // Same for the print files, so a missed migration does not break saving.
-    $conn->query("ALTER TABLE custom_designs ADD COLUMN IF NOT EXISTS print_front VARCHAR(255) DEFAULT NULL AFTER design_image_back");
-    $conn->query("ALTER TABLE custom_designs ADD COLUMN IF NOT EXISTS print_back VARCHAR(255) DEFAULT NULL AFTER print_front");
+    // Add the back image and print-file columns if a migration was missed.
+    // Checked first: "ADD COLUMN IF NOT EXISTS" is MariaDB-only and is a
+    // syntax error on MySQL (Railway), which broke every save there.
+    cdEnsureColumn($conn, 'design_image_back', 'LONGTEXT DEFAULT NULL AFTER design_image');
+    cdEnsureColumn($conn, 'print_front', 'VARCHAR(255) DEFAULT NULL AFTER design_image_back');
+    cdEnsureColumn($conn, 'print_back', 'VARCHAR(255) DEFAULT NULL AFTER print_front');
 
     $stmt = $conn->prepare("INSERT INTO custom_designs (user_id, product_type, design_image, design_image_back, print_front, print_back, design_data, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
     $stmt->bind_param("isssssss", $userId, $productType, $dbImagePath, $dbImageBackPath, $printFrontPath, $printBackPath, $designData, $notes);
 
-    if ($stmt->execute()) {
+    // Caught here so the cleanup below also runs when mysqli throws.
+    try {
+        $saved = $stmt->execute();
+    } catch (mysqli_sql_exception $e) {
+        error_log('[custom-design] save failed: ' . $e->getMessage());
+        $saved = false;
+    }
+    if ($saved) {
         $designId = $conn->insert_id;
         echo json_encode([
             'success' => true,
@@ -380,6 +397,15 @@ function handleSave($conn, $userId) {
         echo json_encode(['success' => false, 'message' => 'Failed to save design. Please try again.']);
     }
     $stmt->close();
+}
+
+/** Adds a custom_designs column when it is missing. Works on MySQL and MariaDB. */
+function cdEnsureColumn($conn, $column, $definition)
+{
+    $r = $conn->query("SHOW COLUMNS FROM custom_designs LIKE '" . $conn->real_escape_string($column) . "'");
+    if ($r && $r->num_rows === 0) {
+        $conn->query("ALTER TABLE custom_designs ADD COLUMN `" . $column . "` " . $definition);
+    }
 }
 
 /**
