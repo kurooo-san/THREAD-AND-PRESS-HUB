@@ -62,6 +62,7 @@ function adminIcon(string $name): string
         'contact'   => '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
         'support'   => '<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>',
         'coupons'   => '<path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/><path d="M9 9h.01M15 15h.01M15 9l-6 6"/>',
+        'reports'   => '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
         'audit'     => '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>',
         'store'     => '<path d="M3 9 5 3h14l2 6"/><path d="M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 21v-6h6v6"/>',
         'signout'   => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
@@ -128,6 +129,7 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
             adminNavLink('custom-designs.php', 'designs', 'Custom Designs', 'custom-designs.php', $currentPage, (int)$pending_designs_count);
             adminNavLink('custom-orders.php', 'custom', 'Custom Orders', 'custom-orders.php', $currentPage, (int)$pending_custom_orders);
             adminNavLink('coupons.php', 'coupons', 'Coupons', 'coupons.php', $currentPage);
+            adminNavLink('reports.php', 'reports', 'Sales Report', 'reports.php', $currentPage);
             ?>
 
             <div class="ad-side-label">Communication</div>
