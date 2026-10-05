@@ -26,7 +26,8 @@ function couponDateIn($value) {
 if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'add') {
+    if ($action === 'add' || $action === 'update') {
+        $editId      = $action === 'update' ? (int)($_POST['id'] ?? 0) : 0;
         $code        = strtoupper(trim($_POST['code'] ?? ''));
         $description = trim($_POST['description'] ?? '');
         $type        = ($_POST['discount_type'] ?? '') === 'fixed' ? 'fixed' : 'percent';
@@ -37,7 +38,20 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $validUntil  = couponDateIn($_POST['valid_until'] ?? '');
         $isActive    = !empty($_POST['is_active']) ? 1 : 0;
 
-        if (!preg_match('/^[A-Z0-9_-]{3,50}$/', $code)) {
+        // The code is fixed once created: orders store it, and the "Given"
+        // totals below are matched by code.
+        if ($editId) {
+            $stmt = $conn->prepare("SELECT code FROM coupons WHERE id = ?");
+            $stmt->bind_param("i", $editId);
+            $stmt->execute();
+            $code = $stmt->get_result()->fetch_row()[0] ?? null;
+            $stmt->close();
+        }
+
+        if ($editId && $code === null) {
+            $errorMsg = 'That coupon no longer exists.';
+            $editId = 0;
+        } elseif (!preg_match('/^[A-Z0-9_-]{3,50}$/', $code)) {
             $errorMsg = 'Code must be 3–50 characters: letters, numbers, dash or underscore.';
         } elseif ($value <= 0 || ($type === 'percent' && $value > 100)) {
             $errorMsg = $type === 'percent' ? 'Percent discount must be between 1 and 100.' : 'Fixed discount must be more than ₱0.';
@@ -49,9 +63,16 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $errorMsg = '"Valid until" must be after "Valid from".';
         } else {
             $description = $description === '' ? null : mb_substr($description, 0, 255);
-            $stmt = $conn->prepare("INSERT INTO coupons (code, description, discount_type, discount_value, min_subtotal, max_uses, valid_from, valid_until, is_active)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssddissi", $code, $description, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive);
+            if ($editId) {
+                $stmt = $conn->prepare("UPDATE coupons SET description = ?, discount_type = ?, discount_value = ?, min_subtotal = ?,
+                                               max_uses = ?, valid_from = ?, valid_until = ?, is_active = ?
+                                        WHERE id = ?");
+                $stmt->bind_param("ssddissii", $description, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive, $editId);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO coupons (code, description, discount_type, discount_value, min_subtotal, max_uses, valid_from, valid_until, is_active)
+                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("sssddissi", $code, $description, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive);
+            }
             // Works whether mysqli throws (PHP 8.1+ default) or just returns false.
             try {
                 $saved = $stmt->execute();
@@ -62,7 +83,11 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errNo = $e->getCode();
                 $errText = $e->getMessage();
             }
-            if ($saved) {
+            if ($saved && $editId) {
+                logAudit('coupon_update', 'coupon', $editId, $code);
+                $successMsg = "Coupon $code updated.";
+                $editId = 0;
+            } elseif ($saved) {
                 logAudit('coupon_create', 'coupon', $conn->insert_id, $code);
                 $successMsg = "Coupon $code created.";
             } elseif ($errNo === 1062) {
@@ -118,6 +143,27 @@ function couponStatus(array $c) {
 }
 
 $liveCount = count(array_filter($coupons, fn($c) => couponStatus($c)[0] === 'Active'));
+
+// Form contents: what was just posted if it failed, else the coupon opened
+// with ?edit=ID, else blank for a new coupon.
+$editId = $editId ?? 0;
+$keep = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
+    $keep = $_POST;
+    if ($editId) $keep['code'] = $code;
+} elseif (isset($_GET['edit'])) {
+    foreach ($coupons as $c) {
+        if ((int)$c['id'] === (int)$_GET['edit']) {
+            $editId = (int)$c['id'];
+            $keep = $c;
+            foreach (['valid_from', 'valid_until'] as $f) {
+                $keep[$f] = $c[$f] ? date('Y-m-d\TH:i', strtotime($c[$f])) : '';
+            }
+            $keep['discount_value'] = rtrim(rtrim($c['discount_value'], '0'), '.');
+            $keep['min_subtotal']   = rtrim(rtrim($c['min_subtotal'], '0'), '.');
+        }
+    }
+}
 ?>
 
 <?php include '../includes/header/header.php'; ?>
@@ -164,16 +210,23 @@ $liveCount = count(array_filter($coupons, fn($c) => couponStatus($c)[0] === 'Act
     </div>
 
     <div class="admin-card mb-4">
-        <h5 class="mb-3"><i class="fas fa-plus"></i> New coupon</h5>
-        <?php $keep = ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) ? $_POST : []; ?>
-        <form method="POST"><?php echo csrfTokenField(); ?>
-            <input type="hidden" name="action" value="add">
+        <h5 class="mb-3" id="couponForm">
+            <?php if ($editId): ?>
+                <i class="fas fa-edit"></i> Edit coupon <?php echo htmlspecialchars($keep['code'] ?? ''); ?>
+            <?php else: ?>
+                <i class="fas fa-plus"></i> New coupon
+            <?php endif; ?>
+        </h5>
+        <form method="POST" action="coupons.php"><?php echo csrfTokenField(); ?>
+            <input type="hidden" name="action" value="<?php echo $editId ? 'update' : 'add'; ?>">
+            <input type="hidden" name="id" value="<?php echo (int)$editId; ?>">
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label small fw-bold" for="cpCode">Code *</label>
                     <input type="text" class="form-control" id="cpCode" name="code" required maxlength="50"
                            pattern="[A-Za-z0-9_\-]{3,50}" placeholder="e.g. WELCOME10" style="text-transform: uppercase;"
-                           value="<?php echo htmlspecialchars($keep['code'] ?? ''); ?>">
+                           value="<?php echo htmlspecialchars($keep['code'] ?? ''); ?>"
+                           <?php echo $editId ? 'readonly title="The code is fixed once created."' : ''; ?>>
                 </div>
                 <div class="col-md-5">
                     <label class="form-label small fw-bold" for="cpDesc">Description</label>
@@ -220,7 +273,14 @@ $liveCount = count(array_filter($coupons, fn($c) => couponStatus($c)[0] === 'Act
                            <?php echo (!$keep || !empty($keep['is_active'])) ? 'checked' : ''; ?>>
                     <label class="form-check-label" for="cpActive">Active</label>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create coupon</button>
+                <div class="d-flex gap-2">
+                    <?php if ($editId): ?>
+                    <a href="coupons.php" class="btn btn-outline-secondary">Cancel</a>
+                    <?php endif; ?>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> <?php echo $editId ? 'Save changes' : 'Create coupon'; ?>
+                    </button>
+                </div>
             </div>
         </form>
     </div>
@@ -267,14 +327,17 @@ $liveCount = count(array_filter($coupons, fn($c) => couponStatus($c)[0] === 'Act
                             </td>
                             <td><span class="badge bg-<?php echo $color; ?>"><?php echo $label; ?></span></td>
                             <td class="text-end text-nowrap">
-                                <form method="POST" style="display:inline;"><?php echo csrfTokenField(); ?>
+                                <a href="coupons.php?edit=<?php echo (int)$c['id']; ?>#couponForm" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <form method="POST" action="coupons.php" style="display:inline;"><?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="action" value="toggle">
                                     <input type="hidden" name="id" value="<?php echo (int)$c['id']; ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">
                                         <?php echo (int)$c['is_active'] === 1 ? 'Deactivate' : 'Activate'; ?>
                                     </button>
                                 </form>
-                                <form method="POST" style="display:inline;" onsubmit="return confirm('Delete coupon <?php echo htmlspecialchars($c['code'], ENT_QUOTES); ?>? Past orders keep their discount.');"><?php echo csrfTokenField(); ?>
+                                <form method="POST" action="coupons.php" style="display:inline;" onsubmit="return confirm('Delete coupon <?php echo htmlspecialchars($c['code'], ENT_QUOTES); ?>? Past orders keep their discount.');"><?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?php echo (int)$c['id']; ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
