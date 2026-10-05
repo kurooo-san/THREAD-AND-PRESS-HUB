@@ -26,6 +26,11 @@ if (!defined('SMTP_PASS')) define('SMTP_PASS', getenv('SMTP_PASS') ?: '');
  * Send an email using the best available method
  */
 function sendEmail($to, $subject, $htmlBody, $textBody = '') {
+    // Brevo's HTTPS API first: Railway's Trial/Hobby plans block outbound SMTP ports.
+    if (getenv('BREVO_API_KEY')) {
+        return sendWithBrevo($to, $subject, $htmlBody, $textBody);
+    }
+
     // Try PHPMailer first (if installed via composer)
     $phpmailerPath = __DIR__ . '/../vendor/autoload.php';
     if (!empty(SMTP_HOST) && file_exists($phpmailerPath)) {
@@ -34,6 +39,38 @@ function sendEmail($to, $subject, $htmlBody, $textBody = '') {
 
     // Fallback to PHP mail()
     return sendWithMail($to, $subject, $htmlBody, $textBody);
+}
+
+function sendWithBrevo($to, $subject, $htmlBody, $textBody = '') {
+    $payload = [
+        'sender'      => ['email' => MAIL_FROM, 'name' => MAIL_FROM_NAME],
+        'to'          => [['email' => $to]],
+        'subject'     => $subject,
+        'htmlContent' => $htmlBody,
+        'textContent' => $textBody ?: strip_tags($htmlBody),
+    ];
+    $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_HTTPHEADER     => [
+            'api-key: ' . getenv('BREVO_API_KEY'),
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ],
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+    ]);
+    $response = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($status >= 200 && $status < 300) {
+        return true;
+    }
+    error_log("Email send failed (brevo): HTTP {$status} {$curlError} {$response}");
+    return false;
 }
 
 function sendWithMail($to, $subject, $htmlBody, $textBody = '') {

@@ -151,7 +151,7 @@ Copy `.env.example` to `.env` and fill in the values you need:
 | `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_PORT` | Database (XAMPP defaults work without changes) |
 | `GEMINI_API_KEY` | Chatbot, Try-On, AI Design, AI Assistant and AI Product Generator |
 | `PAYMONGO_SECRET_KEY`, `PAYMONGO_PUBLIC_KEY`, `PAYMONGO_WEBHOOK_SECRET` | Online payment |
-| `SMTP_*`, `MAIL_FROM*` | Password reset, order and welcome emails |
+| `BREVO_API_KEY`, `SMTP_*`, `MAIL_FROM*` | Password reset, order and welcome emails (Brevo API if the key is set, else SMTP) |
 | `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY` | Reserved for reCAPTCHA: the helpers are in `includes/config.php`, but no form uses them yet |
 | `APP_URL`, `FORCE_HTTPS` | Production URL and HTTPS redirect |
 | `STORE_EMAIL` | The support email shown on the footer, contact page, privacy policy, invoices and chatbot (`js/chatbot.js` repeats it in two fallback messages) |
