@@ -2,8 +2,6 @@
 
 A PHP and MySQL apparel shop with a custom design studio, AI features powered by Google Gemini, online payment through PayMongo, and 20% discounts for PWD and Senior Citizens. On phones and tablets it works like a mobile app and can be installed from the browser.
 
-**Live site:** https://thread-and-press-hub-production.up.railway.app
-
 ## Features
 
 ### 🛍️ Customer Features
