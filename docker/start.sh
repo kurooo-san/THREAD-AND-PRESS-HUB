@@ -31,6 +31,21 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then
         fi
     done
     chown -R www-data:www-data "$RAILWAY_VOLUME_MOUNT_PATH"
+
+    # Apache answers 403 on the top-level uploads symlink (AH00037), so
+    # serve /uploads straight from the volume instead. PHP still writes
+    # through the symlink. Editor states (*.json) stay private.
+    cat > /etc/apache2/conf-enabled/zz-volume.conf <<EOF
+Alias /uploads "$RAILWAY_VOLUME_MOUNT_PATH/uploads"
+<Directory "$RAILWAY_VOLUME_MOUNT_PATH/uploads">
+    Options -Indexes
+    AllowOverride None
+    Require all granted
+    <FilesMatch "\.json$">
+        Require all denied
+    </FilesMatch>
+</Directory>
+EOF
 fi
 
 exec apache2-foreground
