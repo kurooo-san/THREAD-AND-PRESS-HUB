@@ -659,6 +659,7 @@ html.dark-mode .pd-btn-ghost:hover { background: #26262e; color: var(--pd-ink); 
 html.dark-mode .pd-size.selected,
 html.dark-mode .pd-btn-primary,
 html.dark-mode .pd-btn-primary:hover { color: #16171a; }
+html.dark-mode .pd-size.selected { background: var(--pd-gold); border-color: var(--pd-gold); }
 html.dark-mode .pd-swatch.selected { box-shadow: 0 0 0 2px #1d1d24, 0 0 0 4px var(--pd-gold); }
 html.dark-mode .pd-stock.ok { color: #7fd49b; }
 html.dark-mode .pd-stock.low { color: #e7c66a; }
