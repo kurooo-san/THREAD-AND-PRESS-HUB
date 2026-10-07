@@ -348,7 +348,9 @@ function sendPasswordResetEmail($email, $fullname, $resetLink) {
     </div>
 
     <p style="color:#999;font-size:12px;line-height:1.6;margin-top:15px;">If the button above doesn\'t work, copy and paste the following link into your browser:<br>
-    <a href="' . htmlspecialchars($resetLink) . '" style="color:#3498db;word-break:break-all;">' . htmlspecialchars($resetLink) . '</a></p>';
+    <span style="color:#3498db;word-break:break-all;">' . htmlspecialchars($resetLink) . '</span></p>';
+    // Plain text on purpose: Brevo rewrites every <a href> through its click
+    // tracker (sendibt2.com), which some DNS/ad blockers refuse to resolve.
 
     $html = emailTemplate('Password Reset Request', $content);
     return sendEmail($email, "Password Reset - Thread & Press Hub", $html);
