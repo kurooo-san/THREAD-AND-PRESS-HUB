@@ -115,7 +115,11 @@ $vatShown = (float)$order['total']
 if ($vatShown > 0.009) {
     $html .= '<tr><td>VAT (12%):</td><td class="text-right">PHP ' . number_format($vatShown, 2) . '</td></tr>';
 }
-$html .= '<tr><td>Delivery Fee:</td><td class="text-right">PHP ' . number_format((float)$order['delivery_fee'], 2) . '</td></tr>
+$html .= '<tr><td>Delivery Fee:</td><td class="text-right">PHP ' . number_format((float)$order['delivery_fee'] + (float)($order['shipping_discount'] ?? 0), 2) . '</td></tr>';
+if ((float)($order['shipping_discount'] ?? 0) > 0) {
+    $html .= '<tr><td>Shipping voucher (' . htmlspecialchars($order['shipping_coupon_code'] ?? '') . '):</td><td class="text-right">- PHP ' . number_format((float)$order['shipping_discount'], 2) . '</td></tr>';
+}
+$html .= '
     <tr class="grand"><td>TOTAL:</td><td class="text-right">PHP ' . number_format((float)$order['total'], 2) . '</td></tr>
 </table>';
 

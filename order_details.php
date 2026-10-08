@@ -139,8 +139,14 @@ $items_result = $items_stmt->get_result();
                         <?php endif; ?>
                         <div class="row mb-2">
                             <div class="col-md-6">Delivery Fee:</div>
-                            <div class="col-md-6 text-end">₱<?php echo number_format($order['delivery_fee'], 2); ?></div>
+                            <div class="col-md-6 text-end">₱<?php echo number_format((float)$order['delivery_fee'] + (float)($order['shipping_discount'] ?? 0), 2); ?></div>
                         </div>
+                        <?php if ((float)($order['shipping_discount'] ?? 0) > 0): ?>
+                        <div class="row mb-2" style="color: #16a34a;">
+                            <div class="col-md-6">Shipping voucher (<?php echo htmlspecialchars($order['shipping_coupon_code'] ?? ''); ?>):</div>
+                            <div class="col-md-6 text-end">-₱<?php echo number_format((float)$order['shipping_discount'], 2); ?></div>
+                        </div>
+                        <?php endif; ?>
                         <div class="row" style="border-top: 2px solid #ddd; padding-top: 1rem; margin-top: 1rem;">
                             <div class="col-md-6" style="font-weight: 700; font-size: 1.1rem;">Total Amount:</div>
                             <div class="col-md-6 text-end" style="font-weight: 700; font-size: 1.1rem; color: var(--coffee-dark);">

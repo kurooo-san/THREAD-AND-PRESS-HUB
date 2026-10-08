@@ -43,6 +43,13 @@ $saved_addresses = addressList((int) $_SESSION['user_id']);
 $default_address = addressDefault((int) $_SESSION['user_id']);
 $can_save_more   = addressCanAdd((int) $_SESSION['user_id']);
 
+// Vouchers the customer can pick from. Expired / inactive / used-up ones stay
+// on My Vouchers; ones short of their minimum still show, as "add ₱X to unlock".
+$my_vouchers = array_values(array_filter(
+    voucherWallet((int) $_SESSION['user_id']),
+    fn($v) => couponStatus($v)[0] === 'Active'
+));
+
 // Check if subtotal exists and is greater than 0
 $subtotal_from_session = floatval($_POST['subtotal'] ?? 0);
 if ($subtotal_from_session <= 0) {
@@ -167,22 +174,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $discount_amount = $discount_calc['discount_amount'];
         $discounted_total = $discount_calc['total'];
 
-        // Coupon (optional, server-side validated)
-        $coupon_code_in   = strtoupper(trim($_POST['coupon_code'] ?? ''));
+        // Vouchers: the form only says WHICH wallet entries were picked.
+        // voucherGet() scopes by user id, so a forged id resolves to null, and
+        // the amount is re-checked here from the coupon row.
+        $wallet_user      = (int) $_SESSION['user_id'];
         $coupon_discount  = 0.0;
         $coupon_row       = null;
-        if ($coupon_code_in !== '') {
-            $cv = validateCoupon($coupon_code_in, $subtotal);
+        $voucher_id       = (int) ($_POST['voucher_id'] ?? 0);
+        if ($voucher_id > 0) {
+            $coupon_row = voucherGet($wallet_user, $voucher_id, 'discount');
+            $cv = $coupon_row
+                ? couponCheck($coupon_row, $subtotal)
+                : ['ok' => false, 'message' => 'That voucher is no longer in your wallet.'];
             if ($cv['ok']) {
-                $coupon_discount = (float)$cv['discount'];
-                $coupon_row      = $cv['coupon'];
-                // Coupon applies to discounted subtotal but cannot exceed it
-                $coupon_discount = min($coupon_discount, $discounted_total);
+                // Cannot take the items below zero after the PWD/Senior discount.
+                $coupon_discount = min((float)$cv['discount'], $discounted_total);
                 $discounted_total -= $coupon_discount;
             } else {
                 // Stop here: the customer was shown the discounted total, so
                 // charging full price silently would be wrong.
-                $error = 'Coupon ' . $coupon_code_in . ': ' . $cv['message'] . ' Remove it or try another code.';
+                $coupon_row = null;
+                $error = 'Voucher: ' . $cv['message'] . ' Pick another one or remove it.';
             }
         }
 
@@ -206,6 +218,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notes = trim($notes . "\n[" . $zone_result['flag'] . ']');
         }
 
+        // Shipping voucher: comes off the fee just priced above, never below ₱0.
+        $ship_coupon_row   = null;
+        $shipping_discount = 0.0;
+        $ship_voucher_id   = (int) ($_POST['ship_voucher_id'] ?? 0);
+        if ($ship_voucher_id > 0 && empty($error)) {
+            $ship_coupon_row = voucherGet($wallet_user, $ship_voucher_id, 'shipping');
+            $sv = $ship_coupon_row
+                ? couponCheck($ship_coupon_row, $subtotal, (float) $delivery_fee)
+                : ['ok' => false, 'message' => 'That voucher is no longer in your wallet.'];
+            if ($sv['ok']) {
+                $shipping_discount = min((float)$sv['discount'], (float) $delivery_fee);
+                $delivery_fee      = round($delivery_fee - $shipping_discount, 2);
+            } else {
+                $ship_coupon_row = null;
+                $error = 'Shipping voucher: ' . $sv['message'] . ' Pick another one or remove it.';
+            }
+        }
+
         // VAT (12%) — added on top of the discounted goods total (VAT-exclusive
         // pricing). Delivery fee is not VATed.
         $vat_rate   = 0.12;
@@ -214,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $final_total = $discounted_total + $vat_amount + $delivery_fee;
 
         if (!empty($error)) {
-            // bail before insert if coupon failed
+            // bail before insert if a voucher failed
         } else {
         // Pre-flight (non-authoritative) stock check — gives a friendly error
         // when there's clearly not enough stock. The authoritative check is
@@ -263,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $conn->prepare("INSERT INTO orders (user_id, subtotal, discount_amount, discount_type, coupon_code, coupon_discount, delivery_fee, total, payment_method, payment_status, delivery_address, notes, status, created_at)
                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
                 $coupon_code_save = $coupon_row ? $coupon_row['code'] : null;
-                $stmt->bind_param("iddssdidssss",
+                $stmt->bind_param("iddssdddssss",
                     $_SESSION['user_id'],
                     $subtotal,
                     $discount_amount,
@@ -280,7 +310,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $stmt = $conn->prepare("INSERT INTO orders (user_id, subtotal, discount_amount, discount_type, delivery_fee, total, payment_method, delivery_address, notes, status, created_at)
                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-                $stmt->bind_param("iddsidsss",
+                $stmt->bind_param("iddsddsss",
                     $_SESSION['user_id'],
                     $subtotal,
                     $discount_amount,
@@ -357,9 +387,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $item_stmt->close();
             }
 
-            // Increment coupon usage (inside the transaction)
-            if (!empty($coupon_row) && !incrementCouponUsage((int)$coupon_row['id'])) {
-                throw new Exception('This coupon has reached its usage limit.');
+            // Spend the picked vouchers (inside the transaction). Fails when the
+            // same voucher was just used in another tab or the coupon ran out.
+            if (!empty($coupon_row) && !voucherClaim($wallet_user, $coupon_row, $order_id)) {
+                throw new Exception('That voucher was already used or has run out. Please pick another one.');
+            }
+            if (!empty($ship_coupon_row)) {
+                if (!voucherClaim($wallet_user, $ship_coupon_row, $order_id)) {
+                    throw new Exception('That shipping voucher was already used or has run out. Please pick another one.');
+                }
+                // Columns exist: voucherGet() ran vouchersReady() before the
+                // transaction (its ALTERs would otherwise commit it early).
+                $shipStmt = $conn->prepare("UPDATE orders SET shipping_coupon_code = ?, shipping_discount = ? WHERE id = ?");
+                $shipStmt->bind_param("sdi", $ship_coupon_row['code'], $shipping_discount, $order_id);
+                $shipStmt->execute();
+                $shipStmt->close();
             }
 
             // Link any pending custom designs to this order
@@ -700,18 +742,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <i class="fas fa-lock"></i> Valid ID will be required for verification during delivery
                     </small>
 
-                    <?php // The typed box has no name: only a code the server accepted
-                          // (copied into the hidden coupon_code) is sent with the order. ?>
-                    <div class="mt-4">
-                        <label class="form-label fw-bold" for="couponCodeInput">Have a coupon code?</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="couponCodeInput" maxlength="50"
-                                   placeholder="Enter code" autocomplete="off" style="text-transform: uppercase;">
-                            <button type="button" class="btn btn-outline-dark" onclick="validateCouponClient()">Apply</button>
+                    <?php // Only the wallet ids are posted; checkout.php re-checks every amount. ?>
+                    <div class="mt-4" id="voucherPicker">
+                        <div class="d-flex justify-content-between align-items-baseline mb-2">
+                            <span class="fw-bold"><i class="fas fa-ticket-alt"></i> Your vouchers</span>
+                            <a href="vouchers.php" class="small" target="_blank" rel="noopener">My Vouchers</a>
                         </div>
-                        <input type="hidden" name="coupon_code" id="couponCodeHidden" value="">
-                        <div id="couponMessage" class="small mt-2" role="status" aria-live="polite"></div>
-                        <small class="text-muted"><a href="promotion.php" target="_blank" rel="noopener">See available promos</a></small>
+                        <?php if (!$my_vouchers): ?>
+                            <p class="small text-muted mb-0">No vouchers yet. Vouchers our team gives you will show up here.</p>
+                        <?php else: ?>
+                            <p class="small text-muted mb-2">We picked the one that saves you the most. Tap another to switch.</p>
+                            <?php foreach (['discount' => ['voucher_id', 'Discount'], 'shipping' => ['ship_voucher_id', 'Shipping']] as $vkind => [$vfield, $vtitle]):
+                                $vgroup = array_filter($my_vouchers, fn($v) => $v['kind'] === $vkind);
+                                if (!$vgroup) continue; ?>
+                            <div class="voucher-group" data-kind="<?php echo $vkind; ?>" role="radiogroup" aria-label="<?php echo $vtitle; ?> voucher">
+                                <div class="voucher-group-title"><?php echo $vtitle; ?> voucher</div>
+                                <?php foreach ($vgroup as $v): $wid = (int) $v['wallet_id']; ?>
+                                <label class="voucher-card" data-wallet="<?php echo $wid; ?>">
+                                    <input type="radio" class="voucher-radio" name="<?php echo $vfield; ?>" value="<?php echo $wid; ?>">
+                                    <span class="voucher-stub voucher-stub--<?php echo $vkind; ?>"><?php echo htmlspecialchars(voucherLabel($v)); ?></span>
+                                    <span class="voucher-body">
+                                        <span class="voucher-title">
+                                            <?php echo htmlspecialchars($v['description'] ?: $v['code']); ?>
+                                            <span class="voucher-best" hidden>Best deal</span>
+                                        </span>
+                                        <?php if (!empty($v['note'])): ?>
+                                        <span class="voucher-note">“<?php echo htmlspecialchars($v['note']); ?>”</span>
+                                        <?php endif; ?>
+                                        <span class="voucher-meta">
+                                            <?php echo (float) $v['min_subtotal'] > 0 ? 'Min. ₱' . number_format((float) $v['min_subtotal'], 2) : 'No minimum'; ?>
+                                            · <?php echo $v['valid_until'] ? 'Until ' . date('M d, Y', strtotime($v['valid_until'])) : 'No expiry'; ?>
+                                        </span>
+                                        <span class="voucher-lock" hidden>
+                                            <span class="voucher-lock-text"></span>
+                                            <span class="voucher-progress"><span></span></span>
+                                        </span>
+                                        <span class="voucher-save"></span>
+                                    </span>
+                                </label>
+                                <?php endforeach; ?>
+                                <label class="voucher-none">
+                                    <input type="radio" class="voucher-radio" name="<?php echo $vfield; ?>" value="0">
+                                    Don't use a <?php echo strtolower($vtitle); ?> voucher
+                                </label>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -736,7 +812,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="summary-row" id="couponRow" style="display:none;">
-                        <span>Coupon (<span id="couponCodeLabel"></span>):</span>
+                        <span>Voucher (<span id="couponCodeLabel"></span>):</span>
                         <span id="summaryCoupon" style="color: #16a34a; font-weight: 600;">-₱0.00</span>
                     </div>
 
@@ -748,6 +824,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="summary-row">
                         <span>Delivery Fee:</span>
                         <span id="summaryDelivery">₱<?php echo number_format(deliveryFee(guessDeliveryZone($user_data['province'] ?? null, $user_data['city'] ?? null)), 2); ?></span>
+                    </div>
+
+                    <div class="summary-row" id="shipVoucherRow" style="display:none;">
+                        <span>Shipping voucher (<span id="shipVoucherLabel"></span>):</span>
+                        <span id="summaryShipVoucher" style="color: #16a34a; font-weight: 600;">-₱0.00</span>
                     </div>
 
                     <div class="summary-row total">
@@ -796,50 +877,95 @@ const DISCOUNT_RATES = {
     'senior': 0.20
 };
 
-// Coupon discount tracked on the client; server re-validates on submit.
-let appliedCoupon = { code: '', discount: 0 };
+// The customer's usable vouchers, keyed by wallet id. Amounts shown here are
+// only a preview; checkout.php re-checks each picked voucher on submit.
+const VOUCHERS = <?php echo json_encode(array_column(array_map(fn($v) => [
+    'id'             => (int) $v['wallet_id'],
+    'kind'           => $v['kind'],
+    'code'           => $v['code'],
+    'discount_type'  => $v['discount_type'],
+    'discount_value' => (float) $v['discount_value'],
+    'min_subtotal'   => (float) $v['min_subtotal'],
+    'ends'           => $v['valid_until'] ? strtotime($v['valid_until']) : null,
+], $my_vouchers), null, 'id'), JSON_FORCE_OBJECT); ?>;
+// Until the customer taps a voucher group, it keeps following the best deal.
+const voucherTouched = { discount: false, shipping: false };
 
-function validateCouponClient() {
-    const inp = document.getElementById('couponCodeInput');
-    const msg = document.getElementById('couponMessage');
-    const code = (inp.value || '').trim().toUpperCase();
-    inp.value = code;
-    msg.textContent = '';
-    msg.className = 'small mt-2';
-
-    if (!code) {
-        appliedCoupon = { code: '', discount: 0 };
-        document.getElementById('couponCodeHidden').value = '';
-        updateOrderSummary();
-        return;
-    }
-
-    const subtotal = parseFloat(document.getElementById('hiddenSubtotal').value) || 0;
-    const fd = new FormData();
-    fd.append('code', code);
-    fd.append('subtotal', subtotal);
-
-    fetch('includes/validate-coupon.php', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            if (data.ok) {
-                appliedCoupon = { code: data.code, discount: parseFloat(data.discount) || 0 };
-                document.getElementById('couponCodeHidden').value = data.code;
-                msg.textContent = '✓ ' + data.message + ' Discount: ₱' + appliedCoupon.discount.toFixed(2);
-                msg.classList.add('text-success');
-            } else {
-                appliedCoupon = { code: '', discount: 0 };
-                document.getElementById('couponCodeHidden').value = '';
-                msg.textContent = '✗ ' + data.message;
-                msg.classList.add('text-danger');
-            }
-            updateOrderSummary();
-        })
-        .catch(() => {
-            msg.textContent = 'Could not validate coupon. Try again.';
-            msg.classList.add('text-danger');
-        });
+/** Mirrors couponCheck() in includes/vouchers.php. */
+function voucherCheck(v, subtotal, fee) {
+    if (subtotal < v.min_subtotal) return { ok: false, save: 0, short: v.min_subtotal - subtotal };
+    if (v.kind === 'shipping' && fee <= 0) return { ok: false, save: 0, short: 0, reason: 'For delivery orders only' };
+    const base = v.kind === 'shipping' ? fee : subtotal;
+    const save = v.discount_type === 'percent'
+        ? Math.round(base * v.discount_value) / 100
+        : Math.min(v.discount_value, base);
+    return { ok: save > 0, save: save, short: 0 };
 }
+
+/** Mirrors voucherBestPick(): biggest saving, ties go to the one expiring first. */
+function bestVoucher(kind, subtotal, fee) {
+    let best = 0, bestSave = 0, bestEnd = Infinity;
+    Object.values(VOUCHERS).forEach(v => {
+        if (v.kind !== kind) return;
+        const r = voucherCheck(v, subtotal, fee);
+        const end = v.ends || Infinity;
+        if (!r.ok) return;
+        if (r.save > bestSave + 0.001 || (Math.abs(r.save - bestSave) <= 0.001 && end < bestEnd)) {
+            best = v.id; bestSave = r.save; bestEnd = end;
+        }
+    });
+    return best;
+}
+
+/**
+ * Refreshes every voucher card (locked / progress / savings / best badge),
+ * keeps the checked radio valid, and returns what is picked per kind.
+ */
+function syncVouchers(subtotal, fee) {
+    const picked = { discount: null, shipping: null };
+    document.querySelectorAll('.voucher-group').forEach(group => {
+        const kind = group.dataset.kind;
+        const best = bestVoucher(kind, subtotal, fee);
+        const checked = group.querySelector('.voucher-radio:checked');
+        let id = voucherTouched[kind] ? (checked ? Number(checked.value) : 0) : best;
+
+        group.querySelectorAll('.voucher-card').forEach(card => {
+            const v = VOUCHERS[card.dataset.wallet];
+            const r = voucherCheck(v, subtotal, fee);
+            const lock = card.querySelector('.voucher-lock');
+            card.classList.toggle('is-locked', !r.ok);
+            card.querySelector('.voucher-radio').disabled = !r.ok;
+            lock.hidden = r.ok;
+            if (r.short > 0) {
+                lock.querySelector('.voucher-lock-text').textContent = 'Add ₱' + r.short.toFixed(2) + ' more to unlock';
+                lock.querySelector('.voucher-progress').hidden = false;
+                lock.querySelector('.voucher-progress span').style.width = Math.min(100, subtotal / v.min_subtotal * 100) + '%';
+            } else if (!r.ok) {
+                lock.querySelector('.voucher-lock-text').textContent = r.reason || 'Not usable on this order';
+                lock.querySelector('.voucher-progress').hidden = true;
+            }
+            card.querySelector('.voucher-save').textContent = r.ok ? 'Save ₱' + r.save.toFixed(2) : '';
+            card.querySelector('.voucher-best').hidden = v.id !== best;
+            // A picked voucher that stopped qualifying (cart or delivery changed) is dropped.
+            if (v.id === id && !r.ok) id = 0;
+        });
+
+        const radio = group.querySelector('.voucher-radio[value="' + id + '"]');
+        if (radio) radio.checked = true;
+        group.querySelectorAll('.voucher-card').forEach(card => {
+            card.classList.toggle('is-picked', Number(card.dataset.wallet) === id);
+        });
+        if (id) picked[kind] = { code: VOUCHERS[id].code, save: voucherCheck(VOUCHERS[id], subtotal, fee).save };
+    });
+    return picked;
+}
+
+document.querySelectorAll('.voucher-group').forEach(group => {
+    group.addEventListener('change', () => {
+        voucherTouched[group.dataset.kind] = true;
+        updateOrderSummary();
+    });
+});
 
 // 'buynow' = a single item bought directly; 'cart' = the normal basket.
 const CHECKOUT_MODE = <?php echo json_encode($buy_now ? 'buynow' : 'cart'); ?>;
@@ -890,21 +1016,34 @@ function updateOrderSummary() {
     const discountAmount = subtotal * discountRate;
     let discountedTotal = subtotal - discountAmount;
 
-    // Coupon
+    const deliveryFee = currentDeliveryFee();
+    const picked = syncVouchers(subtotal, deliveryFee);
+
+    // Discount voucher: off the items, never below ₱0 after PWD/Senior.
     const couponRow = document.getElementById('couponRow');
-    if (appliedCoupon.code && appliedCoupon.discount > 0) {
-        const couponAmt = Math.min(appliedCoupon.discount, discountedTotal);
+    if (picked.discount) {
+        const couponAmt = Math.min(picked.discount.save, discountedTotal);
         discountedTotal -= couponAmt;
         couponRow.style.display = '';
-        document.getElementById('couponCodeLabel').textContent = appliedCoupon.code;
+        document.getElementById('couponCodeLabel').textContent = picked.discount.code;
         document.getElementById('summaryCoupon').textContent = '-₱' + couponAmt.toFixed(2);
     } else {
         couponRow.style.display = 'none';
     }
 
+    // Shipping voucher: off the delivery fee only.
+    const shipRow = document.getElementById('shipVoucherRow');
+    const shipAmt = picked.shipping ? Math.min(picked.shipping.save, deliveryFee) : 0;
+    if (shipAmt > 0) {
+        shipRow.style.display = '';
+        document.getElementById('shipVoucherLabel').textContent = picked.shipping.code;
+        document.getElementById('summaryShipVoucher').textContent = '-₱' + shipAmt.toFixed(2);
+    } else {
+        shipRow.style.display = 'none';
+    }
+
     const vat = discountedTotal * VAT_RATE;
-    const deliveryFee = currentDeliveryFee();
-    const total = discountedTotal + vat + deliveryFee;
+    const total = discountedTotal + vat + deliveryFee - shipAmt;
 
     document.getElementById('summarySubtotal').textContent = '₱' + subtotal.toFixed(2);
     document.getElementById('summaryDiscount').textContent = '₱' + discountAmount.toFixed(2);
@@ -916,20 +1055,6 @@ function updateOrderSummary() {
     const labels = {'regular': 'No Discount', 'pwd': 'PWD (20%)', 'senior': 'Senior (20%)'};
     document.getElementById('discountTypeLabel').textContent = labels[discountType];
 }
-
-// Enter in the coupon box applies the code instead of placing the order;
-// editing an applied code drops it until it is applied again.
-document.getElementById('couponCodeInput').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { e.preventDefault(); validateCouponClient(); }
-});
-document.getElementById('couponCodeInput').addEventListener('input', function () {
-    if (appliedCoupon.code && this.value.trim().toUpperCase() !== appliedCoupon.code) {
-        appliedCoupon = { code: '', discount: 0 };
-        document.getElementById('couponCodeHidden').value = '';
-        document.getElementById('couponMessage').textContent = '';
-        updateOrderSummary();
-    }
-});
 
 // Listen for discount type changes
 document.querySelectorAll('input[name="discount_type"]').forEach(input => {
@@ -1035,7 +1160,7 @@ function toggleDeliveryAddress() {
         if (addressInput) addressInput.removeAttribute('required');
         // Set delivery fee to 0 for pickup
         deliveryFeeEl.textContent = '₱0.00';
-        updateOrderSummaryWithPickup();
+        updateOrderSummary();
     } else {
         addressCard.style.display = 'block';
         codOption.style.display = 'block';
@@ -1048,40 +1173,6 @@ function toggleDeliveryAddress() {
         if (picked) onAddressPicked(picked);
         updateOrderSummary();
     }
-}
-
-function updateOrderSummaryWithPickup() {
-    const subtotal = parseFloat(document.getElementById('hiddenSubtotal').value) || 0;
-    // No radio is checked when the account type is neither regular, pwd nor
-    // senior (an admin, say). Reading .value off null threw, which aborted the
-    // whole summary and left Subtotal/VAT/Total showing 0.00.
-    const discountPick = document.querySelector('input[name="discount_type"]:checked');
-    const discountType = discountPick ? discountPick.value : 'regular';
-    const discountRate = DISCOUNT_RATES[discountType];
-    const discountAmount = subtotal * discountRate;
-    let discountedTotal = subtotal - discountAmount;
-
-    const couponRow = document.getElementById('couponRow');
-    if (appliedCoupon.code && appliedCoupon.discount > 0) {
-        const couponAmt = Math.min(appliedCoupon.discount, discountedTotal);
-        discountedTotal -= couponAmt;
-        couponRow.style.display = '';
-        document.getElementById('couponCodeLabel').textContent = appliedCoupon.code;
-        document.getElementById('summaryCoupon').textContent = '-₱' + couponAmt.toFixed(2);
-    } else {
-        couponRow.style.display = 'none';
-    }
-
-    const vat = discountedTotal * VAT_RATE;
-    const total = discountedTotal + vat; // no delivery fee
-
-    document.getElementById('summarySubtotal').textContent = '₱' + subtotal.toFixed(2);
-    document.getElementById('summaryDiscount').textContent = '₱' + discountAmount.toFixed(2);
-    document.getElementById('summaryVat').textContent = '₱' + vat.toFixed(2);
-    document.getElementById('summaryTotal').textContent = '₱' + total.toFixed(2);
-    
-    const labels = {'regular': 'No Discount', 'pwd': 'PWD (20%)', 'senior': 'Senior (20%)'};
-    document.getElementById('discountTypeLabel').textContent = labels[discountType];
 }
 </script>
 

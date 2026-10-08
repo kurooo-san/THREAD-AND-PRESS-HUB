@@ -154,23 +154,17 @@ if (!$conn->connect_error) {
             $stmtUser->close();
         }
 
-        // Promo codes a customer could use right now. These are already public on
-        // the Promotions page; usage counts and inactive codes are never sent.
-        $promoRes = $conn->query("SELECT code, description, discount_type, discount_value, min_subtotal, max_uses, times_used,
-                                         valid_from, valid_until, is_active FROM coupons ORDER BY discount_value DESC");
-        $dynamicContext .= "\nCURRENT PROMO CODES (live from the store, usable right now; quote ONLY these):\n";
+        // This customer's own vouchers (the admin gives them; no typed codes).
+        $dynamicContext .= "\nTHIS CUSTOMER'S VOUCHERS (live from their wallet; quote ONLY these):\n";
         $promoCount = 0;
-        while ($promoRes && ($c = $promoRes->fetch_assoc())) {
+        foreach (voucherWallet((int) $userId) as $c) {
             if (couponStatus($c)[0] !== 'Active') continue;
             $promoCount++;
-            $dynamicContext .= "- " . $c['code'] . ": "
-                . ($c['discount_type'] === 'percent'
-                    ? rtrim(rtrim($c['discount_value'], '0'), '.') . "% off the items"
-                    : paymentFormatPeso((float) $c['discount_value']) . " off")
+            $dynamicContext .= "- " . voucherLabel($c)
+                . ($c['kind'] === 'shipping' ? " (shipping voucher, off the delivery fee)" : " (discount voucher, off the items)")
                 . ((float) $c['min_subtotal'] > 0 ? ", minimum item subtotal " . paymentFormatPeso((float) $c['min_subtotal']) : '')
                 . ($c['valid_until'] ? ", valid until " . date('M d, Y', strtotime($c['valid_until'])) : '')
-                . ($c['max_uses'] !== null ? ", limited number of uses" : '')
-                . (!empty($c['description']) ? " (" . mb_substr($c['description'], 0, 80) . ")" : '') . "\n";
+                . (!empty($c['description']) ? " - " . mb_substr($c['description'], 0, 80) : '') . "\n";
         }
         if ($promoCount === 0) $dynamicContext .= "- (none right now)\n";
 
@@ -178,7 +172,7 @@ if (!$conn->connect_error) {
         // be saved but never reached the bot.
         $faqRes = $conn->query("SELECT question, answer FROM chatbot_faq WHERE active = 1 ORDER BY priority DESC, id ASC LIMIT 40");
         if ($faqRes && $faqRes->num_rows > 0) {
-            $dynamicContext .= "\nADMIN FAQ (keywords -> answer). Use these answers, BUT if one disagrees with the STORE DETAILS, SHIPPING, PAYMENT, COUPONS sections or CURRENT PROMO CODES (for example an old manual payment-upload step, or a promo/reward that is not listed), those are current and win:\n";
+            $dynamicContext .= "\nADMIN FAQ (keywords -> answer). Use these answers, BUT if one disagrees with the STORE DETAILS, SHIPPING, PAYMENT, VOUCHERS sections or THIS CUSTOMER'S VOUCHERS (for example an old manual payment-upload step, a promo code to type, or a promo/reward that is not listed), those are current and win:\n";
             while ($f = $faqRes->fetch_assoc()) {
                 $dynamicContext .= "- [" . $f['question'] . "] " . str_replace(["\r\n", "\n"], ' / ', mb_substr($f['answer'], 0, 400)) . "\n";
             }
@@ -257,7 +251,7 @@ SHIPPING & DELIVERY FEES (the fee depends on WHERE the order is going):
 {$deliveryFacts}- The fee is added as its own line before the total at checkout.
 - SAVED ADDRESSES: customers can save up to 3 delivery addresses on their Profile page. At checkout they pick one of them (or type a new one, with an option to save it). The delivery area — and so the fee — follows the province of the chosen address, and the 'Delivery Area' dropdown is locked to match it.
 - STORE PICKUP is free — no delivery fee at all.
-- There is NO automatic free shipping. Never promise free delivery for a big order; only Store Pickup is free. A promo code listed under CURRENT PROMO CODES may take money off the order, but the delivery fee line itself stays.
+- There is NO automatic free shipping. Never promise free delivery for a big order. Store Pickup is free, and a shipping voucher listed under THIS CUSTOMER'S VOUCHERS takes money off the delivery fee (100% = free shipping).
 
 PAYMENT METHODS (these are the ONLY options at checkout):
 {$paymentFacts}  * CASH: Cash on Delivery for delivered orders, or Cash on Pickup at the store counter.
@@ -275,7 +269,7 @@ PRODUCT PAGE & REVIEWS:
 
 SHOPPING & ORDERS:
 - 'Buy Now' on a product skips the cart and goes straight to checkout with just that item (the cart is left untouched). 'Add to Cart' keeps shopping.
-- Coupon / promo codes: see the COUPONS section below.
+- Vouchers: see the VOUCHERS section below.
 - 'My Orders' lists every order with its status; open one for the details, and use 'Invoice' / 'Download Invoice' to get a printable invoice.
 - To cancel an order, the customer must contact us through the 'Live Support' tab of this chat widget (or the Support Chat page) while the order is still Pending — there is no self-cancel button.
 - For anything that needs a human (refunds, order problems, changes), point them to the 'Live Support' tab right here in the chat widget.
@@ -364,17 +358,18 @@ GARMENT CARE INSTRUCTIONS:
 PROMOTIONS & DISCOUNTS:
 - 20% discount for PWD (Persons with Disability) — must upload valid PWD ID during registration.
 - 20% discount for Senior Citizens — must upload valid Senior Citizen ID during registration.
-- Promo codes: the ones usable right now are listed under CURRENT PROMO CODES at the end. The Promotions page shows them too. Never invent a code, a discount, loyalty points or a sale that is not listed there.
+- Vouchers: the ones this customer can use right now are listed under THIS CUSTOMER'S VOUCHERS at the end. Never invent a voucher, a code, a discount, loyalty points or a sale that is not listed there.
 
-COUPONS (promo codes):
-- HOW TO USE: at Checkout, type the code in the 'Have a coupon code?' box under Discount & Benefits and tap 'Apply' (or press Enter). A green message confirms it and a 'Coupon (CODE)' line appears in the Order Summary with the amount taken off.
-- ONE code per order. Codes are not case-sensitive.
-- WITH PWD/SENIOR: allowed — the customer gets both. Each is worked out on the item subtotal (e.g. ₱1,000 items with a 10% code: -₱200 PWD and -₱100 coupon), then 12% VAT is added on what is left.
-- The coupon never applies to the delivery fee and can never take the items below ₱0.
-- WHY A CODE MAY NOT WORK (the checkout shows the exact reason): typed wrong, expired or not started yet, switched off by the shop, all uses taken, or the item subtotal is below the code's minimum.
-- If a code stops being valid between applying it and placing the order (e.g. the last use was just taken), the order is NOT placed and the customer sees why, so they are never charged a price they did not see. They can remove the code or try another.
-- Codes are for regular shop orders at checkout; Design Studio (custom) orders do not take promo codes.
-- After ordering, the coupon and its discount show on the order details, the invoice and the confirmation email.
+VOUCHERS (there are NO promo codes to type anymore):
+- The Thread & Press team gives vouchers to customers. They appear on the customer's 'My Vouchers' page (account menu) and the customer gets an email. Customers cannot type or claim a code.
+- TWO KINDS: a discount voucher takes money off the items; a shipping voucher takes money off the delivery fee (100% = free shipping). One of EACH may be used on the same order.
+- HOW TO USE: at Checkout, under Discount & Benefits, 'Your vouchers' lists them. The one that saves the most is picked automatically and marked 'Best deal'; tap another to switch, or 'Don't use' to remove it. A 'Voucher (CODE)' / 'Shipping voucher (CODE)' line appears in the Order Summary.
+- LOCKED vouchers: when the items are below a voucher's minimum, it shows 'Add ₱X more to unlock' with a progress bar. Shipping vouchers are locked for Store Pickup.
+- WITH PWD/SENIOR: allowed — the customer gets both. Each is worked out on the item subtotal (e.g. ₱1,000 items with a 10% voucher: -₱200 PWD and -₱100 voucher), then 12% VAT is added on what is left.
+- A discount voucher never applies to the delivery fee and can never take the items below ₱0.
+- Each voucher can be used once. If it stops being valid between picking it and placing the order, the order is NOT placed and the customer sees why.
+- Vouchers are for regular shop orders at checkout; Design Studio (custom) orders do not take vouchers.
+- After ordering, the voucher and its discount show on the order details, the invoice and the confirmation email.
 
 FREQUENTLY ASKED QUESTIONS:
 - Q: How do I track my order? A: Go to the 'My Orders' page after logging in and open the order to see its current status and timeline. Refresh the page to pull the latest update.
@@ -388,12 +383,12 @@ FREQUENTLY ASKED QUESTIONS:
 - Q: Is there VAT? A: Yes, a 12% VAT is added at checkout, calculated on your discounted item total and shown as a separate line before the total.
 - Q: Can I save or download my try-on looks? A: Yes — tap 'Save look' to keep it in 'Saved Looks', or 'Download' to save the image (with our watermark). You can delete saved looks anytime.
 - Q: How much is the delivery fee? A: It depends on the delivery area — check the delivery fee list above and quote the matching zone. Store Pickup is free.
-- Q: Is there free shipping? A: There's no automatic free shipping; the only way to pay zero delivery is Store Pickup. If a promo code under CURRENT PROMO CODES helps, mention it.
-- Q: Do you have promo codes / sale? A: List the codes under CURRENT PROMO CODES with what each gives and any minimum, and say how to apply one at checkout. If there are none, say so and point to the Promotions page.
-- Q: How do I use a coupon? A: At Checkout, type it in the 'Have a coupon code?' box and tap Apply; the discount shows in the Order Summary before you place the order.
-- Q: Why didn't my coupon work? A: The checkout message says why: wrong spelling, expired, not active, all uses taken, or the subtotal is below the minimum. Suggest checking the code against CURRENT PROMO CODES.
+- Q: Is there free shipping? A: There's no automatic free shipping. Store Pickup is free, and a shipping voucher under THIS CUSTOMER'S VOUCHERS can cut or remove the delivery fee; mention it if they have one.
+- Q: Do you have promo codes / sale? A: There are no codes to type. List the vouchers under THIS CUSTOMER'S VOUCHERS with what each gives and any minimum, and say they are picked at checkout. If there are none, say so; vouchers are sent by the team and show up in My Vouchers.
+- Q: How do I use a voucher / coupon? A: No typing needed. At Checkout, 'Your vouchers' already has the best one picked; tap another to switch. The discount shows in the Order Summary before you place the order.
+- Q: Why can't I use my voucher? A: The voucher card says why: the items are below its minimum (it shows how much more to add), it's a shipping voucher on a Store Pickup order, it expired, or all uses were taken. Used vouchers move to the 'Used' list in My Vouchers.
 - Q: Can I use a coupon with my PWD/Senior discount? A: Yes, you get both.
-- Q: Can I use two coupons? A: No, one code per order.
+- Q: Can I use two vouchers? A: One discount voucher plus one shipping voucher per order; not two of the same kind.
 - Q: How do I pay online / can I use GCash or a card? A: Choose 'Pay Online' at checkout — only the online options listed under PAYMENT METHODS above are available. You finish paying on PayMongo's secure page, nothing to upload, and your order is confirmed automatically once the payment goes through.
 - Q: My online payment failed or I cancelled it — was I charged? A: No. If the payment didn't go through, nothing is charged and your order stays waiting; tap 'Try paying again'. If money was deducted but the order still shows unpaid, message us in 'Live Support' with your order number.
 - Q: Do I need to upload a payment screenshot? A: No — that was the old process. Online payments go through PayMongo and are confirmed automatically.

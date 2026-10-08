@@ -223,7 +223,9 @@ function sendOrderConfirmationEmail($conn, $orderId) {
         . ($order['discount_amount'] > 0 ? '<tr><td style="padding:4px 0;color:#27ae60;">Discount (' . strtoupper($order['discount_type']) . '):</td><td style="text-align:right;color:#27ae60;">-₱' . number_format($order['discount_amount'], 2) . '</td></tr>' : '')
         . ((float)($order['coupon_discount'] ?? 0) > 0 ? '<tr><td style="padding:4px 0;color:#27ae60;">Coupon (' . htmlspecialchars($order['coupon_code'] ?? '') . '):</td><td style="text-align:right;color:#27ae60;">-₱' . number_format((float)$order['coupon_discount'], 2) . '</td></tr>' : '')
         . ($vatShown > 0.009 ? '<tr><td style="padding:4px 0;">VAT (12%):</td><td style="text-align:right;">₱' . number_format($vatShown, 2) . '</td></tr>' : '')
-        . '<tr><td style="padding:4px 0;">Delivery Fee:</td><td style="text-align:right;">₱' . number_format($order['delivery_fee'], 2) . '</td></tr>
+        . '<tr><td style="padding:4px 0;">Delivery Fee:</td><td style="text-align:right;">₱' . number_format((float)$order['delivery_fee'] + (float)($order['shipping_discount'] ?? 0), 2) . '</td></tr>'
+        . ((float)($order['shipping_discount'] ?? 0) > 0 ? '<tr><td style="padding:4px 0;color:#27ae60;">Shipping voucher (' . htmlspecialchars($order['shipping_coupon_code'] ?? '') . '):</td><td style="text-align:right;color:#27ae60;">-₱' . number_format((float)$order['shipping_discount'], 2) . '</td></tr>' : '')
+        . '
         <tr><td style="padding:8px 0;border-top:2px solid #333;font-weight:bold;font-size:15px;">Total:</td>
             <td style="padding:8px 0;border-top:2px solid #333;text-align:right;font-weight:bold;font-size:15px;">₱' . number_format($order['total'], 2) . '</td></tr>
     </table>
@@ -326,6 +328,36 @@ function sendWelcomeEmail($email, $fullname) {
 
     $html = emailTemplate('Welcome to Thread & Press Hub!', $content);
     return sendEmail($email, "Welcome to Thread & Press Hub!", $html);
+}
+
+/**
+ * Tell a customer an admin just put a voucher in their wallet.
+ */
+function sendVoucherGiftEmail($email, $fullname, array $coupon, $note) {
+    // Sent from admin/, where the request-derived base URL ends in /admin.
+    $walletUrl = preg_replace('#/admin$#', '', getBaseUrl()) . '/vouchers.php';
+    $content = '
+    <p style="color:#555;line-height:1.6;">Hi ' . htmlspecialchars($fullname) . ',</p>
+    <p style="color:#555;line-height:1.6;">You just got a voucher from the Thread &amp; Press team!</p>
+
+    <div style="text-align:center;margin:20px 0;">
+        <div style="display:inline-block;background:#1a1a1a;color:#fff;padding:14px 28px;border-radius:10px;font-weight:800;font-size:20px;">' . htmlspecialchars(voucherLabel($coupon)) . '</div>
+        <p style="margin:10px 0 0;font-size:14px;color:#333;font-weight:bold;">' . htmlspecialchars($coupon['description'] ?: $coupon['code']) . '</p>'
+        . (trim((string) $note) !== '' ? '<p style="margin:8px 0 0;font-size:14px;color:#555;font-style:italic;">&ldquo;' . htmlspecialchars(trim($note)) . '&rdquo;</p>' : '') . '
+    </div>
+
+    <div style="background:#f9f9f9;border-radius:8px;padding:15px;margin:15px 0;font-size:13px;color:#555;line-height:1.6;">
+        ' . ((float) $coupon['min_subtotal'] > 0 ? 'Min. spend: ₱' . number_format((float) $coupon['min_subtotal'], 2) . '<br>' : '') . '
+        ' . ($coupon['valid_until'] ? 'Valid until: ' . date('M d, Y g:i A', strtotime($coupon['valid_until'])) . '<br>' : '') . '
+        No code needed &mdash; it is already in your wallet and we will pick it for you at checkout.
+    </div>
+
+    <p style="color:#555;line-height:1.6;margin-bottom:5px;">See your vouchers here:</p>
+    <p style="text-align:center;margin:0 0 20px;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars($walletUrl) . '</p>';
+    // Bare URL, no <a href>: see sendPasswordResetEmail (Brevo click tracker).
+
+    $html = emailTemplate('You got a voucher!', $content);
+    return sendEmail($email, "You got a voucher: " . voucherLabel($coupon) . " - Thread & Press Hub", $html);
 }
 
 /**

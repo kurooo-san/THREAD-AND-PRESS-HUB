@@ -414,39 +414,8 @@ function couponsTableExists() {
     return $exists;
 }
 
-/**
- * Validate a coupon code against the current cart subtotal.
- * Returns ['ok'=>bool, 'message'=>string, 'coupon'=>row|null, 'discount'=>float]
- */
-function validateCoupon($code, $subtotal) {
-    global $conn;
-    $code = strtoupper(trim($code));
-    if ($code === '') return ['ok' => false, 'message' => 'Please enter a coupon code.', 'coupon' => null, 'discount' => 0];
-    if (!couponsTableExists()) return ['ok' => false, 'message' => 'Coupons are not enabled.', 'coupon' => null, 'discount' => 0];
-
-    $stmt = $conn->prepare("SELECT * FROM coupons WHERE code = ? LIMIT 1");
-    $stmt->bind_param("s", $code);
-    $stmt->execute();
-    $coupon = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    if (!$coupon)                                    return ['ok' => false, 'message' => 'Invalid coupon code.',                'coupon' => null, 'discount' => 0];
-    if ((int)$coupon['is_active'] !== 1)             return ['ok' => false, 'message' => 'This coupon is not active.',         'coupon' => null, 'discount' => 0];
-    if ($coupon['valid_from']  && strtotime($coupon['valid_from'])  > time()) return ['ok' => false, 'message' => 'This coupon is not yet valid.', 'coupon' => null, 'discount' => 0];
-    if ($coupon['valid_until'] && strtotime($coupon['valid_until']) < time()) return ['ok' => false, 'message' => 'This coupon has expired.',     'coupon' => null, 'discount' => 0];
-    if ($coupon['max_uses'] !== null && (int)$coupon['times_used'] >= (int)$coupon['max_uses']) {
-        return ['ok' => false, 'message' => 'This coupon has reached its usage limit.', 'coupon' => null, 'discount' => 0];
-    }
-    if ($subtotal < (float)$coupon['min_subtotal']) {
-        return ['ok' => false, 'message' => 'Minimum subtotal for this coupon is ₱' . number_format($coupon['min_subtotal'], 2) . '.', 'coupon' => null, 'discount' => 0];
-    }
-
-    $discount = ($coupon['discount_type'] === 'percent')
-        ? round($subtotal * ((float)$coupon['discount_value'] / 100), 2)
-        : min((float)$coupon['discount_value'], $subtotal);
-
-    return ['ok' => true, 'message' => 'Coupon applied.', 'coupon' => $coupon, 'discount' => $discount];
-}
+// Customers pick from vouchers the admin gave them (no typed codes).
+require_once __DIR__ . '/vouchers.php';
 
 // Claims one use. Returns false when the limit was already reached, so two
 // simultaneous checkouts cannot both take the last use.

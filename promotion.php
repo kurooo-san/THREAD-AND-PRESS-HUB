@@ -16,6 +16,11 @@ if (couponsTableExists()) {
     }
 }
 
+// Coupons this customer already holds (unused), to mark them "In your wallet".
+$inWallet = isset($_SESSION['user_id'])
+    ? array_map('intval', array_column(voucherWallet((int) $_SESSION['user_id']), 'id'))
+    : [];
+
 $gradients = [
     'linear-gradient(135deg, #1a1a1a 0%, #333 100%)',
     'linear-gradient(135deg, #667bc0 0%, #8a9dd8 100%)',
@@ -52,17 +57,13 @@ $gradients = [
                         <div class="col-lg-8">
                             <h2 style="font-weight: 800; font-size: 2.5rem; margin-bottom: 1rem;">
                                 🎉
-                                <?php
-                                if ($featured['discount_type'] === 'percent') {
-                                    echo 'Save up to ' . rtrim(rtrim(number_format($featured['discount_value'], 2), '0'), '.') . '%!';
-                                } else {
-                                    echo '₱' . number_format($featured['discount_value'], 0) . ' OFF!';
-                                }
-                                ?>
+                                <?php echo htmlspecialchars(voucherLabel($featured)); ?>!
                             </h2>
                             <p style="font-size: 1.2rem; margin-bottom: 1.5rem;">
                                 <?php echo htmlspecialchars($featured['description'] ?: 'Limited-time offer'); ?>.
-                                Use code <strong><?php echo htmlspecialchars($featured['code']); ?></strong> at checkout.
+                                <?php echo in_array((int) $featured['id'], $inWallet, true)
+                                    ? 'It is already in your <a href="vouchers.php" class="text-white fw-bold">vouchers</a>, and we pick it for you at checkout.'
+                                    : 'Our team sends these as vouchers. No code to type: it shows up in My Vouchers.'; ?>
                             </p>
                             <p style="font-size: 0.95rem; opacity: 0.95;">
                                 <?php
@@ -85,17 +86,16 @@ $gradients = [
         <div class="row g-4 mb-5">
             <?php foreach ($coupons as $i => $c):
                 $bg = $gradients[($i + 1) % count($gradients)];
-                $isPercent = $c['discount_type'] === 'percent';
-                $bigText = $isPercent
-                    ? rtrim(rtrim(number_format($c['discount_value'], 2), '0'), '.') . '% OFF'
-                    : '₱' . number_format($c['discount_value'], 0) . ' OFF';
+                $bigText = strtoupper(voucherLabel($c));
             ?>
             <div class="col-md-6 col-lg-4">
                 <div class="card border-0 shadow-sm h-100 promo-card">
                     <div style="background: <?php echo $bg; ?>; height: 200px; display: flex; align-items: center; justify-content: center; color: white;">
                         <div class="text-center">
                             <h3 style="font-weight: 800; font-size: 2.5rem; margin: 0;"><?php echo $bigText; ?></h3>
-                            <p style="margin-top: 0.5rem; font-size: 0.9rem;">Code: <strong><?php echo htmlspecialchars($c['code']); ?></strong></p>
+                            <p style="margin-top: 0.5rem; font-size: 0.9rem;"><?php echo in_array((int) $c['id'], $inWallet, true)
+                                ? '<i class="fas fa-check-circle"></i> <strong>In your wallet</strong>'
+                                : 'Sent by our team as a voucher'; ?></p>
                         </div>
                     </div>
                     <div class="card-body">
@@ -124,10 +124,11 @@ $gradients = [
             <div class="card border-0 bg-light p-4">
                 <h5 style="font-weight: 700; margin-bottom: 1rem;">Terms &amp; Conditions</h5>
                 <ul class="text-muted small">
-                    <li>Only one coupon code may be applied per order.</li>
-                    <li>Discounts apply to the subtotal only (before delivery fee).</li>
-                    <li>PWD/Senior accounts get both the 20% discount and the coupon.</li>
-                    <li>Some coupons require a minimum order amount or are limited in number of uses.</li>
+                    <li>Vouchers are given by the Thread &amp; Press team and appear in My Vouchers. There are no codes to type.</li>
+                    <li>Each order can use one discount voucher (off the items) and one shipping voucher (off the delivery fee).</li>
+                    <li>At checkout we automatically pick the voucher that saves you the most; you can switch or remove it.</li>
+                    <li>PWD/Senior accounts get both the 20% discount and the voucher.</li>
+                    <li>Some vouchers need a minimum order amount, expire, or are limited in number of uses. Each voucher can be used once.</li>
                     <li>Thread &amp; Press Hub reserves the right to modify or cancel promotions at any time.</li>
                 </ul>
             </div>

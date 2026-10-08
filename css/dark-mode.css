@@ -500,6 +500,20 @@ html.dark-mode .price-select {
 }
 
 /* Checkout "Discount & Benefits" box (light-green in light mode) */
+html.dark-mode .voucher-card { background: var(--bg-light); border-color: #3a3a44; }
+html.dark-mode .voucher-card:hover { border-color: #6b6b78; }
+html.dark-mode .voucher-card--static,
+html.dark-mode .voucher-card--static:hover { border-color: #3a3a44; }
+html.dark-mode .voucher-card.is-picked { border-color: #22c55e; }
+html.dark-mode .voucher-title { color: #e9e9ec; }
+html.dark-mode .voucher-note,
+html.dark-mode .voucher-meta,
+html.dark-mode .voucher-none,
+html.dark-mode .voucher-group-title { color: #a1a1aa; }
+html.dark-mode .voucher-save { color: #4ade80; }
+html.dark-mode .voucher-lock { color: #fbbf24; }
+html.dark-mode .voucher-progress { background: #422006; }
+
 html.dark-mode .discount-section {
     background: #16241c !important;
     border-color: #2c4a38 !important;

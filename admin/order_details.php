@@ -157,10 +157,21 @@ $items_result = $items_stmt->get_result();
                         <span>₱<?php echo number_format($vatShown, 2); ?></span>
                     </div>
                     <?php endif; ?>
+                    <?php if ((float)($order['shipping_discount'] ?? 0) > 0): ?>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span class="text-muted">Delivery Fee:</span>
+                        <span>₱<?php echo number_format((float)$order['delivery_fee'] + (float)($order['shipping_discount'] ?? 0), 2); ?></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd;">
+                        <span class="text-muted">Shipping voucher (<?php echo htmlspecialchars($order['shipping_coupon_code'] ?? ''); ?>):</span>
+                        <span style="color: var(--accent-green); font-weight: 700;">-₱<?php echo number_format((float)$order['shipping_discount'], 2); ?></span>
+                    </div>
+                    <?php else: ?>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #ddd;">
                         <span class="text-muted">Delivery Fee:</span>
                         <span>₱<?php echo number_format($order['delivery_fee'], 2); ?></span>
                     </div>
+                    <?php endif; ?>
                     <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; color: var(--coffee-dark);">
                         <span>Total:</span>
                         <span>₱<?php echo number_format($order['total'], 2); ?></span>

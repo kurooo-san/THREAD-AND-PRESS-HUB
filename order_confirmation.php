@@ -131,8 +131,14 @@ if ($successFlash !== null) {
                             <?php endif; ?>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
                                 <span class="text-muted">Delivery Fee:</span>
-                                <span>₱<?php echo number_format($order['delivery_fee'], 2); ?></span>
+                                <span>₱<?php echo number_format((float)$order['delivery_fee'] + (float)($order['shipping_discount'] ?? 0), 2); ?></span>
                             </div>
+                            <?php if ((float)($order['shipping_discount'] ?? 0) > 0): ?>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span class="text-muted">Shipping voucher (<?php echo htmlspecialchars($order['shipping_coupon_code'] ?? ''); ?>):</span>
+                                <span>-₱<?php echo number_format((float)$order['shipping_discount'], 2); ?></span>
+                            </div>
+                            <?php endif; ?>
                             <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.2rem; color: var(--coffee-dark); border-top: 2px solid #eee; padding-top: 1rem;">
                                 <span>Total:</span>
                                 <span>₱<?php echo number_format($order['total'], 2); ?></span>

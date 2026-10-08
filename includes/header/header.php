@@ -169,6 +169,7 @@ if ($navFirstName === false || $navFirstName === '') {
                                 <li><a class="dropdown-item" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? 'profile.php' : 'profile.php'; ?>"><i class="fas fa-user me-2"></i>Profile</a></li>
                                 <li><a class="dropdown-item" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../orders.php' : 'orders.php'; ?>"><i class="fas fa-box me-2"></i>Orders</a></li>
                                 <li><a class="dropdown-item" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../my-custom-orders.php' : 'my-custom-orders.php'; ?>"><i class="fas fa-shirt me-2"></i>Custom Orders</a></li>
+                                <li><a class="dropdown-item" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../vouchers.php' : 'vouchers.php'; ?>"><i class="fas fa-ticket-alt me-2"></i>My Vouchers</a></li>
                                 <?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin'): ?>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? 'dashboard.php' : 'admin/dashboard.php'; ?>"><i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard</a></li>

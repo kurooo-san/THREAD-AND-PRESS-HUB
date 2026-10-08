@@ -13,7 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken()) {
 }
 
 $pageTitle = 'Coupons';
-$tableExists = couponsTableExists();
+// vouchersReady() also adds the `kind` column and the wallet table on first visit.
+$tableExists = couponsTableExists() && vouchersReady();
 
 // <input type="datetime-local"> value -> MySQL DATETIME, or null when blank/invalid.
 function couponDateIn($value) {
@@ -30,6 +31,7 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $editId      = $action === 'update' ? (int)($_POST['id'] ?? 0) : 0;
         $code        = strtoupper(trim($_POST['code'] ?? ''));
         $description = trim($_POST['description'] ?? '');
+        $kind        = ($_POST['kind'] ?? '') === 'shipping' ? 'shipping' : 'discount';
         $type        = ($_POST['discount_type'] ?? '') === 'fixed' ? 'fixed' : 'percent';
         $value       = (float)($_POST['discount_value'] ?? 0);
         $minSubtotal = max(0, (float)($_POST['min_subtotal'] ?? 0));
@@ -64,14 +66,14 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $description = $description === '' ? null : mb_substr($description, 0, 255);
             if ($editId) {
-                $stmt = $conn->prepare("UPDATE coupons SET description = ?, discount_type = ?, discount_value = ?, min_subtotal = ?,
+                $stmt = $conn->prepare("UPDATE coupons SET description = ?, kind = ?, discount_type = ?, discount_value = ?, min_subtotal = ?,
                                                max_uses = ?, valid_from = ?, valid_until = ?, is_active = ?
                                         WHERE id = ?");
-                $stmt->bind_param("ssddissii", $description, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive, $editId);
+                $stmt->bind_param("sssddissii", $description, $kind, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive, $editId);
             } else {
-                $stmt = $conn->prepare("INSERT INTO coupons (code, description, discount_type, discount_value, min_subtotal, max_uses, valid_from, valid_until, is_active)
-                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("sssddissi", $code, $description, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive);
+                $stmt = $conn->prepare("INSERT INTO coupons (code, description, kind, discount_type, discount_value, min_subtotal, max_uses, valid_from, valid_until, is_active)
+                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("ssssddissi", $code, $description, $kind, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive);
             }
             // Works whether mysqli throws (PHP 8.1+ default) or just returns false.
             try {
@@ -114,8 +116,52 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $stmt->close();
+        // ...and it leaves every customer's wallet with it.
+        $stmt = $conn->prepare("DELETE FROM user_coupons WHERE coupon_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->close();
         logAudit('coupon_delete', 'coupon', $id);
         $successMsg = 'Coupon deleted.';
+    } elseif ($action === 'give') {
+        $giveId  = (int)($_POST['id'] ?? 0);
+        $toAll   = ($_POST['recipients'] ?? '') === 'all';
+        $picked  = array_filter(array_map('intval', (array)($_POST['user_ids'] ?? [])));
+        $note    = (string)($_POST['note'] ?? '');
+        $stmt = $conn->prepare("SELECT * FROM coupons WHERE id = ?");
+        $stmt->bind_param("i", $giveId);
+        $stmt->execute();
+        $giveCoupon = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$giveCoupon) {
+            $errorMsg = 'That coupon no longer exists.';
+        } elseif (!$toAll && !$picked) {
+            $errorMsg = 'Pick at least one customer, or choose "All customers".';
+        } else {
+            $given = voucherGive($giveId, $toAll ? null : $picked, $note, (int)$_SESSION['user_id']);
+
+            // One email per new holder. ponytail: sent inline, fine for a
+            // capstone-sized customer list; move to a queue past a few hundred.
+            set_time_limit(300);
+            require_once __DIR__ . '/../includes/email-helper.php';
+            $mailed = 0;
+            if ($given) {
+                $in = implode(',', array_map('intval', $given));
+                foreach ($conn->query("SELECT fullname, email FROM users WHERE id IN ($in)")->fetch_all(MYSQLI_ASSOC) as $u) {
+                    try {
+                        if (sendVoucherGiftEmail($u['email'], $u['fullname'], $giveCoupon, $note)) $mailed++;
+                    } catch (Throwable $e) {
+                        error_log('[coupons] gift email: ' . $e->getMessage());
+                    }
+                }
+            }
+            logAudit('coupon_give', 'coupon', $giveId, $giveCoupon['code'] . ' x' . count($given));
+            $successMsg = $given
+                ? 'Gave ' . $giveCoupon['code'] . ' to ' . count($given) . ' customer(s); ' . $mailed . ' email(s) sent.'
+                : 'Everyone you picked already has ' . $giveCoupon['code'] . '.';
+        }
+        if (isset($errorMsg)) $_GET['give'] = $giveId; // keep the give form open
     }
 }
 
@@ -136,11 +182,41 @@ if ($cc && $cc->num_rows > 0) {
 
 $liveCount = count(array_filter($coupons, fn($c) => couponStatus($c)[0] === 'Active'));
 
+// How many customers hold each coupon, and how many already spent it.
+$heldBy = [];
+if ($tableExists) {
+    foreach ($conn->query("SELECT coupon_id, COUNT(*) AS held, SUM(used_at IS NOT NULL) AS spent
+                             FROM user_coupons GROUP BY coupon_id")->fetch_all(MYSQLI_ASSOC) as $row) {
+        $heldBy[(int)$row['coupon_id']] = $row;
+    }
+}
+
+// "Give" panel, opened with ?give=ID: every customer, flagged if they already hold it.
+$giveCoupon = null;
+$customers  = [];
+if ($tableExists && isset($_GET['give'])) {
+    foreach ($coupons as $c) {
+        if ((int)$c['id'] === (int)$_GET['give']) $giveCoupon = $c;
+    }
+    if ($giveCoupon) {
+        $stmt = $conn->prepare("SELECT u.id, u.fullname, u.email, (uc.id IS NOT NULL) AS has_it
+                                  FROM users u
+                                  LEFT JOIN user_coupons uc ON uc.user_id = u.id AND uc.coupon_id = ?
+                                 WHERE u.user_type <> 'admin'
+                                 ORDER BY u.fullname");
+        $gid = (int)$giveCoupon['id'];
+        $stmt->bind_param("i", $gid);
+        $stmt->execute();
+        $customers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+    }
+}
+
 // Form contents: what was just posted if it failed, else the coupon opened
 // with ?edit=ID, else blank for a new coupon.
 $editId = $editId ?? 0;
 $keep = [];
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST['action'] ?? '', ['add', 'update'], true)) {
     $keep = $_POST;
     if ($editId) $keep['code'] = $code;
 } elseif (isset($_GET['edit'])) {
@@ -166,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-ticket-alt"></i> Coupons
         </h1>
-        <p class="text-muted">Create discount codes customers can apply at checkout.</p>
+        <p class="text-muted">Create vouchers, then give them to customers. Customers pick from their vouchers at checkout; there is no code to type.</p>
     </div>
 
     <?php if (!$tableExists): ?>
@@ -201,6 +277,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
         </div>
     </div>
 
+    <?php if ($giveCoupon): ?>
+    <div class="admin-card mb-4" id="givePanel" style="border: 2px solid #16a34a;">
+        <h5 class="mb-1"><i class="fas fa-gift"></i> Give <?php echo htmlspecialchars($giveCoupon['code']); ?>
+            <span class="badge bg-dark ms-1"><?php echo htmlspecialchars(voucherLabel($giveCoupon)); ?></span></h5>
+        <p class="text-muted small mb-3">It lands in each customer's My Vouchers and they get an email. Customers who already have it are skipped.</p>
+        <form method="POST" action="coupons.php"><?php echo csrfTokenField(); ?>
+            <input type="hidden" name="action" value="give">
+            <input type="hidden" name="id" value="<?php echo (int)$giveCoupon['id']; ?>">
+
+            <div class="d-flex gap-3 mb-2 flex-wrap">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="recipients" id="giveSome" value="some" checked>
+                    <label class="form-check-label" for="giveSome">Selected customers</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="recipients" id="giveAll" value="all">
+                    <label class="form-check-label" for="giveAll">All customers (<?php echo count($customers); ?>)</label>
+                </div>
+            </div>
+
+            <div id="givePickList">
+                <input type="search" class="form-control form-control-sm mb-2" id="giveFilter" placeholder="Search name or email" aria-label="Search customers">
+                <div style="max-height: 260px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; padding: 0.5rem;">
+                    <?php if (!$customers): ?>
+                        <p class="text-muted small mb-0">No customer accounts yet.</p>
+                    <?php endif; ?>
+                    <?php foreach ($customers as $u): $uid = (int)$u['id']; ?>
+                    <div class="form-check give-row" data-search="<?php echo htmlspecialchars(mb_strtolower($u['fullname'] . ' ' . $u['email'])); ?>">
+                        <input class="form-check-input" type="checkbox" name="user_ids[]" value="<?php echo $uid; ?>" id="giveU<?php echo $uid; ?>"
+                               <?php echo $u['has_it'] ? 'disabled' : ''; ?>>
+                        <label class="form-check-label small" for="giveU<?php echo $uid; ?>">
+                            <?php echo htmlspecialchars($u['fullname']); ?> <span class="text-muted">· <?php echo htmlspecialchars($u['email']); ?></span>
+                            <?php if ($u['has_it']): ?><span class="badge bg-secondary ms-1">Already has it</span><?php endif; ?>
+                        </label>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <label class="form-label small fw-bold mt-3" for="giveNote">Gift note (optional)</label>
+            <input type="text" class="form-control" id="giveNote" name="note" maxlength="255"
+                   placeholder="e.g. Thanks for being a loyal customer!"
+                   value="<?php echo htmlspecialchars($_POST['note'] ?? ''); ?>">
+
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <a href="coupons.php" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane"></i> Give voucher</button>
+            </div>
+        </form>
+    </div>
+    <script>
+    (function () {
+        const list = document.getElementById('givePickList');
+        document.querySelectorAll('input[name="recipients"]').forEach(r => r.addEventListener('change', () => {
+            list.style.display = document.getElementById('giveAll').checked ? 'none' : '';
+        }));
+        document.getElementById('giveFilter').addEventListener('input', function () {
+            const q = this.value.trim().toLowerCase();
+            document.querySelectorAll('.give-row').forEach(row => {
+                row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+            });
+        });
+    })();
+    </script>
+    <?php endif; ?>
+
     <div class="admin-card mb-4">
         <h5 class="mb-3" id="couponForm">
             <?php if ($editId): ?>
@@ -220,11 +362,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
                            value="<?php echo htmlspecialchars($keep['code'] ?? ''); ?>"
                            <?php echo $editId ? 'readonly title="The code is fixed once created."' : ''; ?>>
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-3">
                     <label class="form-label small fw-bold" for="cpDesc">Description</label>
                     <input type="text" class="form-control" id="cpDesc" name="description" maxlength="255"
                            placeholder="e.g. 10% off for new customers"
                            value="<?php echo htmlspecialchars($keep['description'] ?? ''); ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold" for="cpKind">Voucher for *</label>
+                    <select class="form-select" id="cpKind" name="kind" aria-describedby="cpKindHint">
+                        <option value="discount">Items (discount)</option>
+                        <option value="shipping" <?php echo ($keep['kind'] ?? '') === 'shipping' ? 'selected' : ''; ?>>Shipping fee</option>
+                    </select>
+                    <div id="cpKindHint" class="form-text">Shipping: 100% = free shipping.</div>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small fw-bold" for="cpType">Type *</label>
@@ -286,6 +436,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
                         <th>Code</th>
                         <th>Discount</th>
                         <th>Min. subtotal</th>
+                        <th>Given to</th>
                         <th>Used</th>
                         <th>Given</th>
                         <th>Valid</th>
@@ -295,7 +446,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
                 </thead>
                 <tbody>
                     <?php if (empty($coupons)): ?>
-                        <tr><td colspan="8" class="text-center text-muted py-4">No coupons yet. Create one above.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-4">No coupons yet. Create one above.</td></tr>
                     <?php else: ?>
                         <?php foreach ($coupons as $c): [$label, $color] = couponStatus($c); ?>
                         <tr>
@@ -305,12 +456,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
                                 <br><span class="text-muted small"><?php echo htmlspecialchars($c['description']); ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td>
-                                <?php echo $c['discount_type'] === 'percent'
-                                    ? rtrim(rtrim(number_format((float)$c['discount_value'], 2), '0'), '.') . '% off'
-                                    : '₱' . number_format((float)$c['discount_value'], 2) . ' off'; ?>
-                            </td>
+                            <td><?php echo htmlspecialchars(voucherLabel($c)); ?></td>
                             <td><?php echo (float)$c['min_subtotal'] > 0 ? '₱' . number_format((float)$c['min_subtotal'], 2) : '—'; ?></td>
+                            <td><?php echo (int)($heldBy[(int)$c['id']]['held'] ?? 0); ?></td>
                             <td><?php echo (int)$c['times_used']; ?> / <?php echo $c['max_uses'] === null ? '∞' : (int)$c['max_uses']; ?></td>
                             <td>₱<?php echo number_format($givenByCode[$c['code']] ?? 0, 2); ?></td>
                             <td class="small">
@@ -319,6 +467,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg)) {
                             </td>
                             <td><span class="badge bg-<?php echo $color; ?>"><?php echo $label; ?></span></td>
                             <td class="text-end text-nowrap">
+                                <a href="coupons.php?give=<?php echo (int)$c['id']; ?>#givePanel" class="btn btn-sm btn-success">
+                                    <i class="fas fa-gift"></i> Give
+                                </a>
                                 <a href="coupons.php?edit=<?php echo (int)$c['id']; ?>#couponForm" class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
