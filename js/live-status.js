@@ -12,11 +12,19 @@
 //    then the live parts are refreshed (admin side).
 (function () {
     async function refreshLiveRegions() {
-        const html = await (await fetch(location.href, { cache: 'no-store', credentials: 'same-origin' })).text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const r = await fetch(location.href, { cache: 'no-store', credentials: 'same-origin' });
+        // A redirect means the session ended (login page); leave the page alone.
+        if (!r.ok || r.redirected) throw new Error('page unavailable');
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        // Same page title = same page (a filtered list may legitimately come
+        // back with no rows at all, so the regions themselves can't tell us).
+        if (doc.title !== document.title) throw new Error('not the same page');
         document.querySelectorAll('[data-live]').forEach(function (el) {
             const fresh = doc.querySelector('[data-live="' + el.dataset.live + '"]');
+            // Gone from the fresh page = no longer belongs here, e.g. an order
+            // whose new status no longer matches the list's status filter.
             if (fresh) el.replaceWith(document.importNode(fresh, true));
+            else el.remove();
         });
     }
 
@@ -83,8 +91,12 @@
                 ? await r.json()
                 : { ok: false, message: 'Your session expired. Refresh the page and try again.' };
             toast(res.message || (res.ok ? 'Saved.' : 'Could not save.'), res.ok ? 'success' : 'error');
-            if (res.ok) await refreshLiveRegions();
-            else form.reset();   // put a changed dropdown back to what is really saved
+            if (!res.ok) { form.reset(); return; }   // put a changed dropdown back to what is really saved
+            try {
+                await refreshLiveRegions();
+            } catch (refreshErr) {
+                toast((res.message || 'Saved.') + ' Refresh the page to see the latest.', 'success');
+            }
         } catch (err) {
             toast('Could not reach the server. Check your connection and try again.', 'error');
             form.reset();
