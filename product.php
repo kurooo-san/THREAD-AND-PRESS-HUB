@@ -1,7 +1,7 @@
 <?php
 require 'includes/config.php';
 require_once 'includes/reviews.php';
-redirectToLogin(); // same rule as shop.php: sign in before browsing products
+// Guests may browse (same rule as shop.php); adding to cart asks them to sign in.
 
 $productId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($productId <= 0) {
@@ -319,6 +319,7 @@ function pdStarSvg(): string
 
 </div>
 
+<script>window.IS_LOGGED_IN = <?php echo isLoggedIn() ? 'true' : 'false'; ?>;</script>
 <script src="js/buy-now.js"></script>
 <script>
 (function () {
@@ -448,6 +449,7 @@ function pdStarSvg(): string
     var addBtn = document.getElementById('pdAddBtn');
     if (addBtn) {
         addBtn.addEventListener('click', function () {
+            if (!requireLogin()) { return; }
             var choice = readChoice();
             if (!choice) { return; }
 

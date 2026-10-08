@@ -1,6 +1,6 @@
 <?php
 require 'includes/config.php';
-redirectToLogin();
+// Guests may browse; the cart, checkout and design studio still need an account.
 
 $pageTitle = 'Shop';
 
@@ -445,6 +445,7 @@ $count_stmt->close();
     </div>
 </div>
 
+<script>window.IS_LOGGED_IN = <?php echo isLoggedIn() ? 'true' : 'false'; ?>;</script>
 <script src="js/buy-now.js"></script>
 <script>
 // Fallback showToast function in case footer hasn't loaded
@@ -577,6 +578,7 @@ function buyNowFromCard(productId, productName, price, quantity) {
 }
 
 function addToCart(productId, productName, price, quantity) {
+    if (!requireLogin()) return;
     try {
         quantity = parseInt(quantity) || 1;
         if (quantity < 1) {

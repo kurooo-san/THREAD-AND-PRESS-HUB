@@ -14,12 +14,27 @@
     'use strict';
 
     /**
+     * Guests may browse, but the cart and checkout need an account. Sends a
+     * guest to login (and back to this page afterwards) and returns false;
+     * returns true when signed in. Pages set window.IS_LOGGED_IN; when it is
+     * not set this never blocks.
+     */
+    function requireLogin() {
+        if (global.IS_LOGGED_IN !== false) { return true; }
+        global.location.href = 'login.php?redirect=' +
+            encodeURIComponent(global.location.pathname + global.location.search);
+        return false;
+    }
+
+    /**
      * Send one item to checkout.
      *
      * @param {{id:number|string, name:string, price:number, quantity:number,
      *          color:string, size:string}} item
      */
     function buyNowCheckout(item) {
+        if (!requireLogin()) { return; }
+
         var quantity = parseInt(item.quantity, 10) || 1;
         if (quantity < 1) { quantity = 1; }
 
@@ -64,4 +79,5 @@
     }
 
     global.buyNowCheckout = buyNowCheckout;
+    global.requireLogin = requireLogin;
 })(window);
