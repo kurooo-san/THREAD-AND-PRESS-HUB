@@ -204,6 +204,18 @@ function verifyCsrfToken() {
     return hash_equals($_SESSION['csrf_token'], $_POST['csrf_token']);
 }
 
+// A <form data-ajax> sent by js/live-status.js. Its handler answers with
+// ajaxFormReply() instead of rendering the whole page again.
+function isAjaxForm() {
+    return ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'fetch';
+}
+
+function ajaxFormReply($ok, $message) {
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => (bool) $ok, 'message' => (string) $message]);
+    exit();
+}
+
 function displayMessage($message, $type = 'info') {
     echo "<div class='alert alert-$type' role='alert'>$message</div>";
 }

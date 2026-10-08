@@ -40,7 +40,7 @@ $items_result = $items_stmt->get_result();
 <?php include '../includes/header/header.php'; ?>
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-container">
+<div class="admin-container" data-live="order-detail">
     <div class="mb-4">
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-receipt"></i> Order #<?php echo htmlspecialchars($order['id']); ?>
@@ -207,7 +207,7 @@ $items_result = $items_stmt->get_result();
             <!-- Order Status -->
             <div class="admin-card">
                 <h5 class="text-coffee-dark mb-3" style="font-weight: 700;">Order Status</h5>
-                <form method="POST" action="orders.php">
+                <form method="POST" action="orders.php" data-ajax>
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="action" value="update_status">
                     <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">

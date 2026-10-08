@@ -165,6 +165,11 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Activate/Deactivate from a <form data-ajax>: answer with JSON, not the page.
+if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST' && isAjaxForm()) {
+    ajaxFormReply(!isset($errorMsg), $errorMsg ?? $successMsg ?? 'Saved.');
+}
+
 $coupons = $tableExists
     ? $conn->query("SELECT * FROM coupons ORDER BY created_at DESC, id DESC")->fetch_all(MYSQLI_ASSOC)
     : [];
@@ -256,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST
     <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($errorMsg); ?></div>
     <?php endif; ?>
 
-    <div class="row mb-4">
+    <div class="row mb-4" data-live="coupon-stats">
         <div class="col-md-4">
             <div class="admin-card text-center">
                 <h5 class="mb-2"><?php echo count($coupons); ?></h5>
@@ -449,7 +454,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST
                         <tr><td colspan="9" class="text-center text-muted py-4">No coupons yet. Create one above.</td></tr>
                     <?php else: ?>
                         <?php foreach ($coupons as $c): [$label, $color] = couponStatus($c); ?>
-                        <tr>
+                        <tr data-live="coupon-<?php echo (int)$c['id']; ?>">
                             <td>
                                 <strong><?php echo htmlspecialchars($c['code']); ?></strong>
                                 <?php if ($c['description']): ?>
@@ -473,7 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST
                                 <a href="coupons.php?edit=<?php echo (int)$c['id']; ?>#couponForm" class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
-                                <form method="POST" action="coupons.php" style="display:inline;"><?php echo csrfTokenField(); ?>
+                                <form method="POST" action="coupons.php" style="display:inline;" data-ajax><?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="action" value="toggle">
                                     <input type="hidden" name="id" value="<?php echo (int)$c['id']; ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">

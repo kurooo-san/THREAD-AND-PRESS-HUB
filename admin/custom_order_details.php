@@ -71,7 +71,7 @@ $lines     = [
 <?php include '../includes/header/header.php'; ?>
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-container">
+<div class="admin-container" data-live="co-detail">
     <div class="mb-4">
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-shirt"></i> Custom Order #<?php echo (int)$order['id']; ?>
@@ -258,7 +258,7 @@ $lines     = [
             <!-- Order Status -->
             <div class="admin-card">
                 <h5 class="text-coffee-dark mb-3" style="font-weight: 700;">Order Status</h5>
-                <form method="POST" action="custom-orders.php">
+                <form method="POST" action="custom-orders.php" data-ajax>
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
                     <input type="hidden" name="back_to_detail" value="<?php echo (int)$order['id']; ?>">

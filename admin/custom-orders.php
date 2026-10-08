@@ -88,6 +88,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_payment'])) {
     }
 }
 
+// Status changed from a <form data-ajax> (here or on custom_order_details.php):
+// answer with JSON instead of the page or the redirect below.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAjaxForm()) {
+    ajaxFormReply($error === '', $error ?: $success);
+}
+
 // Forms on custom_order_details.php post here; send the admin back there.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['back_to_detail'])) {
     if ($success) $_SESSION['success'] = $success;
@@ -258,7 +264,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
         <?php while ($o = $orders->fetch_assoc()): 
             $statusInfo = $statusLabels[$o['status']] ?? ['label' => $o['status'], 'badge' => 'secondary'];
         ?>
-            <div class="co-order-card">
+            <div class="co-order-card" data-live="co-<?php echo (int)$o['id']; ?>">
                 <div class="co-order-grid">
                     <!-- Thumbnail -->
                     <div>
@@ -333,7 +339,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
 
                     <!-- Actions -->
                     <div>
-                        <form method="POST" class="co-actions-form"><?php echo csrfTokenField(); ?>
+                        <form method="POST" class="co-actions-form" data-ajax><?php echo csrfTokenField(); ?>
                             <input type="hidden" name="order_id" value="<?php echo (int)$o['id']; ?>">
                             <select name="status" class="form-select form-select-sm">
                                 <?php foreach ($statusLabels as $key => $val): ?>

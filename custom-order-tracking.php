@@ -302,7 +302,7 @@ if ($successFlash !== null) {
 }
 </style>
 
-<div class="tracking-container">
+<div class="tracking-container" data-live-url="order-status.php?type=custom&amp;id=<?php echo (int)$orderId; ?>">
     <!-- Progress Steps -->
     <div class="order-steps">
         <div class="order-step completed"><span class="step-num"><i class="fas fa-check"></i></span> Design</div>
@@ -320,10 +320,10 @@ if ($successFlash !== null) {
     </div>
 
     <!-- Current Status -->
-    <div class="tracking-card">
+    <div class="tracking-card" data-live="status">
         <div class="tracking-card-header">
             <span><i class="fas fa-info-circle me-2"></i>Order #<?php echo $orderId; ?></span>
-            <span class="order-status-badge" style="background:<?php echo $currentStatus['color']; ?>">
+            <span class="order-status-badge" style="background:<?php echo $currentStatus['color']; ?>" data-live-label>
                 <i class="<?php echo $currentStatus['icon']; ?>"></i>
                 <?php echo $currentStatus['label']; ?>
             </span>
@@ -384,7 +384,7 @@ if ($successFlash !== null) {
     </div>
 
     <!-- Order Timeline -->
-    <div class="tracking-card">
+    <div class="tracking-card" data-live="timeline">
         <div class="tracking-card-header">
             <span><i class="fas fa-stream me-2"></i>Order Timeline</span>
         </div>
@@ -433,7 +433,7 @@ if ($successFlash !== null) {
     </div>
 
     <!-- Actions -->
-    <div class="btn-action-row">
+    <div class="btn-action-row" data-live="actions">
         <a href="custom-design.php" class="btn-track-outline">
             <i class="fas fa-palette me-2"></i>Create New Design
         </a>

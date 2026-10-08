@@ -80,6 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Status changed from a <form data-ajax>: answer with JSON, not the page.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isAjaxForm()) {
+    ajaxFormReply($error === '', $error ?: $success);
+}
+
 // Get all orders
 $selectExtras = $hasPaymentStatusCol ? ', o.payment_status' : '';
 $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.created_at DESC");
@@ -119,7 +124,7 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                 </thead>
                 <tbody>
                     <?php while ($order = $orders->fetch_assoc()): ?>
-                    <tr>
+                    <tr data-live="order-<?php echo (int)$order['id']; ?>">
                         <td><strong>#<?php echo $order['id']; ?></strong></td>
                         <td>
                             <div><?php echo htmlspecialchars($order['fullname']); ?></div>
@@ -159,11 +164,11 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                         </td>
                         <?php endif; ?>
                         <td>
-                            <form method="POST" class="d-inline">
+                            <form method="POST" class="d-inline" data-ajax>
                                 <?php echo csrfTokenField(); ?>
                                 <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
                                 <input type="hidden" name="action" value="update_status">
-                                <select name="status" class="form-select form-select-sm" onchange="this.form.submit();" style="max-width: 140px;">
+                                <select name="status" class="form-select form-select-sm" onchange="this.form.requestSubmit();" style="max-width: 140px;" aria-label="Status of order #<?php echo (int)$order['id']; ?>">
                                     <option value="pending" <?php echo $order['status'] === 'pending' ? 'selected' : ''; ?>>Pending</option>
                                     <option value="confirmed" <?php echo $order['status'] === 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
                                     <option value="preparing" <?php echo $order['status'] === 'preparing' ? 'selected' : ''; ?>>Preparing</option>

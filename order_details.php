@@ -37,7 +37,7 @@ $items_result = $items_stmt->get_result();
 
 <?php include 'includes/header/header.php'; ?>
 
-<div class="container my-5">
+<div class="container my-5" data-live-url="order-status.php?id=<?php echo (int)$order['id']; ?>">
     <div class="row justify-content-center">
         <div class="col-md-8">
             <nav aria-label="breadcrumb" class="mb-4">
@@ -51,10 +51,10 @@ $items_result = $items_stmt->get_result();
                 <div class="card-body p-4">
                     <h5 class="mb-4" style="font-weight: 700;">Order #<?php echo htmlspecialchars($order['id']); ?></h5>
                     <!-- Order Status -->
-                    <div class="row mb-4 pb-4 border-bottom">
+                    <div class="row mb-4 pb-4 border-bottom" data-live="status">
                         <div class="col-md-6">
                             <h6 class="text-muted mb-2">Order Status</h6>
-                            <span class="badge bg-<?php echo $order['status'] === 'completed' ? 'success' : ($order['status'] === 'pending' ? 'warning' : ($order['status'] === 'cancelled' ? 'danger' : 'info')); ?>" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                            <span class="badge bg-<?php echo $order['status'] === 'completed' ? 'success' : ($order['status'] === 'pending' ? 'warning' : ($order['status'] === 'cancelled' ? 'danger' : 'info')); ?>" style="font-size: 1rem; padding: 0.5rem 1rem;" data-live-label>
                                 <i class="fas fa-circle"></i> <?php echo ucfirst(str_replace('_', ' ', $order['status'])); ?>
                             </span>
                         </div>
@@ -188,7 +188,7 @@ $items_result = $items_stmt->get_result();
                     <?php endif; ?>
 
                     <!-- Timeline/Status History (placeholder) -->
-                    <div class="mb-4">
+                    <div class="mb-4" data-live="timeline">
                         <h6 class="mb-3" style="font-weight: 700;">Status Timeline</h6>
                         <div style="padding-left: 1rem; border-left: 3px solid var(--primary);">
                             <div class="mb-3">
