@@ -155,9 +155,11 @@ const SupportWidget = {
         const headerSubtitle = document.getElementById('chat-header-subtitle');
         const footerNote = document.getElementById('chat-footer-note');
 
+        // One chat window: the bar shows "My support chats" while the AI is
+        // answering and "Back to AI" while talking to our team.
         if (tab === 'ai') {
-            tabAI.classList.add('active');
-            tabSupport.classList.remove('active');
+            tabAI.hidden = true;
+            tabSupport.hidden = false;
             panelAI.classList.add('active');
             panelSupport.classList.remove('active');
             headerAvatar.innerHTML = '<i class="fas fa-robot"></i>';
@@ -166,13 +168,13 @@ const SupportWidget = {
             footerNote.textContent = 'Powered by Google Gemini AI';
             this.stopPolling();
         } else {
-            tabAI.classList.remove('active');
-            tabSupport.classList.add('active');
+            tabAI.hidden = false;
+            tabSupport.hidden = true;
             panelAI.classList.remove('active');
             panelSupport.classList.add('active');
             headerAvatar.innerHTML = '<i class="fas fa-headset"></i>';
-            headerTitle.innerHTML = 'Live Support';
-            headerSubtitle.textContent = 'Chat with our team';
+            headerTitle.innerHTML = 'Thread &amp; Press Team';
+            headerSubtitle.textContent = "You're chatting with a person";
             footerNote.textContent = 'Thread & Press Hub Support';
             return this.loadConversations();
         }

@@ -2196,31 +2196,31 @@ body.admin-page .cafe-navbar { position: relative; }
 }
 
 /* Chat Tabs */
-.chat-tabs {
+/* One chat window: a slim bar to move between the AI and our team. */
+.chat-modebar {
     display: flex;
-    border-bottom: 2px solid var(--border-light);
+    align-items: center;
+    padding: 0.3rem 0.6rem;
+    border-bottom: 1px solid var(--border-light);
     background: white;
 }
-.chat-tab {
-    flex: 1;
-    padding: 0.5rem 0.5rem;
+.chat-modebar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
     border: none;
+    border-radius: var(--radius-xl);
     background: none;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--text-light);
+    color: var(--text-dark);
     cursor: pointer;
     transition: var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    position: relative;
 }
-.chat-tab:hover { color: var(--text-dark); background: var(--bg-light); }
-.chat-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.chat-modebar-btn[hidden] { display: none; }
+.chat-modebar-btn:hover { background: var(--bg-light); }
+.chat-modebar-end { margin-left: auto; }
 .chat-tab-badge {
     background: #dc3545;
     color: white;
@@ -2389,7 +2389,7 @@ body.admin-page .cafe-navbar { position: relative; }
     }
     .chat-header { padding: 0.95rem 1.1rem; }
     .chat-close-btn { width: 40px; height: 40px; font-size: 1.15rem; opacity: 0.9; }
-    .chat-tab { min-height: 44px; }
+    .chat-modebar-btn { min-height: 44px; }
     .chat-quick-actions { scrollbar-width: none; }
     .chat-quick-actions::-webkit-scrollbar { display: none; }
     .chat-quick-action { padding: 0.45rem 0.85rem; font-size: 0.78rem; }

@@ -165,14 +165,15 @@
             </button>
         </div>
 
-        <!-- Tab Switcher -->
+        <!-- One chat: the AI answers first; "Talk to a person" hands over to our
+             team in this same window. The bar below only moves between the two. -->
         <?php if (isset($_SESSION['user_id'])): ?>
-        <div class="chat-tabs">
-            <button class="chat-tab active" data-tab="ai" id="tab-ai">
-                <i class="fas fa-robot"></i> AI Assistant
+        <div class="chat-modebar">
+            <button type="button" class="chat-modebar-btn" id="tab-ai" hidden>
+                <i class="fas fa-arrow-left"></i> Back to AI
             </button>
-            <button class="chat-tab" data-tab="support" id="tab-support">
-                <i class="fas fa-headset"></i> Live Support
+            <button type="button" class="chat-modebar-btn chat-modebar-end" id="tab-support">
+                <i class="fas fa-headset"></i> My support chats
                 <span class="chat-tab-badge" id="support-unread-badge" style="display:none;">0</span>
             </button>
         </div>
