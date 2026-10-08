@@ -317,12 +317,8 @@ function sendWelcomeEmail($email, $fullname) {
     </div>
 
     <p style="color:#555;line-height:1.6;">Start shopping now and enjoy quality fashion at great prices!</p>
-    <p style="text-align:center;margin:20px 0;">
-        <a href="' . htmlspecialchars($baseUrl . '/shop.php') . '" 
-           style="display:inline-block;background:#1a1a1a;color:#fff;padding:12px 30px;border-radius:8px;text-decoration:none;font-weight:bold;">
-            Start Shopping
-        </a>
-    </p>';
+    <p style="text-align:center;margin:20px 0;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars($baseUrl . '/shop.php') . '</p>';
+    // Bare URL, no <a href>: see sendPasswordResetEmail (Brevo click tracker).
 
     $html = emailTemplate('Welcome to Thread & Press Hub!', $content);
     return sendEmail($email, "Welcome to Thread & Press Hub!", $html);
@@ -399,9 +395,9 @@ function sendCustomOrderStatusEmail($conn, $customOrderId, $newStatus) {
         <p style="margin:5px 0;font-size:13px;color:#555;">' . $statusInfo[2] . '</p>
     </div>
 
-    <div style="text-align:center;margin:20px 0;">
-        <a href="' . htmlspecialchars($trackUrl) . '" style="display:inline-block;background:#1a1a1a;color:#fff;padding:12px 30px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">Track Your Order</a>
-    </div>';
+    <p style="color:#555;line-height:1.6;margin-bottom:5px;">Track your order here:</p>
+    <p style="text-align:center;margin:0 0 20px;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars($trackUrl) . '</p>';
+    // Bare URL, no <a href>: see sendPasswordResetEmail (Brevo click tracker).
 
     $html = emailTemplate('Custom Order Update', $content);
     return sendEmail($order['email'], "Custom Order #{$customOrderId} - " . $statusInfo[0] . " - Thread & Press Hub", $html);
