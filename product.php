@@ -90,6 +90,7 @@ function pdStarSvg(): string
 <link rel="stylesheet" href="css/product-modern.css?v=<?php echo @filemtime(__DIR__ . '/css/product-modern.css'); ?>">
 
 <div class="pd-wrap">
+    <?php include 'includes/guest-banner.php'; ?>
 
     <nav class="pd-crumb" aria-label="Breadcrumb">
         <a href="index.php">Home</a> <span>/</span>
@@ -449,9 +450,12 @@ function pdStarSvg(): string
     var addBtn = document.getElementById('pdAddBtn');
     if (addBtn) {
         addBtn.addEventListener('click', function () {
-            if (!requireLogin()) { return; }
             var choice = readChoice();
             if (!choice) { return; }
+
+            // Guest: remember this pick and add it automatically after login.
+            if (!requireLogin({ id: PRODUCT.id, name: PRODUCT.name, price: PRODUCT.price,
+                                quantity: choice.quantity, color: choice.color, size: choice.size }, 'cart')) { return; }
 
             var quantity = choice.quantity;
             var color = choice.color;

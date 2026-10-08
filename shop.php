@@ -150,6 +150,7 @@ $count_stmt->close();
 ?>
 
 <div class="container py-4">
+    <?php include 'includes/guest-banner.php'; ?>
     <!-- Page Header -->
     <div class="mb-4 shop-head">
         <nav aria-label="breadcrumb">
@@ -578,7 +579,6 @@ function buyNowFromCard(productId, productName, price, quantity) {
 }
 
 function addToCart(productId, productName, price, quantity) {
-    if (!requireLogin()) return;
     try {
         quantity = parseInt(quantity) || 1;
         if (quantity < 1) {
@@ -590,6 +590,10 @@ function addToCart(productId, productName, price, quantity) {
         if (!pick.ok) return;
         let color = pick.color;
         let size  = pick.size;
+
+        // Guest: remember this pick and add it automatically after login.
+        if (!requireLogin({ id: productId, name: productName, price: parseFloat(price),
+                            quantity: quantity, color: color, size: size }, 'cart')) return;
 
         // Using localStorage to store cart data. A damaged cart is treated as
         // empty, or nothing could ever be added again.
