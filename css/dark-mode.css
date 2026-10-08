@@ -239,6 +239,7 @@ html.dark-mode .chat-quick-action {
     background: #24242c !important; color: #d0d0d6 !important; border-color: #33333c !important;
 }
 html.dark-mode .chat-quick-action:hover { background: #2e2e36 !important; border-color: #3a3a44 !important; }
+html.dark-mode .chat-quick-action.chat-quick-human { background: #c8a96e !important; color: #1a1a1a !important; border-color: #c8a96e !important; }
 
 html.dark-mode .chat-messages { background: #15151a !important; }
 html.dark-mode .bot-message { background: #26262e !important; color: #e9e9ec !important; }

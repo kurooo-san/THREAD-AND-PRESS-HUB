@@ -23,9 +23,10 @@ switch ($action) {
         break;
 
     case 'create_conversation':
-        $subject = trim($_POST['subject'] ?? '');
+        // subject is varchar(255); a longer one (e.g. from an AI handoff) would fail the insert.
+        $subject = mb_substr(trim($_POST['subject'] ?? ''), 0, 255);
         $message = trim($_POST['message'] ?? '');
-        
+
         if (empty($subject) || empty($message)) {
             echo json_encode(['success' => false, 'error' => 'Subject and message are required']);
             exit();

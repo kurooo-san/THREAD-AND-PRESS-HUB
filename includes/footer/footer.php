@@ -180,6 +180,7 @@
         <!-- AI Assistant Panel -->
         <div class="chat-panel active" id="panel-ai">
             <div class="chat-quick-actions">
+                <button type="button" class="chat-quick-action chat-quick-human" id="chat-talk-to-person"><i class="fas fa-headset"></i> Talk to a person</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('Find Products')"><i class="fas fa-search"></i> Find Products</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('Style Advice')"><i class="fas fa-magic"></i> Style Advice</button>
                 <button class="chat-quick-action" onclick="sendQuickChat('Track my recent orders')"><i class="fas fa-box"></i> Track My Orders</button>

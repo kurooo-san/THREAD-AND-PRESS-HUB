@@ -5,6 +5,8 @@
 // Conversation history for multi-turn context
 let conversationHistory = [];
 
+// Returns { text, handoff }: handoff is null, or a summary ('' when none) when
+// the AI says staff should take over — the widget then offers "Talk to a person".
 async function getChatbotResponse(message) {
     try {
         // Send to Gemini API with full conversation history
@@ -19,26 +21,30 @@ async function getChatbotResponse(message) {
 
         const data = await response.json();
         
-        if (data.success && data.message) {
+        if (data.success) {
+            const handoff = (typeof data.handoff === 'string') ? data.handoff : null;
+            const text = data.message || "I'll connect you with our team so they can help you directly.";
             // Store conversation turn for context
             conversationHistory.push({ role: 'user', text: message });
-            conversationHistory.push({ role: 'model', text: data.message });
-            
+            conversationHistory.push({ role: 'model', text: text });
+
             // Keep history manageable (last 20 messages)
             if (conversationHistory.length > 20) {
                 conversationHistory = conversationHistory.slice(-20);
             }
-            
-            return data.message;
+
+            return { text: text, handoff: handoff };
         } else if (data.rate_limited) {
-            return '⚠️ ' + data.error;
+            return { text: '⚠️ ' + data.error, handoff: '' };
         } else {
             console.error('Gemini API Error:', data.error);
-            return "⚠️ I'm having trouble connecting right now. Please try again in a moment, or contact us at support@threadpresshub.com for immediate help.";
+            // The AI is down, so a person is the next best thing.
+            conversationHistory.push({ role: 'user', text: message });
+            return { text: "⚠️ I'm having trouble connecting right now. Please try again in a moment, or talk to our team instead.", handoff: '' };
         }
     } catch (error) {
         console.error('Connection Error:', error);
-        return "⚠️ Connection issue. Please check your internet and try again, or reach us at support@threadpresshub.com.";
+        return { text: "⚠️ Connection issue. Please check your internet and try again.", handoff: null };
     }
 }
 
@@ -99,6 +105,46 @@ const SupportWidget = {
         setInterval(() => this.checkUnread(), 15000);
     },
 
+    // Id of the conversation an AI handoff created on this page view, so a
+    // second tap reopens it instead of opening a duplicate.
+    handoffConvId: null,
+
+    /**
+     * Continue with a person: open a Live Support conversation that already
+     * carries what the customer told the AI, then switch to it.
+     */
+    async handoffFromAI(summary) {
+        if (this.handoffConvId) {
+            await this.switchTab('support');
+            this.openConversation(this.handoffConvId);
+            return true;
+        }
+        const firstAsk = conversationHistory.find(t => t.role === 'user');
+        const topic = (summary || (firstAsk ? firstAsk.text : '') || 'Help from our team').replace(/\s+/g, ' ').trim();
+        const subject = 'From AI chat: ' + (topic.length > 80 ? topic.slice(0, 77) + '...' : topic);
+        const recent = conversationHistory.slice(-8).map(t =>
+            (t.role === 'user' ? 'Customer: ' : 'AI: ') + (t.text.length > 300 ? t.text.slice(0, 297) + '...' : t.text));
+        const message = '[Transferred from the AI Assistant]'
+            + (summary ? '\nSummary: ' + summary : '')
+            + (recent.length ? '\n\nRecent chat:\n' + recent.join('\n') : '\n\nThe customer asked to talk to a person.');
+
+        const formData = new FormData();
+        formData.append('action', 'create_conversation');
+        formData.append('subject', subject);
+        formData.append('message', message);
+        try {
+            const res = await fetch(this.ajaxUrl, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'create failed');
+            this.handoffConvId = data.conversation_id;
+            await this.switchTab('support');
+            this.openConversation(data.conversation_id);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
     switchTab(tab) {
         const tabAI = document.getElementById('tab-ai');
         const tabSupport = document.getElementById('tab-support');
@@ -128,7 +174,7 @@ const SupportWidget = {
             headerTitle.innerHTML = 'Live Support';
             headerSubtitle.textContent = 'Chat with our team';
             footerNote.textContent = 'Thread & Press Hub Support';
-            this.loadConversations();
+            return this.loadConversations();
         }
     },
 
@@ -214,6 +260,9 @@ const SupportWidget = {
             const data = await res.json();
             if (data.success) {
                 form.reset();
+                // Reload first: openConversation() reads the new one's status
+                // from this list, and without it the chat opened as "closed".
+                await this.loadConversations();
                 this.openConversation(data.conversation_id);
             } else {
                 alert(data.error || 'Failed to create conversation');
@@ -231,7 +280,8 @@ const SupportWidget = {
         document.getElementById('support-new-conv').style.display = 'none';
         document.getElementById('support-chat-view').style.display = '';
 
-        const conv = this.conversations.find(c => c.id === convId);
+        // Number(): ids may arrive as strings from the conversation list.
+        const conv = this.conversations.find(c => Number(c.id) === Number(convId));
         document.getElementById('support-chat-subject').textContent = conv ? conv.subject : 'Conversation';
         
         const statusBadge = document.getElementById('support-chat-status');
@@ -530,8 +580,9 @@ function initChatbot() {
         removeTypingIndicator();
         
         // Add bot response
-        addBotMessage(response);
-        
+        addBotMessage(response.text);
+        if (response.handoff !== null) addHandoffCard(response.handoff);
+
         // Re-enable input
         chatInput.disabled = false;
         sendBtn.disabled = false;
@@ -562,6 +613,36 @@ function initChatbot() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
+    // "Talk to a person": hands the chat so far to Live Support.
+    function addHandoffCard(summary) {
+        const card = document.createElement('div');
+        card.className = 'chat-message bot-message chat-handoff';
+        const note = document.createElement('div');
+        note.textContent = 'Our team can take it from here. Your chat so far goes with you, so no need to repeat yourself.';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chat-handoff-btn';
+        btn.innerHTML = '<i class="fas fa-headset"></i> Talk to a person';
+        btn.addEventListener('click', () => startHandoff(btn, summary));
+        card.append(note, btn);
+        chatMessages.appendChild(card);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function startHandoff(btn, summary) {
+        btn.disabled = true;
+        const label = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+        const ok = await SupportWidget.handoffFromAI(summary || '');
+        btn.disabled = false;
+        btn.innerHTML = ok ? '<i class="fas fa-headset"></i> Open my support chat' : label;
+        if (!ok) addBotMessage("⚠️ I couldn't reach our team just now. Please open the Live Support tab and try again.");
+    }
+
+    // Quick action: skip the AI and go straight to a person.
+    const talkBtn = document.getElementById('chat-talk-to-person');
+    if (talkBtn) talkBtn.addEventListener('click', () => startHandoff(talkBtn, ''));
+
     function addTypingIndicator() {
         const msgDiv = document.createElement('div');
         msgDiv.className = 'chat-message bot-message typing-indicator';

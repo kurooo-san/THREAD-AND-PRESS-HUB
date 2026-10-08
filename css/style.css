@@ -2101,6 +2101,17 @@ body.admin-page .cafe-navbar { position: relative; }
 }
 
 .chat-quick-action:hover { background: var(--bg-light); border-color: var(--border-medium); }
+/* AI -> person handoff */
+.chat-quick-action.chat-quick-human { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+.chat-quick-action.chat-quick-human:hover { background: #333; border-color: #333; }
+.chat-handoff { display: flex; flex-direction: column; gap: 0.5rem; }
+.chat-handoff-btn {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.4rem 0.9rem; border: none; border-radius: var(--radius-xl);
+    background: #16a34a; color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+}
+.chat-handoff-btn:hover { background: #15803d; }
+.chat-handoff-btn:disabled { opacity: .7; cursor: wait; }
 
 .chat-messages {
     flex: 1;

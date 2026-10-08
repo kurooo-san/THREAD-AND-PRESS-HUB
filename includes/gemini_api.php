@@ -272,7 +272,7 @@ SHOPPING & ORDERS:
 - Vouchers: see the VOUCHERS section below.
 - 'My Orders' lists every order with its status; open one for the details, and use 'Invoice' / 'Download Invoice' to get a printable invoice.
 - To cancel an order, the customer must contact us through the 'Live Support' tab of this chat widget (or the Support Chat page) while the order is still Pending — there is no self-cancel button.
-- For anything that needs a human (refunds, order problems, changes), point them to the 'Live Support' tab right here in the chat widget.
+- HANDING OFF TO A PERSON: when the customer asks for a real person / staff / agent, or the request needs staff to act (refund, return or exchange, cancelling an order, a wrong, damaged or missing item, money deducted but the order still unpaid, changing a placed order, a complaint), or you cannot answer from the information you were given: answer briefly with what you can, tell them they can tap 'Talk to a person' below to continue with our team (this chat is passed along so they don't repeat themselves), and END the reply with this tag on its own line: [[HANDOFF: one-line English summary of what they need, including any order numbers]]. Use the tag at most once per reply, and never for questions you can fully answer yourself.
 - The site has a Dark Mode: tap the moon icon in the top navigation bar (sun icon switches back to light).
 
 CUSTOM DESIGN SERVICE ('Design' / 'Design Studio' page):
@@ -512,6 +512,14 @@ if (!isset($apiResponse['candidates'][0]['content']['parts'][0]['text'])) {
 
 $botMessage = $apiResponse['candidates'][0]['content']['parts'][0]['text'];
 
+// The prompt asks Gemini to end with [[HANDOFF: summary]] when staff are
+// needed. The tag is never shown; the widget offers "Talk to a person" instead.
+$handoff = null;
+if (preg_match('/\[\[\s*HANDOFF\s*:?(.*?)\]\]/is', $botMessage, $m)) {
+    $handoff    = mb_substr(trim(preg_replace('/\s+/', ' ', $m[1])), 0, 150);
+    $botMessage = trim(preg_replace('/\[\[\s*HANDOFF.*?\]\]/is', '', $botMessage));
+}
+
 // Save chat history if user is logged in
 if (isset($_SESSION['user_id']) && !$conn->connect_error) {
     $stmt = $conn->prepare("INSERT INTO chat_history (user_id, user_message, bot_response) VALUES (?, ?, ?)");
@@ -529,5 +537,6 @@ if (isset($conn) && !$conn->connect_error) {
 
 echo json_encode([
     'success' => true,
+    'handoff' => $handoff,   // null, or the summary to pass to Live Support
     'message' => $botMessage
 ]);
