@@ -336,21 +336,14 @@ function sendPasswordResetEmail($email, $fullname, $resetLink) {
     <p style="color:#555;line-height:1.6;">Hi ' . htmlspecialchars($fullname) . ',</p>
     <p style="color:#555;line-height:1.6;">You requested a password reset for your Thread &amp; Press Hub account.</p>
 
-    <p style="text-align:center;margin:25px 0;">
-        <a href="' . htmlspecialchars($resetLink) . '" 
-           style="display:inline-block;background:#1a1a1a;color:#fff;padding:12px 30px;border-radius:8px;text-decoration:none;font-weight:bold;">
-            Reset Password
-        </a>
-    </p>
+    <p style="color:#555;line-height:1.6;">Tap or copy this link to reset your password:</p>
+    <p style="text-align:center;margin:20px 0;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars($resetLink) . '</p>
 
     <div style="background:#fef3cd;border:1px solid #ffc107;border-radius:8px;padding:15px;margin:15px 0;">
         <p style="margin:0;font-size:13px;color:#856404;"><strong>Note:</strong> This link will expire in 1 hour. If you did not request this reset, please ignore this email.</p>
-    </div>
-
-    <p style="color:#999;font-size:12px;line-height:1.6;margin-top:15px;">If the button above doesn\'t work, copy and paste the following link into your browser:<br>
-    <span style="color:#3498db;word-break:break-all;">' . htmlspecialchars($resetLink) . '</span></p>';
-    // Plain text on purpose: Brevo rewrites every <a href> through its click
-    // tracker (sendibt2.com), which some DNS/ad blockers refuse to resolve.
+    </div>';
+    // No <a href> on purpose: Brevo rewrites every link through its click tracker
+    // (sendibt*.com), which some networks/devices can't reach. Mail apps auto-link the bare URL.
 
     $html = emailTemplate('Password Reset Request', $content);
     return sendEmail($email, "Password Reset - Thread & Press Hub", $html);
