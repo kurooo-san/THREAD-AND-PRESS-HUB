@@ -72,6 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_payment'])) {
         $pResult = $conn->query("SELECT custom_order_id FROM custom_order_payments WHERE id = " . $paymentId);
         if ($pRow = $pResult->fetch_assoc()) {
             $conn->query("UPDATE custom_orders SET status = 'payment_verified' WHERE id = " . intval($pRow['custom_order_id']));
+
+            // Same customer email as choosing "Payment Verified" in the status form (non-fatal on failure)
+            try {
+                require_once __DIR__ . '/../includes/email-helper.php';
+                sendCustomOrderStatusEmail($conn, intval($pRow['custom_order_id']), 'payment_verified');
+            } catch (Throwable $mailEx) {
+                error_log('[custom-orders] payment verified email failed: ' . $mailEx->getMessage());
+            }
         }
         $success = 'Payment verified successfully!';
     } elseif ($paymentAction === 'reject') {
