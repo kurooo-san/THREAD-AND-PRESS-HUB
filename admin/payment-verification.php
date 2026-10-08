@@ -275,7 +275,7 @@ include __DIR__ . '/../includes/admin-sidebar.php';
               ][$pm['status']] ?? 'secondary';
               $isCustom = $pm['order_kind'] === 'custom';
               $link = $isCustom
-                  ? '../custom-order-tracking.php?order_id=' . (int)$pm['order_id']
+                  ? 'custom_order_details.php?id=' . (int)$pm['order_id']
                   : 'order_details.php?id=' . (int)$pm['order_id'];
           ?>
             <tr>

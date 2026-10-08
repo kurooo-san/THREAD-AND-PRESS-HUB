@@ -80,6 +80,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_payment'])) {
     }
 }
 
+// Forms on custom_order_details.php post here; send the admin back there.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['back_to_detail'])) {
+    if ($success) $_SESSION['success'] = $success;
+    if ($error)   $_SESSION['error']   = $error;
+    header('Location: custom_order_details.php?id=' . (int)$_POST['back_to_detail']);
+    exit();
+}
+
 // Get filter
 $statusFilter = $_GET['status'] ?? '';
 $whereClause = '';
@@ -330,7 +338,13 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
                             </button>
                         </form>
                         <div style="margin-top:0.4rem;">
-                            <a href="../<?php echo htmlspecialchars($o['design_image']); ?>" 
+                            <a href="custom_order_details.php?id=<?php echo (int)$o['id']; ?>"
+                               class="btn btn-sm btn-outline-primary w-100" style="border-radius:8px; font-size:0.76rem;">
+                                <i class="fas fa-eye me-1"></i>View Details
+                            </a>
+                        </div>
+                        <div style="margin-top:0.4rem;">
+                            <a href="../<?php echo htmlspecialchars($o['design_image']); ?>"
                                download="order_<?php echo (int)$o['id']; ?>_design.png" 
                                class="btn btn-sm btn-outline-secondary w-100" style="border-radius:8px; font-size:0.76rem;">
                                 <i class="fas fa-download me-1"></i>Download Design
