@@ -178,6 +178,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // voucherGet() scopes by user id, so a forged id resolves to null, and
         // the amount is re-checked here from the coupon row.
         $wallet_user      = (int) $_SESSION['user_id'];
+        // A checkout tab opened before the switch to vouchers still posts a
+        // typed code. Ignoring it would charge more than that page showed.
+        if (trim($_POST['coupon_code'] ?? '') !== '') {
+            $error = 'Coupon codes were replaced by vouchers. Please refresh this page and pick a voucher.';
+        }
         $coupon_discount  = 0.0;
         $coupon_row       = null;
         $voucher_id       = (int) ($_POST['voucher_id'] ?? 0);
@@ -946,8 +951,9 @@ function syncVouchers(subtotal, fee) {
             }
             card.querySelector('.voucher-save').textContent = r.ok ? 'Save ₱' + r.save.toFixed(2) : '';
             card.querySelector('.voucher-best').hidden = v.id !== best;
-            // A picked voucher that stopped qualifying (cart or delivery changed) is dropped.
-            if (v.id === id && !r.ok) id = 0;
+            // A picked voucher that stopped qualifying (cart or delivery changed)
+            // is dropped, and the group goes back to following the best deal.
+            if (v.id === id && !r.ok) { id = 0; voucherTouched[kind] = false; }
         });
 
         const radio = group.querySelector('.voucher-radio[value="' + id + '"]');

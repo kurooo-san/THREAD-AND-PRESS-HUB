@@ -16,7 +16,7 @@ foreach (voucherWallet((int) $_SESSION['user_id'], false) as $v) {
     }
 }
 $titles = [
-    'ready' => ['Ready to use', 'Pick these at checkout — no code to type.'],
+    'ready' => ['Ready to use', 'Pick these at checkout (scheduled ones once they start) — no code to type.'],
     'used'  => ['Used', null],
     'gone'  => ['Expired or unavailable', null],
 ];
