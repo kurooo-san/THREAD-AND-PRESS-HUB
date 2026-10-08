@@ -446,7 +446,7 @@ $count_stmt->close();
 </div>
 
 <script>window.IS_LOGGED_IN = <?php echo isLoggedIn() ? 'true' : 'false'; ?>;</script>
-<script src="js/buy-now.js"></script>
+<script src="js/buy-now.js?v=<?php echo @filemtime(__DIR__ . '/js/buy-now.js'); ?>"></script>
 <script>
 // Fallback showToast function in case footer hasn't loaded
 if (typeof showToast === 'undefined') {
