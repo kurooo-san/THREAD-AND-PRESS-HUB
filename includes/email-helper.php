@@ -270,7 +270,11 @@ function sendOrderStatusEmail($conn, $orderId, $newStatus) {
         <p style="margin:5px 0;font-size:14px;"><strong>Order #' . $orderId . '</strong></p>
         <p style="margin:5px 0;font-size:13px;color:#666;">Total: ₱' . number_format($order['total'], 2) . '</p>
         <p style="margin:5px 0;font-size:13px;color:#555;">' . $statusInfo[2] . '</p>
-    </div>';
+    </div>
+
+    <p style="color:#555;line-height:1.6;margin-bottom:5px;">Track your order here:</p>
+    <p style="text-align:center;margin:0 0 20px;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars(getBaseUrl() . '/order_details.php?id=' . (int)$orderId) . '</p>';
+    // Bare URL, no <a href>: see sendPasswordResetEmail (Brevo click tracker).
 
     $html = emailTemplate('Order Status Update', $content);
     return sendEmail($order['email'], "Order #{$orderId} - " . $statusInfo[0] . " - Thread & Press Hub", $html);
