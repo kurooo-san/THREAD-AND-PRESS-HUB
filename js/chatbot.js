@@ -35,12 +35,13 @@ async function getChatbotResponse(message) {
 
             return { text: text, handoff: handoff };
         } else if (data.rate_limited) {
-            return { text: '⚠️ ' + data.error, handoff: '' };
+            return { text: '⚠️ ' + data.error, handoff: message.slice(0, 150) };
         } else {
             console.error('Gemini API Error:', data.error);
-            // The AI is down, so a person is the next best thing.
-            conversationHistory.push({ role: 'user', text: message });
-            return { text: "⚠️ I'm having trouble connecting right now. Please try again in a moment, or talk to our team instead.", handoff: '' };
+            // The AI is down, so a person is the next best thing. The question
+            // goes along as the summary; it is not added to the history, which
+            // must keep alternating customer/AI turns for the next request.
+            return { text: "⚠️ I'm having trouble connecting right now. Please try again in a moment, or talk to our team instead.", handoff: message.slice(0, 150) };
         }
     } catch (error) {
         console.error('Connection Error:', error);
@@ -116,8 +117,12 @@ const SupportWidget = {
     async handoffFromAI(summary) {
         if (this.handoffConvId) {
             await this.switchTab('support');
-            this.openConversation(this.handoffConvId);
-            return true;
+            const prev = this.conversations.find(c => Number(c.id) === Number(this.handoffConvId));
+            if (prev && prev.status === 'open') {
+                this.openConversation(this.handoffConvId);
+                return true;
+            }
+            this.handoffConvId = null;   // our team closed it: start a fresh one
         }
         const firstAsk = conversationHistory.find(t => t.role === 'user');
         const topic = (summary || (firstAsk ? firstAsk.text : '') || 'Help from our team').replace(/\s+/g, ' ').trim();
