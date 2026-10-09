@@ -18,6 +18,7 @@
 - [ ] Na-test na ang **Export Excel** sa mismong computer na gagamitin (dapat may Excel o kahit Google Sheets na mabubuksan)
 - [ ] **BACKUP:** screen-record ang isang successful run ng buong demo. Kung mag-fail ang internet/AI sa defense, may video ka.
 - [ ] Backup ng database (export sa phpMyAdmin) + kopya ng buong folder + `.env`
+- [ ] Naka-print o nasa slides ang `docs/QR-system-link.png` (QR ng live Railway site) para ma-scan ng panel at ma-try nila mismo. I-scan muna sa sariling phone para sigurado.
 - [ ] Isara ang mga hindi kailangang tabs/apps (para walang notification na sisingit)
 
 ---
@@ -126,6 +127,7 @@
    - *Kung kapos sa oras:* **Print** na lang ang ipakita (may sariling report header)
 5. **AI Insights** (pindutin ang "AI Insights" button sa admin panel) → i-type: **"magkano discount natin this month?"**
    > "Pati po ang AI assistant ng admin ay alam ang vouchers at discounts — galing sa totoong data, hindi hula."
+   - *Follow-up kung may oras:* **"ilang customer na ang nabigyan ng voucher at ilan pa ang hindi nagagamit?"**
 6. **⭐ AI Generate Product — ang pang-finale:**
    > "Ito po ang pang-apat naming AI feature. Sir/Ma'am, **anong product po ang gusto niyong idagdag sa store?**"
    - I-type ang sagot ng panelist → **Generate** → ~8-10 sec → lalabas ang draft (photo, name, price, description)

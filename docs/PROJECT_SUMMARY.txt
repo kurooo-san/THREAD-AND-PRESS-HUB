@@ -35,7 +35,7 @@ ADMIN FEATURES
 - Sales Report for any date range: Print and Excel export
 - Custom designs and custom orders
 - Support Chat with AI Suggest Reply; Contact messages; Chatbot FAQ
-- AI Insights (read-only questions about sales, stock, discounts)
+- AI Insights (read-only questions about sales, stock, discounts, vouchers)
 - Audit Log
 
 AI FEATURES (Google Gemini, keys server-side only)

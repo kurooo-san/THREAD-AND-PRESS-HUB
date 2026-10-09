@@ -170,7 +170,7 @@ Key relationships:
 | AI Stylist / Size finder | `includes/tryon-suggest.php`, `includes/tryon-size.php` | Product suggestions; size from height/weight (formula fallback) |
 | AI Design Generator | `includes/custom-design-ajax.php` | Artwork from a text prompt |
 | AI Product Generator | `admin/ai-product-ajax.php` | Drafts product details, print artwork and photo; admin approves |
-| AI Insights / Suggest Reply | `admin/ai-assistant-ajax.php`, `js/admin-ai.js` | Read-only answers from a fixed data snapshot (sales, stock, coupons, discounts); drafts support replies that quote only that customer's vouchers |
+| AI Insights / Suggest Reply | `admin/ai-assistant-ajax.php`, `js/admin-ai.js` | Read-only answers from a fixed data snapshot (sales, stock, discounts, and vouchers incl. shipping vouchers and wallet counts); drafts support replies that quote only that customer's vouchers |
 | Hourly limits | `ai_usage` table | Per-customer, per-feature limits; admins unlimited |
 
 ### 5.9 Support & Contact Module

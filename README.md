@@ -84,7 +84,7 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
   - Counts sales the same way as the Dashboard: non-cancelled shop and custom orders
 - **User Management**: Monitor customer accounts
 - **AI Assistant** (read-only):
-  - **AI Insights**: Ask questions like "best seller this month?", "what needs my attention?" or "how much discount did we give this month?". Answers come from a fixed data snapshot (sales, orders, stock, coupons and discounts, reviews); the AI never writes SQL and never sees customer emails, phones, addresses or payment details
+  - **AI Insights**: Ask questions like "best seller this month?", "what needs my attention?" or "how much discount did we give this month?". Answers come from a fixed data snapshot (sales, orders, stock, discounts, reviews, and vouchers: discount or shipping kind, how many customers got each one, how many are still unused, and how much they saved); the AI never writes SQL and never sees customer emails, phones, addresses or payment details
   - **Suggest Reply**: Drafts a support-chat reply that the admin reviews before sending; it can quote the vouchers in that customer's wallet
 - **AI Product Generator**: Type a product idea; Gemini drafts the details, print artwork and product photo, and the admin approves before it goes live
 - **Custom Orders & Designs**: Review customer designs and manage custom orders
