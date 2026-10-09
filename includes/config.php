@@ -75,6 +75,7 @@ function configureDbConnection(mysqli $db): void
 
 // Create connection. A fresh Railway container gets "Connection refused" for
 // its first ~2 seconds, so retry briefly before giving up.
+/** @var mysqli $conn  set below; the script dies if every attempt fails */
 $conn = null;
 for ($try = 1; $try <= 4 && !$conn; $try++) {
     try {
