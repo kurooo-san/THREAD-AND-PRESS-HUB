@@ -11,7 +11,7 @@ flowchart LR
     AU --> RQ
     subgraph RQ["2. Request Integrity"]
         direction TB
-        r1["CSRF tokens"]
+        r1["CSRF tokens on every form<br/>and AJAX write"]
         r2["Admin check on every<br/>admin page & endpoint"]
         r3["Same-site redirects only"]
     end
@@ -19,14 +19,14 @@ flowchart LR
     subgraph PR["3. Pricing & Payment"]
         direction TB
         p1["Prices recomputed<br/>from the database"]
-        p2["Coupons re-checked on server<br/>usage claimed atomically"]
+        p2["Vouchers must be in the<br/>customer's wallet; use<br/>claimed atomically"]
         p3["PayMongo hosted checkout<br/>signed webhook"]
     end
     PR --> DB
     subgraph DB["4. Database"]
         direction TB
         d1["Prepared statements"]
-        d2["Transactions for<br/>order + stock + coupon"]
+        d2["Transactions for<br/>order + stock + voucher"]
         d3["Foreign keys · utf8mb4"]
     end
     DB --> FU

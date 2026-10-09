@@ -4,14 +4,14 @@ flowchart TB
 
     subgraph AL["APPLICATION LAYER — Apache + PHP"]
         direction LR
-        PUB["<b>Customer Modules</b><br/>Shop & Product pages<br/>Cart & Checkout<br/>(VAT · PWD/Senior · Coupons)<br/>Accounts & Addresses<br/>Orders & Invoices<br/>Design Studio 2D + 3D<br/>Virtual Try-On + AI Stylist<br/>AI Chatbot<br/>Support Chat · Contact"]
-        ADM["<b>Admin Modules</b><br/>Dashboard<br/>Products + AI Product Generator<br/>Orders · Users<br/>Coupons<br/>Sales Report (Print / Excel)<br/>Custom Designs & Orders<br/>Support · Contact · Chatbot FAQ<br/>AI Insights<br/>Audit Log"]
-        API["<b>AJAX / API Endpoints</b><br/>gemini_api.php<br/>validate-coupon.php<br/>custom-design-ajax.php<br/>tryon-*.php<br/>support-chat-ajax.php<br/>ai-assistant-ajax.php<br/>ai-product-ajax.php<br/>paymongo-webhook.php"]
+        PUB["<b>Customer Modules</b><br/>Shop & Product pages<br/>Cart & Checkout<br/>(VAT · PWD/Senior · Vouchers)<br/>Accounts & Addresses<br/>Orders & Invoices (live status)<br/>My Vouchers<br/>Design Studio 2D + 3D<br/>Virtual Try-On + AI Stylist<br/>Chat window: AI + Live Support<br/>Contact"]
+        ADM["<b>Admin Modules</b><br/>Dashboard<br/>Products + AI Product Generator<br/>Orders · Users<br/>Coupons & Give Vouchers<br/>Sales Report (Print / Excel)<br/>Custom Designs & Orders<br/>Support · Contact · Chatbot FAQ<br/>AI Insights<br/>Audit Log"]
+        API["<b>AJAX / API Endpoints</b><br/>gemini_api.php<br/>order-status.php<br/>custom-design-ajax.php<br/>tryon-*.php<br/>support-chat-ajax.php<br/>ai-assistant-ajax.php<br/>ai-product-ajax.php<br/>paymongo-webhook.php"]
     end
 
-    DB[("<b>DATA LAYER</b><br/>MySQL / MariaDB<br/>threadpresshub · 25 tables")]
+    DB[("<b>DATA LAYER</b><br/>MySQL / MariaDB<br/>threadpresshub · 27 tables")]
     FS["<b>FILE STORAGE</b><br/>uploads/ · images/products/<br/>(Railway volume)"]
-    EX["<b>EXTERNAL SERVICES</b><br/>Google Gemini API (2.5 Flash · 2.5 Flash Image)<br/>PayMongo (GCash · Maya · GrabPay · Card)<br/>SMTP mail"]
+    EX["<b>EXTERNAL SERVICES</b><br/>Google Gemini API (2.5 Flash · 2.5 Flash Image)<br/>PayMongo (GCash · Maya · GrabPay · Card)<br/>Brevo email API / SMTP"]
 
     CL -- "HTTPS: pages + AJAX" --> AL
     AL -- "MySQLi prepared statements" --> DB

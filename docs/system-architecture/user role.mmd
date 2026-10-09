@@ -1,9 +1,9 @@
 %% User roles. Each role has everything in the role above it, plus its own items. Matches SYSTEM_ARCHITECTURE.md section 6.
 flowchart TB
     G["GUEST<br/>Browse shop & product pages<br/>Promotions page<br/>Contact form<br/>Register / Sign in / Reset password"]
-    U["CUSTOMER (Regular)<br/>Cart & Checkout · Coupon codes<br/>Pay Online (PayMongo) or COD<br/>Orders, tracking & invoices<br/>Design Studio & custom orders<br/>Virtual Try-On & AI Stylist<br/>AI Chatbot · Support Chat · Reviews<br/>Saved addresses (up to 3)"]
+    U["CUSTOMER (Regular)<br/>Cart & Checkout · My Vouchers<br/>Pay Online (PayMongo) or COD<br/>Orders, tracking & invoices<br/>Design Studio & custom orders<br/>Virtual Try-On & AI Stylist<br/>AI Chatbot + Live Support · Reviews<br/>Saved addresses (up to 3)"]
     P["PWD / SENIOR CITIZEN<br/>Everything a customer has<br/>+ 20% discount (verified ID)"]
-    A["ADMIN<br/>Dashboard · Products · AI Product Generator<br/>Orders · Users · Coupons<br/>Sales Report (Print / Excel)<br/>Custom Designs & Orders<br/>Support Chat · Contact · Chatbot FAQ<br/>AI Insights · Audit Log"]
+    A["ADMIN<br/>Dashboard · Products · AI Product Generator<br/>Orders · Users · Coupons & Give Vouchers<br/>Sales Report (Print / Excel)<br/>Custom Designs & Orders<br/>Support Chat · Contact · Chatbot FAQ<br/>AI Insights · Audit Log"]
     G -- "registers / signs in" --> U
     U -- "account type PWD or Senior" --> P
     U -. "user_type = admin<br/>(set in the database)" .-> A

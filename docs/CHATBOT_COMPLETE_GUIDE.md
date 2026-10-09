@@ -1,5 +1,7 @@
 # 🤖 Thread and Press Hub - Complete AI Chatbot System Documentation
 
+> **Historical note (updated 2026-10-09):** this guide was written in March 2026 when the chatbot was first added. Setup steps still work, but features changed since then: the AI assistant and Live Support now share one chat window with AI-to-human handoff, and the bot quotes only the customer's own vouchers (no promo codes to type). For the current system see [`../README.md`](../README.md) and [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md).
+
 ## ✨ Overview
 
 Your Thread and Press Hub now has a **complete, enterprise-level AI chatbot system** with multiple intelligent features built-in. This is a production-ready capstone project that demonstrates advanced web development skills.

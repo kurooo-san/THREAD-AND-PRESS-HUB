@@ -10,22 +10,23 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
   - "Passwords match" indicator on the confirm-password field
   - Show/hide password (eye icon) on the login and register forms
   - After signing in, users go back to the page that asked them to log in (e.g. a product or checkout page)
+- **Guest browsing**: Anyone can browse the shop and product pages; adding to cart asks a guest to sign in and finishes the add right after login
 - **Shop**: Filter by who it is for (Men, Women, Kids) and by type, plus colour, size and sort. Active filters show as removable chips
 - **Quick Add**: Pick colour, size and quantity in a bottom sheet, then Add to Cart or Buy Now
 - **Shopping Cart**: Add/remove items with quantity management
 - **Product Reviews**: Star ratings and reviews on product pages
 - **Vouchers**: The admin gives vouchers to customers (no codes to type). They land in **My Vouchers**; at checkout the voucher that saves the most is picked automatically (one discount voucher off the items, one shipping voucher off the delivery fee) and can be switched or removed. A voucher used on an order that gets cancelled goes back to the wallet
   - Percent or fixed discounts, optional minimum subtotal, usage limit and validity dates, all set by the admin
-  - One code per order; works together with the PWD/Senior discount
-  - Checked again on the server when the order is placed, so a code that expired or ran out in the meantime stops the order with a clear message instead of charging a price the customer did not see
-  - Current codes are listed on the **Promotions** page
+  - One discount voucher and one shipping voucher per order; works together with the PWD/Senior discount
+  - Checked again on the server when the order is placed (it must still be in the customer's own wallet), so a voucher that expired or ran out in the meantime stops the order with a clear message instead of charging a price the customer did not see
+  - The **Promotions** page shows public promos and the customer's own vouchers; vouchers given to someone else stay private
 - **Special Discounts**:
   - PWD Discount: 20% off with valid PWD ID
   - Senior Citizen Discount: 20% off with valid Senior ID
 - **Payment Options**:
   - Online payment through PayMongo's hosted checkout (GCash, Maya, cards and GrabPay by default). The amount is always built from the database, never from the browser
   - Cash on Delivery: Pay when order arrives
-- **Order Tracking**: View order history and current status
+- **Order Tracking**: View order history and current status; an open order page updates by itself (with a toast) when the shop changes the status, no refresh needed
 - **PDF Invoices**: Download an invoice for shop orders and custom orders
 - **About & Contact Pages**: Learn more about us and reach out via contact form
 - **User Profile**: Update personal information and manage account
@@ -56,8 +57,9 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 - **Drafts**: Unsaved work is kept on the device and offered back the next time; saved designs can be opened again from **My Designs**
 - **Custom Orders**: Order summary, payment, and a tracking page for each custom order (My Custom Orders)
 
-### 💬 Support Chat
-- Customers can open a conversation with the store and chat with an admin, with unread-message counts and image attachments
+### 💬 Chat Window: AI Assistant + Live Support
+- One floating chat window with two tabs: the **AI Assistant** and **Live Support** (chat with an admin, unread-message badge, image attachments on the full Support Chat page)
+- **AI-to-human handoff**: when the AI cannot help (refunds, complaints, a request for a real person) it offers **Talk to a person**; the customer can also tap that quick button anytime. A Live Support conversation opens with the AI chat attached, so the customer does not repeat themselves
 
 ### 📱 Mobile App Layout & Installable App (PWA)
 - Can be installed on phones and tablets from the browser (manifest + service worker), in portrait or landscape
@@ -220,7 +222,7 @@ At checkout the order is worked out as: item subtotal − PWD/Senior discount �
 
 ## Database Tables
 
-`database/schema.sql` creates all 25 tables. The main ones:
+`database/schema.sql` creates 25 tables; the app creates 2 more on first use (see the last rows). The main ones:
 
 | Table | Holds |
 |---|---|
@@ -234,6 +236,7 @@ At checkout the order is worked out as: item subtotal − PWD/Senior discount �
 | `custom_designs`, `custom_orders` | Design Studio designs and their orders |
 | `audit_log` | Record of important actions |
 | `ai_usage` | One row per AI call, for the hourly limits. Not in `schema.sql`: it is created automatically on the first AI request |
+| `user_coupons` | The voucher wallet: who holds which voucher, the gift note, and the order it was spent on. Not in `schema.sql`: created on first use together with the `coupons.kind` and `orders.shipping_*` columns |
 
 The full ERD of every table and relationship is `docs/system-architecture/ERD.png` (source `ERD.mmd`). See `docs/SYSTEM_ARCHITECTURE.md` for the full picture.
 
@@ -243,7 +246,7 @@ The full ERD of every table and relationship is `docs/system-architecture/ERD.pn
 - ✅ SQL injection prevention with prepared statements
 - ✅ Input sanitization and escaped output
 - ✅ Session-based authentication (new session ID on login to prevent session fixation); session cookie is HttpOnly and SameSite=Lax
-- ✅ CSRF tokens on the login, register, forgot-password and reset-password forms, admin forms (products, chatbot FAQ, contact messages, custom designs, custom orders, payments, admin profile) and admin AI requests
+- ✅ CSRF tokens on every form and every AJAX write (login, register, password reset, checkout, support chat, Design Studio, custom orders, all admin forms and admin AI requests); AJAX sends it in the `X-CSRF-Token` header
 - ✅ One strong password rule (8+ characters with uppercase, lowercase, number and special character) for sign-up, password reset and both profile pages, checked on the server by `passwordMeetsRules()` in `includes/password-rules.php`
 - ✅ Password reset that cannot be abused: the same reply whether or not the email is registered, at most 3 reset emails per account per hour, the reset link is only shown on the page to someone on `localhost` when email sending fails, and a reset signs out every remembered device
 - ✅ Hourly AI limit per customer, so the Gemini quota cannot be drained by one account
@@ -253,6 +256,7 @@ The full ERD of every table and relationship is `docs/system-architecture/ERD.pn
 - ✅ File uploads checked by their real file type (not the name), limited to 5MB, saved under random names
 - ✅ Security headers (nosniff, frame protection, referrer and permissions policy; HSTS on HTTPS). Camera is allowed only on the Try-On page
 - ✅ Secrets in `.env`; database dumps, uploads and customer files are kept out of Git
+- ✅ The database connection is retried briefly when the server starts and DB errors are logged, never shown to visitors
 - ✅ Production hides PHP errors and blocks web access to `storage/`, `.sql`, `.env` and other private files
 
 ## Tests
@@ -260,7 +264,7 @@ The full ERD of every table and relationship is `docs/system-architecture/ERD.pn
 ```
 php vendor/bin/phpunit
 ```
-Covers the helpers, coupons, the size estimate and the password rule (`tests/`).
+Covers the helpers, coupon and voucher rules (including the best-voucher pick), the size estimate and the password rule (`tests/`).
 
 ## File Permissions
 

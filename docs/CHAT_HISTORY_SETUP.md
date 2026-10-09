@@ -1,5 +1,7 @@
 # Chat History Setup Guide
 
+> **Historical note (updated 2026-10-09):** the `chat_history` table is now part of `database/schema.sql`; no separate setup is needed on a fresh install.
+
 ## Overview
 You now have a complete chat history system that:
 - **Stores** all your conversations with the AI chatbot in your database

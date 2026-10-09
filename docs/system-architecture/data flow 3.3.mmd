@@ -8,7 +8,7 @@ flowchart TD
     E --> F[Product Catalog]
     E --> G["This Customer's Orders<br/>(own account only)"]
     E --> H["Delivery Fees &<br/>Payment Options"]
-    E --> I["Promo Codes<br/>usable now"]
+    E --> I["This Customer's<br/>Vouchers"]
     E --> J[Admin FAQ]
     F --> K["Send to Gemini API<br/>(server-side key)"]
     G --> K
@@ -18,3 +18,6 @@ flowchart TD
     K --> L[Return AI Answer]
     L --> M[(chat_history)]
     L --> B
+    L -- "AI adds [[HANDOFF]]<br/>or customer taps<br/>Talk to a person" --> N["New Live Support<br/>conversation with the<br/>AI chat attached"]
+    N --> O["Admin replies<br/>(AI Suggest Reply)"]
+    O --> P["Same chat window,<br/>Live Support tab"]

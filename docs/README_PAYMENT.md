@@ -1,5 +1,7 @@
 # Manual QR Payment — Thread & Press Hub
 
+> **Historical note (updated 2026-10-09):** this describes the older manual QR + receipt upload flow. New orders now pay through PayMongo (or cash); this flow is kept only for old orders (Admin → Payments). See [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md).
+
 A no-gateway, no-business-permit payment flow: the customer pays via a static
 **InstaPay / GCash / Maya** QR, uploads a receipt screenshot + reference
 number, and an **admin verifies** the proof before the order is marked **Paid**.

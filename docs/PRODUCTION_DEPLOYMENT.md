@@ -214,18 +214,15 @@ Run `composer audit` periodically to detect vulnerable dependencies.
 
 ---
 
-## 8. Email (PHPMailer SMTP)
+## 8. Email (Brevo API or SMTP)
 
-In `includes/email-helper.php`, set production SMTP credentials (via env vars):
-```php
-$mail->Host       = getenv('SMTP_HOST');
-$mail->Username   = getenv('SMTP_USER');
-$mail->Password   = getenv('SMTP_PASS');
-$mail->Port       = (int)(getenv('SMTP_PORT') ?: 587);
-$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-```
+`includes/email-helper.php` picks the first one that is configured (environment variables, see `.env.example`):
 
-Recommended providers: SendGrid, Mailgun, Amazon SES, Brevo.
+1. **Brevo HTTPS API**: `BREVO_API_KEY` (starts with `xkeysib-`). Use this on Railway: its Trial/Hobby plans block outbound SMTP ports. In Brevo, turn off IP blocking (Security → Authorised IPs), because Railway's outgoing IPs change.
+2. **SMTP through PHPMailer**: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` (for example Gmail with an app password). Used locally on XAMPP.
+3. PHP `mail()` as a last resort.
+
+`MAIL_FROM` and `MAIL_FROM_NAME` set the sender. Links in emails (order tracking, password reset, shop) are shown as plain text so Brevo's click tracker cannot break them.
 
 ---
 
@@ -247,9 +244,10 @@ After deploying, test these critical paths:
 2. ✅ Register → email verification (if enabled)
 3. ✅ Login → "Remember me" → close browser → still logged in
 4. ✅ Browse shop, add to cart, checkout with COD
-5. ✅ Apply coupon `WELCOME10`, see discount applied
-6. ✅ Place order with GCash → upload payment proof
-7. ✅ Admin login → verify payment → order status changes
+5. ✅ Admin → Coupons → Give a voucher to a test customer → it shows in My Vouchers and is pre-selected at checkout
+6. ✅ Pay Online through PayMongo (test mode) → order becomes paid automatically (webhook)
+7. ✅ Admin changes the order status → the customer's open order page updates without a refresh; cancelling returns the voucher
+7b. ✅ Chat window: ask the AI something, then **Talk to a person** → the conversation appears in Admin → Support Chat
 8. ✅ Download invoice PDF
 9. ✅ Notification bell shows new orders count
 10. ✅ Mobile (Chrome DevTools → 375 px) — all key pages render

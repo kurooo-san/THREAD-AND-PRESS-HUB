@@ -6,7 +6,7 @@
 
 ## 1. System Overview
 
-**Thread & Press Hub** is a full-stack e-commerce web application for selling apparel (t-shirts, hoodies, pants, dresses, accessories) with an integrated **custom apparel Design Studio** (2D canvas + live 3D preview), **AI features powered by Google Gemini** (chatbot, Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generator, admin AI Insights), **online payment through PayMongo**, **vouchers given by the admin**, **sales reporting**, **support chat**, and an **admin dashboard**.
+**Thread & Press Hub** is a full-stack e-commerce web application for selling apparel (t-shirts, hoodies, pants, dresses, accessories) with an integrated **custom apparel Design Studio** (2D canvas + live 3D preview), **AI features powered by Google Gemini** (chatbot, Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generator, admin AI Insights), **online payment through PayMongo**, **vouchers given by the admin**, **sales reporting**, **one chat window for the AI assistant and live support** (with AI-to-human handoff), **live order updates without page reloads**, and an **admin dashboard**.
 
 Live deployment: Railway (Docker, Apache + PHP 8.2). Local development: XAMPP.
 
@@ -23,7 +23,7 @@ Live deployment: Railway (Docker, Apache + PHP 8.2). Local development: XAMPP.
 | **Icons / Fonts** | Font Awesome, Google Fonts |
 | **AI** | Google Gemini API: `gemini-2.5-flash` (text) and `gemini-2.5-flash-image` (images) |
 | **Payment** | PayMongo hosted checkout (GCash, Maya, GrabPay, cards) and Cash on Delivery / Pickup |
-| **Email** | PHPMailer (SMTP) |
+| **Email** | Brevo HTTPS API on Railway (SMTP is blocked there); PHPMailer (SMTP) locally |
 | **PDF** | Dompdf (invoices) |
 | **Excel** | Built-in `.xlsx` writer (`includes/xlsx-writer.php`, uses PHP's zip extension) |
 | **PWA** | Web app manifest + service worker (installable on phones and tablets) |
@@ -43,14 +43,14 @@ Live deployment: Railway (Docker, Apache + PHP 8.2). Local development: XAMPP.
 │                   APPLICATION LAYER (Apache + PHP)                  │
 │                                                                     │
 │  CUSTOMER MODULES                                                   │
-│   Shop & Product pages · Cart & Checkout (VAT, PWD/Senior, coupons) │
-│   Accounts & Addresses · Orders & Invoices · Promotions             │
+│   Shop & Product pages · Cart & Checkout (VAT, PWD/Senior, vouchers)│
+│   Accounts & Addresses · Orders & Invoices (live status) · Vouchers │
 │   Design Studio (2D + 3D) · Virtual Try-On + AI Stylist             │
-│   AI Chatbot · Support Chat · Contact Form · Reviews                │
+│   Chat window: AI assistant + Live Support · Contact · Reviews      │
 │                                                                     │
 │  ADMIN MODULES                                                      │
 │   Dashboard · Products (+ AI Product Generator) · Orders · Users    │
-│   Coupons · Sales Report (Print / Excel) · Payments (legacy proofs) │
+│   Coupons/Vouchers · Sales Report (Print/Excel) · Payments (legacy) │
 │   Custom Designs · Custom Orders · Contact · Support Chat           │
 │   Chatbot FAQ · Audit Log · AI Insights / Suggest Reply             │
 │                                                                     │
@@ -65,7 +65,7 @@ Live deployment: Railway (Docker, Apache + PHP 8.2). Local development: XAMPP.
 │  MySQL `threadpresshub`      │  │ EXTERNAL SERVICES                │
 │  (25 tables, see section 4)  │  │  Google Gemini API               │
 │                              │  │  PayMongo (checkout + webhook)   │
-│  FILE STORAGE                │  │  SMTP mail server                │
+│  FILE STORAGE                │  │  Brevo email API / SMTP          │
 │  uploads/designs, design_    │  └──────────────────────────────────┘
 │  assets, tryon, support,     │
 │  payments · images/products  │
@@ -77,7 +77,7 @@ Live deployment: Railway (Docker, Apache + PHP 8.2). Local development: XAMPP.
 
 ## 4. Database Schema (Entity-Relationship)
 
-One database, `threadpresshub`. `database/schema.sql` creates all **25 tables**; a 26th, `ai_usage` (one row per AI call, for the hourly limits), is created by the app on the first AI request.
+One database, `threadpresshub`. `database/schema.sql` creates **25 tables**. The app creates two more on first use: `ai_usage` (one row per AI call, for the hourly limits) and `user_coupons` (the voucher wallet), together with the `coupons.kind` and `orders.shipping_coupon_code` / `shipping_discount` columns (`vouchersReady()` in `includes/vouchers.php`).
 
 **Full ERD:** `docs/system-architecture/ERD.png` (source: `ERD.mmd`, also `ERD.svg`). It is generated from the live schema: solid lines are FOREIGN KEY constraints, dashed lines are links the code uses without a constraint (for example `orders.coupon_code → coupons.code`).
 
@@ -86,7 +86,7 @@ One database, `threadpresshub`. `database/schema.sql` creates all **25 tables**;
 | **Accounts** | `users` (role in `user_type`: regular, pwd, senior, admin; PWD/Senior ID), `user_addresses` (up to 3 saved addresses), `password_resets`, `remember_tokens`, `login_attempts` |
 | **Catalog** | `products` (gender, colours, sizes, price, stock, image, AI print file), `product_reviews` (1–5 stars, verified purchase) |
 | **Shop orders** | `orders` (subtotal, PWD/Senior discount, item and shipping vouchers + discounts, delivery fee, total, payment method/status), `order_items` |
-| **Promotions** | `coupons` (percent/fixed, minimum subtotal, max uses, times used, validity dates, active flag) |
+| **Vouchers** | `coupons` (kind: discount or shipping; percent/fixed, minimum subtotal, max uses, times used, validity dates, active flag), `user_coupons` (who holds which voucher, gift note, who gave it, when it was used and on which order) |
 | **Custom design** | `custom_designs` (front/back images, editor data, print files), `custom_orders`, `custom_order_payments` |
 | **Payments** | `paymongo_sessions` (online checkout sessions for shop and custom orders), `payment_submissions` and `gcash_transactions` (legacy manual payments, kept for old orders) |
 | **Support** | `support_conversations`, `support_messages`, `chat_history` (AI chatbot), `chatbot_faq`, `contact_messages`, `contact_messages_responses`, `contact_categories` |
@@ -97,7 +97,8 @@ Key relationships:
 - `users` 1—N `orders`, `custom_designs`, `custom_orders`, `product_reviews`, `user_addresses`, `support_conversations`, `chat_history`
 - `orders` 1—N `order_items`; `products` 1—N `order_items` and `product_reviews`
 - `custom_designs` 1—N `custom_orders`; `custom_orders` 1—N `custom_order_payments`
-- `coupons` 1—N `orders` (by `coupon_code`); each order keeps its own copy of the code and discount, so editing or deleting a coupon never changes a past order
+- `users` 1—N `user_coupons` N—1 `coupons`: one row per voucher given; `used_at` + `order_id` are set when it is spent and cleared again if that order is cancelled
+- `coupons` 1—N `orders` (by `coupon_code` and `shipping_coupon_code`); each order keeps its own copy of the codes and discounts, so editing or deleting a coupon never changes a past order
 - `paymongo_sessions` → `orders` or `custom_orders` (by `order_kind` + `order_id`)
 
 ---
@@ -118,7 +119,7 @@ Key relationships:
 | Component | File | Description |
 |-----------|------|-------------|
 | Homepage | `index.php` | Hero, categories, new arrivals, AI Try-On spotlight |
-| Shop | `shop.php` | Filters (Men/Women/Kids, type, colour, size), search, sort, Quick Add |
+| Shop | `shop.php` | Filters (Men/Women/Kids, type, colour, size), search, sort, Quick Add. Guests can browse; adding to cart asks them to sign in and finishes the add after login |
 | Product page | `product.php` | Details, colours/sizes, stock, reviews (`includes/reviews.php`) |
 | Promotions | `promotion.php` | Public promos (coupons not yet given to anyone) plus the viewer's own vouchers |
 | Info pages | `pages.php`, `about.php`, `privacy-policy.php` | Size guide, FAQs, policies |
@@ -127,29 +128,29 @@ Key relationships:
 | Component | File | Description |
 |-----------|------|-------------|
 | Cart | `cart.php` | Cart with selectable lines; Buy Now skips the cart (`js/buy-now.js`) |
-| Checkout | `checkout.php` | Saved address or new one, delivery area/fee (`includes/delivery-zones.php`), PWD/Senior discount, **coupon box**, 12% VAT, payment method. Prices are always recomputed from the database |
-| Coupon check | `includes/validate-coupon.php` | AJAX preview of a code; the server checks it again when the order is placed |
+| Checkout | `checkout.php` | Saved address or new one, delivery area/fee (`includes/delivery-zones.php`), PWD/Senior discount, **voucher picker** (best voucher pre-selected; one discount + one shipping voucher), 12% VAT, payment method. Prices are always recomputed from the database |
+| Voucher rules | `includes/vouchers.php` | `couponCheck()` (pure rules, unit-tested), `voucherBestPick()`, wallet, claim and release |
 | Online payment | `paymongo-checkout.php`, `paymongo-return.php`, `paymongo-webhook.php`, `includes/paymongo.php`, `includes/paymongo-fulfil.php` | PayMongo hosted checkout; the webhook marks the order paid |
 | Confirmation | `order_confirmation.php` | Summary with the full price breakdown |
 
 ### 5.4 Order Management Module
 | Component | File | Description |
 |-----------|------|-------------|
-| My Orders | `orders.php`, `order_details.php` | History, status, coupon/discount lines |
+| My Orders | `orders.php`, `order_details.php` | History, status, voucher/discount lines; the page updates by itself when the shop changes the status (`js/live-status.js` polling `order-status.php`) |
 | Invoices | `invoice.php`, `custom-invoice.php` | PDF invoices (Dompdf) |
-| Admin Orders | `admin/orders.php`, `admin/order_details.php` | Status updates, payment status, full breakdown |
+| Admin Orders | `admin/orders.php`, `admin/order_details.php` | Status updates and Verify/Reject payment save without reloading (`<form data-ajax>`); cancelling returns the order's vouchers |
 
-### 5.5 Coupons & Promotions Module
+### 5.5 Vouchers Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Admin Coupons | `admin/coupons.php` | Create, edit, activate/deactivate, delete; shows status, uses and discount given |
-| Rules | `includes/config.php` | `validateCoupon()`, `incrementCouponUsage()` (atomic: cannot exceed max uses), `couponStatus()` |
-| Customer side | `checkout.php`, `promotion.php`, chatbot | Apply at checkout; listed on Promotions; the chatbot quotes codes usable right now |
+| Admin Coupons | `admin/coupons.php` | Create, edit, activate/deactivate, delete; **Give** to selected customers or all, with a gift note (customer is emailed); shows status, holders, uses and discount given |
+| Rules | `includes/vouchers.php`, `includes/config.php` | `couponCheck()`, `voucherGive()`, `voucherClaim()` + `incrementCouponUsage()` (atomic: cannot exceed max uses), `voucherRelease()` (on cancel), `couponStatus()` |
+| Customer side | `vouchers.php`, `checkout.php`, `promotion.php`, chatbot | My Vouchers wallet; auto-picked at checkout; Promotions shows public promos and the viewer's own vouchers; the chatbot quotes only this customer's vouchers |
 
 ### 5.6 Sales Report Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Sales Report | `admin/reports.php` | Any date range: totals, discounts, delivery fees, cancelled, daily chart, top products, by payment method, order list; Print layout |
+| Sales Report | `admin/reports.php` | Any date range: totals, discounts (PWD/Senior, item vouchers, shipping vouchers), delivery fees, cancelled, daily chart, top products, by payment method, order list; Print layout |
 | Excel export | `includes/xlsx-writer.php` | Formatted `.xlsx`: Summary, Orders, Top Products, Daily Sales |
 
 ### 5.7 Custom Design Module
@@ -164,18 +165,19 @@ Key relationships:
 ### 5.8 AI Module (Google Gemini)
 | Component | File | Description |
 |-----------|------|-------------|
-| Chatbot | `js/chatbot.js`, `includes/gemini_api.php` | Store-aware assistant (products, the customer's own orders, delivery, payment, their own vouchers); hands off to Live Support |
+| Chatbot | `js/chatbot.js`, `includes/gemini_api.php` | Store-aware assistant (products, the customer's own orders, delivery, payment, their own vouchers). When it cannot help it offers **Talk to a person**, which opens a Live Support conversation with the AI chat attached |
 | Virtual Try-On | `try-on.php`, `js/try-on.js`, `includes/tryon-ajax.php`, `tryon-save.php` | AI image of the customer wearing a product |
 | AI Stylist / Size finder | `includes/tryon-suggest.php`, `includes/tryon-size.php` | Product suggestions; size from height/weight (formula fallback) |
 | AI Design Generator | `includes/custom-design-ajax.php` | Artwork from a text prompt |
 | AI Product Generator | `admin/ai-product-ajax.php` | Drafts product details, print artwork and photo; admin approves |
-| AI Insights / Suggest Reply | `admin/ai-assistant-ajax.php`, `js/admin-ai.js` | Read-only answers from a fixed data snapshot (sales, stock, coupons, discounts); drafts support replies |
+| AI Insights / Suggest Reply | `admin/ai-assistant-ajax.php`, `js/admin-ai.js` | Read-only answers from a fixed data snapshot (sales, stock, coupons, discounts); drafts support replies that quote only that customer's vouchers |
 | Hourly limits | `ai_usage` table | Per-customer, per-feature limits; admins unlimited |
 
 ### 5.9 Support & Contact Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Support Chat | `support-chat.php`, `js/support-chat.js`, `includes/support-chat-ajax.php`, `includes/support-chat-config.php` | Customer ↔ admin chat with images and unread counts |
+| Chat window | `includes/footer/footer.php`, `js/chatbot.js` | One floating window with two tabs: AI Assistant and Live Support (conversations, unread badge, handoff) |
+| Support Chat | `support-chat.php`, `js/support-chat.js`, `includes/support-chat-ajax.php`, `includes/support-chat-config.php` | Full-page customer ↔ admin chat with images and unread counts |
 | Admin Chat | `admin/support-chat.php` | Conversations, AI Suggest Reply |
 | Contact Form | `contact.php`, `includes/contact-config.php`, `admin/contact-management.php` | Categorised messages, responses |
 | Chatbot FAQ | `admin/chatbot-faq.php` | Admin-managed answers the chatbot uses |
@@ -205,17 +207,17 @@ Key relationships:
 │ Browse shop / products │   ✓   │  ✓   │   ✓    │     ✓       │
 │ Promotions page        │   ✓   │  ✓   │   ✓    │     ✓       │
 │ Cart & Checkout        │   ✗   │  ✓   │   ✓    │     ✓       │
-│ Coupon at checkout     │   ✗   │  ✓   │   ✓    │     ✓       │
+│ Vouchers (wallet)      │   ✗   │  ✓   │   ✓    │     ✗       │
 │ 20% PWD/Senior discount│   ✗   │  ✗   │   ✓    │     ✗       │
 │ Design Studio          │   ✗   │  ✓   │   ✓    │     ✓       │
 │ Try-On (AI generation) │   ✗   │  ✓   │   ✓    │     ✓       │
 │ AI Chatbot             │   ✗   │  ✓   │   ✓    │     ✓       │
-│ Support Chat           │   ✗   │  ✓   │   ✓    │     ✓       │
+│ Live Support / handoff │   ✗   │  ✓   │   ✓    │     ✓       │
 │ Contact Form           │   ✓   │  ✓   │   ✓    │     ✓       │
 │ Orders / Invoices      │   ✗   │  ✓   │   ✓    │     ✓       │
 │ Password Reset         │   ✓   │  ✓   │   ✓    │     ✓       │
 │ Admin panel (all pages)│   ✗   │  ✗   │   ✗    │     ✓       │
-│ Coupons / Sales Report │   ✗   │  ✗   │   ✗    │     ✓       │
+│ Give vouchers / Report │   ✗   │  ✗   │   ✗    │     ✓       │
 │ AI Insights            │   ✗   │  ✗   │   ✗    │     ✓       │
 └────────────────────────┴───────┴──────┴────────┴─────────────┘
 ```
@@ -229,11 +231,11 @@ Key relationships:
 ┌──────┐   ┌────────┐   ┌──────┐   ┌───────────────────────────────┐
 │ User │──>│ Browse │──>│ Cart │──>│ Checkout                      │
 └──────┘   └────────┘   └──────┘   │ address → area fee            │
-                                   │ PWD/Senior 20% → coupon       │
+                                   │ PWD/Senior 20% → vouchers     │
                                    │ → 12% VAT → total             │
                                    └──────────────┬────────────────┘
                                    Server re-prices from DB and
-                                   re-checks the coupon on submit
+                                   re-checks the vouchers on submit
                                                   │
                          ┌────────────────────────┴───────────────┐
                          ▼                                        ▼
@@ -245,7 +247,8 @@ Key relationships:
                          └──────────────┬───────────────────────┘
                                         ▼
   Pending → Confirmed → Preparing → Out for Delivery → Completed  (or Cancelled)
-                       (status set by admin)
+         (status set by admin; the customer's order page updates live;
+          Cancelled returns the vouchers to the wallet)
 ```
 
 ### 7.2 Custom Design Order Flow
@@ -260,24 +263,31 @@ Key relationships:
   (or Cancelled; status set by admin)
 ```
 
-### 7.3 Coupon Flow
+### 7.3 Voucher Flow
 ```
-Admin creates code (admin/coupons.php)
-   │
-   ├──> Promotions page and chatbot list it (only while usable)
+Admin creates a coupon (admin/coupons.php) ──> Give to selected / all customers
+   │                                              (user_coupons row + email)
    ▼
-Customer types code at checkout ──> validate-coupon.php (preview)
+Customer: My Vouchers · chatbot knows them · Promotions shows them
+   │
+   ▼ Checkout
+Best discount + best shipping voucher pre-selected (voucherBestPick); can switch/remove
    │
    ▼ Place Order
-Server: validateCoupon() again ──fail──> order stopped, reason shown
+Server: voucher must be in THIS customer's wallet, unused, and pass couponCheck()
+   ──fail──> order stopped, reason shown
    │ ok
    ▼
-Inside the order transaction: incrementCouponUsage()
-   (UPDATE ... WHERE times_used < max_uses — only one checkout can take the last use)
+Inside the order transaction: voucherClaim()
+   (wallet row marked used + UPDATE ... WHERE times_used < max_uses —
+    only one checkout can take the last use)
    │
    ▼
-orders.coupon_code + coupon_discount saved → shown on order, invoice, email,
-Sales Report and AI Insights
+orders.coupon_code / shipping_coupon_code + discounts saved → shown on order,
+invoice, email, Sales Report and AI Insights
+   │
+   ▼ if the admin cancels the order
+voucherRelease(): voucher back in the wallet, one use freed
 ```
 
 ### 7.4 AI Chatbot Flow
@@ -288,6 +298,12 @@ User message ──> includes/gemini_api.php
                    │  payment options · this customer's vouchers · admin FAQ
                    ▼
                  Gemini API (server-side key) ──> reply ──> saved to chat_history
+                   │
+                   │ AI marks [HANDOFF] (or customer taps "Talk to a person")
+                   ▼
+                 support-chat-ajax.php: new Live Support conversation with the
+                 AI chat attached ──> admin answers in admin/support-chat.php
+                 (AI Suggest Reply can draft it) ──> same chat window, Live tab
 ```
 
 ---
@@ -304,13 +320,14 @@ User message ──> includes/gemini_api.php
 │     • One-time, expiring password reset links               │
 │                                                             │
 │  2. REQUEST INTEGRITY                                       │
-│     • CSRF tokens on forms and admin AJAX                   │
+│     • CSRF tokens on every form and every AJAX write        │
+│       (X-CSRF-Token header; window.CSRF_TOKEN from footer)  │
 │     • Admin check on every admin page and endpoint          │
 │     • Safe post-login redirects (same site only)            │
 │                                                             │
 │  3. PRICING & PAYMENT                                       │
 │     • Order prices recomputed from the database             │
-│     • Coupons validated on the server; usage claimed        │
+│     • Vouchers must belong to the customer; usage claimed   │
 │       atomically inside the order transaction               │
 │     • PayMongo amounts built from the database; webhook     │
 │       signature checked; card data never touches the site   │
@@ -318,6 +335,8 @@ User message ──> includes/gemini_api.php
 │  4. DATABASE                                                │
 │     • Prepared statements; transactions for order + stock   │
 │     • Foreign keys with CASCADE; utf8mb4                    │
+│     • One connection per request, retried on cold start;    │
+│       DB errors are logged, never shown to the visitor      │
 │                                                             │
 │  5. FILE UPLOADS                                            │
 │     • Real file type checked, 5MB limit, random names       │
@@ -341,7 +360,8 @@ User message ──> includes/gemini_api.php
 ```
 thread-and-presshub/
 ├── *.php                  Customer pages (index, shop, product, cart, checkout,
-│                          orders, custom-design, try-on, promotion, support-chat ...)
+│                          orders, vouchers, custom-design, try-on, promotion,
+│                          support-chat, order-status (live poll) ...)
 ├── paymongo-*.php         PayMongo checkout, return and webhook
 ├── admin/                 Admin pages (dashboard, products, orders, users, coupons,
 │                          reports, custom-designs, custom-orders, support-chat,
@@ -349,13 +369,14 @@ thread-and-presshub/
 │                          admin AJAX (ai-assistant-ajax, ai-product-ajax)
 ├── includes/              config, helpers, AJAX endpoints, header/footer,
 │                          paymongo, delivery-zones, apparel-config, xlsx-writer ...
-├── js/                    chatbot, try-on, design-3d, support-chat, admin-ai,
-│                          admin-sidebar, app-shell (PWA), buy-now ...
+├── js/                    chatbot (AI + Live Support window), live-status, try-on,
+│                          design-3d, support-chat, admin-ai, admin-sidebar,
+│                          app-shell (PWA), buy-now ...
 ├── css/                   Stylesheets (light + dark mode)
 ├── images/                Product images, 3D models (images/models/web)
 ├── uploads/               designs, design_assets, tryon, support, payments
 │                          (Railway: moved onto a volume by docker/start.sh)
-├── database/              schema.sql (25 tables) and migrate_*.sql
+├── database/              schema.sql (25 tables; 2 more made on first use) and migrate_*.sql
 ├── docs/                  Guides and diagrams (system-architecture/ERD.png)
 ├── scripts/               Command-line maintenance (migrate, seed, cleanup)
 ├── tests/                 PHPUnit tests
@@ -370,16 +391,17 @@ thread-and-presshub/
 | Endpoint | Method | Purpose | Auth |
 |----------|--------|---------|------|
 | `includes/gemini_api.php` | POST | AI chatbot | Customer login |
-| `includes/validate-coupon.php` | POST | Preview a coupon at checkout | Customer login |
-| `includes/custom-design-ajax.php` | POST | Save/list/load designs, uploads, AI artwork | Customer login |
+| `includes/custom-design-ajax.php` | POST | Save/list/load designs, uploads, AI artwork | Customer login + CSRF |
 | `includes/tryon-ajax.php`, `tryon-suggest.php`, `tryon-size.php`, `tryon-save.php` | POST | Try-On, AI Stylist, size finder, saved looks | Customer login |
-| `includes/support-chat-ajax.php` | POST | Support chat messages | Login |
+| `includes/support-chat-ajax.php` | POST | Live Support conversations, messages, AI handoff | Login + CSRF |
+| `order-status.php` | GET | Version stamp polled by `js/live-status.js` | Order owner or admin |
 | `includes/product-recommendations.php` | POST | Product search & suggestions | — |
 | `includes/order-lookup.php` | POST | Order status lookup (the customer's own orders only) | Customer login |
 | `paymongo-webhook.php` | POST | PayMongo payment events (signature checked) | PayMongo |
 | `admin/ai-assistant-ajax.php` | POST | AI Insights, Suggest Reply | Admin + CSRF |
 | `admin/ai-product-ajax.php` | POST | AI Product Generator | Admin + CSRF |
 | `admin/reports.php?export=xlsx` | GET | Sales report Excel download | Admin |
+| `admin/orders.php` (`X-Requested-With: fetch`) | POST | Status change, Verify/Reject payment without reload | Admin + CSRF |
 
 ---
 

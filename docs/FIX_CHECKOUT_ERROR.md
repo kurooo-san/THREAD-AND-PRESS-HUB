@@ -1,5 +1,7 @@
 # Fix: Add to Cart + Checkout Error
 
+> **Historical note (updated 2026-10-09):** a one-time fix for old databases. `database/schema.sql` already has the `color` and `size` columns.
+
 ## Problem
 When trying to checkout, you get this error:
 ```

@@ -46,7 +46,7 @@ flowchart TD
     F -- "Yes" --> G["Select product, colour and size"]
     G --> H["Add to cart"]
     H --> I["Checkout — PWD/Senior discount, auto-picked voucher, 12% VAT"]
-    I --> V{"Coupon still valid?"}
+    I --> V{"Voucher still valid?"}
     V -- "No" --> I
     V -- "Yes or none" --> J{"Payment method?"}
     J -- "Cash on Delivery" --> L
@@ -122,10 +122,10 @@ flowchart TD
     HUB -- "Buy ready-made" --> PICK["Choose colour, size,<br/>quantity"]
     PICK --> CART["Add to cart"]
     CART --> CHK["Checkout<br/>delivery or pickup,<br/>Senior / PWD 20% discount,<br/>voucher (auto-picked), 12% VAT"]
-    CHK --> CPN{"Coupon entered?"}
-    CPN -- "Yes" --> CPV{"Server: still valid<br/>and a use left?"}
+    CHK --> CPN{"Voucher selected?"}
+    CPN -- "Yes" --> CPV{"Server: in this wallet,<br/>unused, still valid,<br/>a use left?"}
     CPV -- "No" --> CHK
-    CPV -- "Yes" --> CPDB[("coupons.times_used + 1<br/>orders.coupon_code saved")]
+    CPV -- "Yes" --> CPDB[("user_coupons.used_at set<br/>coupons.times_used + 1<br/>orders.coupon_code saved")]
     CPDB --> PAY
     CPN -- "No" --> PAY{"Payment method?"}
 
@@ -198,6 +198,9 @@ flowchart TD
     CPCHK -- "No" --> CPACT
     CPCHK -- "Yes" --> CPDB2[("coupons")]
     CPACT -- "Activate / deactivate<br/>or delete" --> CPDB2
+    CPACT -- "Give" --> GIVE["Pick customers or all<br/>+ gift note"]
+    GIVE --> GDB[("user_coupons<br/>+ email to customer")]
+    GDB --> DASH
     CPDB2 --> DASH
 
     TASK -- "Sales Report" --> RANGE["Pick a date range<br/>totals, discounts, daily chart,<br/>top products, payment methods"]
@@ -253,7 +256,7 @@ to a specific branch in a specific file.
 | --- | --- | --- |
 | Credentials valid? | `login.php` | `password_verify()`, the `users.status` column, and a 5-attempt limit from `login_attempts` |
 | Administrator account? | `login.php` | `user_type === 'admin'` routes to the admin dashboard |
-| Coupon still valid? | `checkout.php`, `includes/config.php` | `validateCoupon()` re-checks the code on submit; `incrementCouponUsage()` claims a use only while `times_used < max_uses` |
+| Voucher still valid? | `checkout.php`, `includes/vouchers.php` | `voucherGet()` checks the voucher is in this customer's wallet and unused, `couponCheck()` re-checks the rules on submit; `voucherClaim()` claims a use only while `times_used < max_uses`. Cancelling the order runs `voucherRelease()` |
 | Payment method? | `checkout.php` | Cash on Delivery confirms immediately; Pay Online redirects to `paymongo-checkout.php` |
 | Paid? | `paymongo-webhook.php`, `includes/paymongo-fulfil.php` | A signed PayMongo event sets `payment_status = verified` and moves a pending order to `confirmed` |
 | Payment proof valid? (legacy) | `admin/payment-verification.php` | Approve sets `verified`; reject sets `rejected` |

@@ -1,5 +1,7 @@
 # Gemini AI Chatbot Integration Guide
 
+> **Historical note (updated 2026-10-09):** written when the chatbot was first connected to Gemini. The chatbot now also knows the customer's own vouchers and hands off to Live Support in the same chat window. See [`../README.md`](../README.md) and [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md).
+
 ## Overview
 Your Thread and Press Hub chatbot is now powered by Google's Gemini AI, providing intelligent, context-aware responses to customer inquiries.
 

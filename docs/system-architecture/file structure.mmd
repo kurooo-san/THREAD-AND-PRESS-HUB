@@ -1,7 +1,7 @@
 %% Project folders. Matches docs/SYSTEM_ARCHITECTURE.md section 9.
 flowchart LR
     R["thread-and-presshub/"]
-    R --> RT["Root pages<br/>index · shop · product · cart<br/>checkout · orders · promotion<br/>custom-design · try-on<br/>support-chat · contact"]
+    R --> RT["Root pages<br/>index · shop · product · cart<br/>checkout · orders · vouchers · promotion<br/>custom-design · try-on<br/>support-chat · order-status · contact"]
     R --> PM["paymongo-*.php<br/>checkout · return · webhook"]
     R --> AD["admin/"]
     AD --> AD1["dashboard · products · orders · users"]
@@ -12,8 +12,8 @@ flowchart LR
     R --> IN["includes/"]
     IN --> IN1["config · header/ · footer/"]
     IN --> IN2["gemini_api · tryon-* · custom-design-ajax"]
-    IN --> IN3["paymongo · validate-coupon<br/>delivery-zones · xlsx-writer"]
-    R --> JS["js/<br/>chatbot · try-on · design-3d<br/>admin-ai · app-shell"]
+    IN --> IN3["paymongo · vouchers<br/>delivery-zones · xlsx-writer"]
+    R --> JS["js/<br/>chatbot · live-status · try-on<br/>design-3d · admin-ai · app-shell"]
     R --> CS["css/"]
     R --> IM["images/<br/>products/ · models/web/"]
     R --> UP["uploads/<br/>designs · design_assets<br/>tryon · support · payments"]

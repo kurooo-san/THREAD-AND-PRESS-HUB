@@ -3,6 +3,8 @@
 %% constraints; dashed lines are links the code uses without a constraint.
 %% ai_usage (one row per AI call, for the hourly limits) is left out: it is not in
 %% schema.sql because the app creates it on the first AI request.
+%% user_coupons, coupons.kind and orders.shipping_* are created by the app on first
+%% use (vouchersReady() in includes/vouchers.php); they are drawn here.
 erDiagram
     audit_log {
         int id PK
@@ -69,6 +71,7 @@ erDiagram
         int id PK
         varchar code UK
         varchar description
+        enum kind "discount or shipping"
         enum discount_type
         decimal discount_value
         decimal min_subtotal
@@ -78,6 +81,16 @@ erDiagram
         datetime valid_until
         tinyint is_active
         timestamp created_at
+    }
+    user_coupons {
+        int id PK
+        int user_id "ref users.id"
+        int coupon_id "ref coupons.id"
+        varchar note
+        int given_by "ref users.id"
+        timestamp given_at
+        datetime used_at
+        int order_id "ref orders.id"
     }
     custom_designs {
         int id PK
@@ -172,6 +185,8 @@ erDiagram
         enum discount_type
         varchar coupon_code "ref coupons.code"
         decimal coupon_discount
+        varchar shipping_coupon_code "ref coupons.code"
+        decimal shipping_discount
         decimal delivery_fee
         decimal total
         enum payment_method
@@ -323,6 +338,9 @@ erDiagram
     support_conversations ||--o{ support_messages : "contains"
     contact_messages ||--o{ contact_messages_responses : "answered by"
     coupons |o..o{ orders : "applied to"
+    users ||..o{ user_coupons : "holds voucher"
+    coupons ||..o{ user_coupons : "given as"
+    orders |o..o{ user_coupons : "spent on"
     orders ||..o{ payment_submissions : "manual proof"
     orders ||..o{ paymongo_sessions : "paid online"
     custom_orders ||..o{ paymongo_sessions : "paid online"

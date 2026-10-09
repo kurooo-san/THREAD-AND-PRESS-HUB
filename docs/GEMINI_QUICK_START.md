@@ -1,5 +1,7 @@
 # Gemini AI Chatbot - Quick Start
 
+> **Historical note (updated 2026-10-09):** written when the chatbot was first connected to Gemini. The chatbot now also knows the customer's own vouchers and hands off to Live Support in the same chat window. See [`../README.md`](../README.md) and [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md).
+
 ## What Was Done ✅
 
 Your Thread and Press Hub chatbot is now integrated with **Google's Gemini AI**!

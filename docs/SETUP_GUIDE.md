@@ -1,174 +1,69 @@
-# Thread and Press Hub - Quick Setup Guide
+# Thread & Press Hub — Setup Guide
 
-## Step 1: Database Setup
+Local setup on XAMPP. For the full feature list see [`../README.md`](../README.md); for how the parts fit together see [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md).
 
-### Option A: Using phpMyAdmin (Recommended)
-1. Open your browser and go to `http://localhost/phpmyadmin`
-2. Click on "New" to create a new database
-3. Enter database name: `threadpresshub`
-4. Click "Create"
-5. Click on the `threadpresshub` database
-6. Go to "Import" tab
-7. Click "Choose File" and select `database/dumps/threadpresshub.sql`
-8. Click "Go" or "Import"
+## Requirements
 
-### Option B: Using Command Line
-```bash
-mysql -u root -p < database/dumps/threadpresshub.sql
+- XAMPP with PHP 8.0+ (extensions: mysqli, gd, fileinfo, zip, mbstring) and MySQL/MariaDB
+- Composer
+- A modern browser (the Try-On camera needs `localhost` or HTTPS)
+
+## 1. Files and dependencies
+
+Put the project in `C:\xampp\htdocs\thread-and-presshub\`, then in that folder run:
+
+```
+composer install
 ```
 
-## Step 2: Verify File Structure
+## 2. Database
 
-Ensure these folders exist:
-- `C:\xampp\htdocs\threadpresshub\images\`
-- `C:\xampp\htdocs\threadpresshub\images\products\`
-- `C:\xampp\htdocs\threadpresshub\admin\`
-- `C:\xampp\htdocs\threadpresshub\includes\`
-- `C:\xampp\htdocs\threadpresshub\css\`
+1. Start **Apache** and **MySQL** in the XAMPP Control Panel.
+2. Open `http://localhost/phpmyadmin`, create a database named `threadpresshub`.
+3. Import `database/schema.sql` (25 tables).
+4. Optional sample products: run `php scripts/insert_sample_products.php`.
 
-Create them if they don't exist.
+Two more tables are created by the app on first use: `ai_usage` (AI hourly limits) and `user_coupons` (the voucher wallet).
+Updating an older database instead? Run the `database/migrate_*.sql` files you are missing, or open `scripts/migrate.php` once.
 
-## Step 3: Set File Permissions (Windows)
+## 3. Configuration
 
-Right-click on `threadpresshub` folder → Properties:
-1. Go to Security tab
-2. Click Edit
-3. Select Users/your username
-4. Check "Modify" permission
-5. Apply and OK
+Copy `.env.example` to `.env`. XAMPP's database defaults work as is. Fill in what you need:
 
-## Step 4: Start XAMPP
+| Setting | For |
+|---|---|
+| `GEMINI_API_KEY` | Chatbot, Try-On, AI Stylist, AI Design, AI Insights, AI Product Generator |
+| `PAYMONGO_SECRET_KEY`, `PAYMONGO_PUBLIC_KEY`, `PAYMONGO_WEBHOOK_SECRET` | Pay Online (GCash, Maya, GrabPay, card) |
+| `BREVO_API_KEY` or `SMTP_*`, `MAIL_FROM*` | Emails (order updates, vouchers, password reset) |
+| `STORE_EMAIL` | Support email shown on the site |
 
-1. Open XAMPP Control Panel
-2. Start Apache (click Start)
-3. Start MySQL (click Start)
+Test email sending locally by opening `http://localhost/thread-and-presshub/scripts/test_email.php?to=you@example.com`.
 
-## Step 5: Access the Application
+## 4. Admin account
 
-Open your browser and visit:
+Register a normal account, then set its `user_type` to `admin` in the `users` table (phpMyAdmin).
+
+## 5. Open the site
+
+- Shop: `http://localhost/thread-and-presshub/`
+- Admin: sign in with the admin account; you land on the dashboard.
+
+## Default settings
+
+| Setting | Value | Where |
+|---|---|---|
+| Delivery fee | By area (Rizal/Metro Manila, nearby provinces, rest of PH); Store Pickup is free | `includes/delivery-zones.php` |
+| VAT | 12%, added at checkout | `checkout.php` |
+| PWD / Senior discount | 20% with a verified ID | `includes/config.php` (`calculateDiscount()`) |
+| Vouchers | Given by the admin (Admin → Coupons → Give) | `includes/vouchers.php` |
+| Currency / timezone | Philippine peso, Asia/Manila | `includes/config.php` |
+
+## Tests
+
 ```
-http://localhost/threadpresshub/
-```
-
-## First Login
-
-Register a normal account, then set its user_type to 'admin' in the users table (phpMyAdmin).
-
-## Step 6: Add Products
-
-1. Login as admin
-2. Go to Admin Dashboard
-3. Click "Manage Products"
-4. Add your coffee menu items
-
-## Troubleshooting
-
-### Error: "Connection failed"
-- Verify MySQL is running
-- Check database name in `includes/config.php`
-- Default config: host=localhost, user=root, password=(empty)
-
-### Error: "No such file or directory"
-- Check if `database/dumps/threadpresshub.sql` exists in the main folder
-- Check file paths in includes/config.php
-
-### Images not uploading
-- Ensure `images/products/` folder exists
-- Check folder permissions (set to writable)
-- Check file upload size limit in php.ini
-
-### Cart not working
-- Check browser localStorage is enabled
-- Clear browser cache
-- Try in a different browser
-
-## Features Overview
-
-### Customer Dashboard
-- Browse menu
-- Add to cart
-- Checkout with discounts
-- Multiple payment options
-- Track orders
-
-### Admin Dashboard
-- Manage products
-- Manage orders
-- Track revenue
-- View user accounts
-
-## Discount Types
-
-1. **PWD** - 12% off (requires valid PWD ID)
-2. **Senior** - 15% off (requires valid Senior ID)
-3. **Regular** - No discount
-
-## Payment Methods
-
-1. **GCash** - Digital payment with reference verification
-2. **Cash on Delivery** - Pay when order arrives
-
-## Default Settings
-
-- Delivery Fee: ₱50
-- Currency: Philippine Pesos (₱)
-- Timezone: Asia/Manila (can be changed in config.php)
-
-## Database Tables
-
-- `users` - Customer accounts
-- `products` - Menu items
-- `orders` - Customer orders
-- `order_items` - Items in each order (now records selected color/size if applicable)
-- `gcash_transactions` - Payment records
-
-## Next Steps
-
-1. ✅ Database setup
-2. ✅ File structure verification
-3. ✅ XAMPP running
-4. ✅ Admin account configured
-5. 📝 Add your coffee products
-6. 🎨 Customize branding (optional)
-7. 🚀 Ready to accept orders!
-
-## Customization
-
-### Change App Name
-Edit in files:
-- `includes/header.php` - Line with "threadpresshub"
-- `css/style.css` - Branding colors
-
-### Change Colors
-In `css/style.css`, modify:
-```css
---coffee-dark: #2d1810;
---accent-green: #00704a;
+php vendor/bin/phpunit
 ```
 
-### Add New Discount
-In `includes/config.php`, edit `calculateDiscount()` function
+## Going live
 
-### Change Delivery Fee
-In `checkout.php` and `cart.php`, update `DELIVERY_FEE` value
-
-## Support Resources
-
-- Check README.md for detailed documentation
-- Verify all files are present
-- Check browser console for errors (F12)
-- Check PHP error logs in XAMPP
-
-## Security Reminders
-
-⚠️ Before going live:
-1. Change admin password
-2. Use HTTPS (SSL certificate)
-3. Update database credentials
-4. Implement proper GCash API integration
-5. Regular backups
-6. Keep PHP/MySQL updated
-
----
-
-For detailed documentation, see `README.md`
+The live site runs on Railway from the `Dockerfile`; see [`PRODUCTION_DEPLOYMENT.md`](PRODUCTION_DEPLOYMENT.md) and the Deployment section of the README.

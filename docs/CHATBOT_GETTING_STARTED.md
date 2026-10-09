@@ -1,5 +1,7 @@
 # 🚀 GETTING STARTED - Next Steps
 
+> **Historical note (updated 2026-10-09):** this guide was written in March 2026 when the chatbot was first added. Setup steps still work, but features changed since then: the AI assistant and Live Support now share one chat window with AI-to-human handoff, and the bot quotes only the customer's own vouchers (no promo codes to type). For the current system see [`../README.md`](../README.md) and [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md).
+
 **You have successfully installed a complete AI chatbot system!**
 
 ## ✅ What You Now Have
