@@ -267,31 +267,47 @@ if ($action === 'insights') {
         $snap .= "- " . paymentMethodLabel($r['payment_method']) . ": " . (int) $r['n'] . " orders, " . aia_peso((float) $r['s']) . "\n";
     }
 
+    // Adds coupons.kind, orders.shipping_* and user_coupons when missing; if it
+    // fails, the voucher queries below just come back empty.
+    vouchersReady();
+
     $snap .= "\nDISCOUNTS GIVEN THIS MONTH (non-cancelled regular orders)\n";
     $dc = aia_rows($conn, "SELECT COALESCE(SUM(discount_amount),0) AS pwd, COALESCE(SUM(coupon_discount),0) AS cpn,
         SUM(coupon_code IS NOT NULL) AS cpn_orders FROM orders WHERE status != 'cancelled' AND created_at >= ? AND created_at < ?", 'ss', $monthStart, $tomorrow);
+    $sd = aia_rows($conn, "SELECT COALESCE(SUM(shipping_discount),0) AS s, SUM(shipping_coupon_code IS NOT NULL) AS n
+        FROM orders WHERE status != 'cancelled' AND created_at >= ? AND created_at < ?", 'ss', $monthStart, $tomorrow);
     $snap .= $dc
-        ? "- PWD/Senior: " . aia_peso((float) $dc[0]['pwd']) . " | Coupons: " . aia_peso((float) $dc[0]['cpn']) . " on " . (int) $dc[0]['cpn_orders'] . " orders\n"
+        ? "- PWD/Senior: " . aia_peso((float) $dc[0]['pwd'])
+            . " | Discount vouchers (off the items): " . aia_peso((float) $dc[0]['cpn']) . " on " . (int) $dc[0]['cpn_orders'] . " orders"
+            . ($sd ? " | Shipping vouchers (off the delivery fee): " . aia_peso((float) $sd[0]['s']) . " on " . (int) $sd[0]['n'] . " orders" : '') . "\n"
         : "- (not available)\n";
 
-    // 'status' is what a customer gets typing the code now; 'used' counts every
-    // checkout that claimed it, 'given' only non-cancelled orders.
-    $snap .= "\nCOUPONS (managed on the Coupons page; customers enter the code at checkout)\n";
+    // 'status' is whether the voucher can be used right now; 'used' counts every
+    // checkout that claimed it, 'saved' only non-cancelled orders.
+    $snap .= "\nVOUCHERS (managed on the Coupons page. The admin GIVES a voucher to chosen customers; it lands in their 'My Vouchers' wallet and the best one is auto-picked at checkout. Customers never type codes. Kind 'discount' = off the items, 'shipping' = off the delivery fee; one of each per order.)\n";
     $given = [];
-    foreach (aia_rows($conn, "SELECT coupon_code, COUNT(*) AS n, SUM(coupon_discount) AS s FROM orders
-        WHERE status != 'cancelled' AND coupon_code IS NOT NULL GROUP BY coupon_code") as $r) {
-        $given[$r['coupon_code']] = $r;
+    foreach ([['coupon_code', 'coupon_discount'], ['shipping_coupon_code', 'shipping_discount']] as [$codeCol, $amtCol]) {
+        foreach (aia_rows($conn, "SELECT $codeCol AS code, COUNT(*) AS n, SUM($amtCol) AS s FROM orders
+            WHERE status != 'cancelled' AND $codeCol IS NOT NULL GROUP BY $codeCol") as $r) {
+            $given[$r['code']]['n'] = ($given[$r['code']]['n'] ?? 0) + (int) $r['n'];
+            $given[$r['code']]['s'] = ($given[$r['code']]['s'] ?? 0) + (float) $r['s'];
+        }
     }
-    $coupons = aia_rows($conn, "SELECT code, description, discount_type, discount_value, min_subtotal, max_uses, times_used,
-        valid_from, valid_until, is_active FROM coupons ORDER BY created_at DESC LIMIT 25");
-    if (!$coupons) $snap .= "- (no coupons)\n";
+    $held = [];
+    foreach (aia_rows($conn, "SELECT coupon_id, COUNT(*) AS held, SUM(used_at IS NOT NULL) AS spent FROM user_coupons GROUP BY coupon_id") as $r) {
+        $held[(int) $r['coupon_id']] = $r;
+    }
+    $coupons = aia_rows($conn, "SELECT * FROM coupons ORDER BY created_at DESC LIMIT 25");
+    if (!$coupons) $snap .= "- (no vouchers)\n";
     foreach ($coupons as $c) {
         $g = $given[$c['code']] ?? ['n' => 0, 's' => 0];
-        $snap .= "- " . $c['code'] . " | " . couponStatus($c)[0]
+        $h = $held[(int) $c['id']] ?? ['held' => 0, 'spent' => 0];
+        $snap .= "- " . $c['code'] . " | " . aia_label($c['kind'] ?? 'discount') . " voucher | " . couponStatus($c)[0]
             . " | " . aia_coupon_off($c)
+            . " | given to " . (int) $h['held'] . " customers, " . ((int) $h['held'] - (int) $h['spent']) . " still unused in wallets"
             . " | used " . (int) $c['times_used'] . ($c['max_uses'] !== null ? " of " . (int) $c['max_uses'] : " (no limit)")
             . " | " . ($c['valid_until'] ? "until " . date('M d, Y', strtotime($c['valid_until'])) : "no expiry")
-            . " | given " . aia_peso((float) $g['s']) . " on " . (int) $g['n'] . " non-cancelled orders"
+            . " | saved customers " . aia_peso((float) $g['s']) . " on " . (int) $g['n'] . " non-cancelled orders"
             . ($c['description'] ? " | \"" . mb_substr($c['description'], 0, 80) . "\"" : '') . "\n";
     }
 
@@ -425,7 +441,8 @@ if ($action === 'insights') {
 RULES:
 - Answer ONLY from the STORE DATA SNAPSHOT below. Never invent or estimate a number that is not in it. If the answer is not in the snapshot, say so plainly and name the admin page where they can check it (Dashboard, Products, Orders, Users, Payments, Custom Designs, Custom Orders, Coupons, Sales Report, Contact Messages, Support Chat, Audit Log).
 - For a custom date range, a full order list, or a printable / CSV (Excel) report, point the admin to the Sales Report page.
-- You are READ-ONLY. You cannot change orders, products, prices, stock, coupons or users. If asked to change something, explain which admin page to use.
+- 'Coupons' and 'vouchers' mean the same thing here. To give a voucher to customers, the admin uses the Coupons page.
+- You are READ-ONLY. You cannot change orders, products, prices, stock, vouchers or users. If asked to change something, explain which admin page to use.
 - When you compare periods, do the math carefully and give the difference and the % change (say 'new' when the earlier value is zero). Remember this week and this month are still in progress.
 - Money: pesos with the ₱ sign and commas, e.g. ₱1,250.00.
 - Be concise and scannable: a one-line answer first, then short bullets. Use **bold** for the key figures. No tables, no headings.
