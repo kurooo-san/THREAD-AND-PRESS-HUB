@@ -8,7 +8,7 @@ $pageTitle = 'Support Chat';
 $bodyClass = 'support-chat-page'; // phones hide the floating AI chat button here (css/style.css)
 
 // Handle new conversation creation
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_conversation'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_conversation']) && verifyCsrfToken()) {
     $subject = trim($_POST['subject'] ?? '');
     $message = trim($_POST['message'] ?? '');
     
@@ -194,6 +194,7 @@ if (isset($_GET['conversation'])) {
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="support-chat.php" method="POST" enctype="multipart/form-data">
+                <?php echo csrfTokenField(); ?>
                 <div class="modal-header" style="background: var(--coffee-dark); color: white;">
                     <h5 class="modal-title"><i class="fas fa-plus-circle"></i> New Conversation</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>

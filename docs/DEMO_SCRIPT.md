@@ -13,7 +13,7 @@
 - [ ] Camera permission **granted na** sa browser (para walang permission popup sa demo)
 - [ ] Maayos ang ilaw sa demo area (para maganda ang try-on result)
 - [ ] Empty ang cart ng customer account (malinis na simula)
-- [ ] Walang active coupon na **DEMO20** pa (gagawin mo ito live sa Step 5) — kung meron na galing sa practice run, i-delete muna sa Admin → Coupons
+- [ ] Walang coupon na **DEMO20** pa (gagawin mo ito live sa Step 5) — kung meron na galing sa practice run, i-delete muna sa Admin → Coupons
 - [ ] May laman na orders ngayong buwan (para may maipakita ang Sales Report sa Step 6) — i-check sa Admin → Sales Report → "This month"
 - [ ] Na-test na ang **Export Excel** sa mismong computer na gagamitin (dapat may Excel o kahit Google Sheets na mabubuksan)
 - [ ] **BACKUP:** screen-record ang isang successful run ng buong demo. Kung mag-fail ang internet/AI sa defense, may video ka.
@@ -80,29 +80,30 @@
 
 ---
 
-### 5. Coupon + Checkout — VAT, Discounts, Payment (3 min)
+### 5. Voucher + Checkout — VAT, Discounts, Payment (3 min)
 
-**A. Gumawa ng coupon (Tab 2, Admin → Coupons)**
-- Code: **DEMO20** · Type: **Percent** · Value: **20** · Max uses: **5** · Valid until: bukas → **Create coupon**
-  > "Ang admin po ay kayang gumawa ng promo code anumang oras — percent o fixed na discount, may minimum order, limit sa dami ng gamit, at expiry date. Hindi na po kailangang galawin ang code."
+**A. Gumawa at ibigay ang voucher (Tab 2, Admin → Coupons)**
+- Code: **DEMO20** · Voucher for: **Discount** · Type: **Percent** · Value: **20** · Max uses: **5** · Valid until: bukas → **Create coupon**
+- Sa row ng DEMO20 pindutin ang **Give** → piliin ang demo customer → Gift note (optional) → **Give voucher**
+  > "Ang admin po ang nagbibigay ng voucher — sa piling customer o sa lahat. Walang code na ita-type kaya hindi ito maikakalat o mahuhulaan."
 
 **B. Lumabas agad sa customer (Tab 1)**
-- Buksan ang **Promotions** page → refresh → nandoon na ang DEMO20
-  > "Dynamic po — galing sa database, kaya pagka-save ng admin, lumalabas agad."
+- Buksan ang **My Vouchers** (user menu) → nandoon na ang DEMO20 (may email din sa customer)
+  > "Dynamic po — galing sa database, kaya pagka-give ng admin, nasa wallet na agad."
 
 **C. Gamitin sa checkout**
 - **Balik sa cart** (may laman na galing sa try-on Add to Cart) → Proceed to Checkout
-- Sa **"Have a coupon code?"** i-type ang **demo20** (small letters para makita na hindi case-sensitive) → **Apply**
-  - Lalabas ang ✓ at may bagong linya sa summary: **Coupon (DEMO20)**
-- Ituro ang breakdown: **Subtotal → Discount (PWD/Senior 20%) → Coupon → VAT 12% → Delivery fee → Total**
-  > "Transparent po ang computation. Pwede pong pagsabayin ang PWD/Senior discount at coupon, at ang 12% VAT ay kinukuwenta pagkatapos ng discounts."
-- *Optional:* i-type ang **MALI123** → Apply → lalabas ang "Invalid coupon code" → ibalik sa demo20
-  > "Bawat code po ay chine-check sa server — expiry, limit, minimum order. Kahit baguhin pa sa browser, hindi po ito tatanggapin kung hindi valid."
+- Nakapili na ang **DEMO20** sa voucher section — awtomatikong pinipili ang pinakamalaking matitipid
+  - May linya sa summary: **Voucher (DEMO20)**
+- Ituro ang breakdown: **Subtotal → Discount (PWD/Senior 20%) → Voucher → VAT 12% → Delivery fee → Total**
+  > "Transparent po ang computation. Pwede pong pagsabayin ang PWD/Senior discount at voucher, at ang 12% VAT ay kinukuwenta pagkatapos ng discounts."
+- *Optional:* kung may minimum spend ang voucher, ituro ang **"Add ₱… more to unlock"** progress bar
+  > "Bawat voucher po ay chine-check ulit sa server — expiry, limit, minimum order, at kung sa customer talaga ito. Kahit baguhin pa sa browser, hindi po ito tatanggapin."
 
 **D. Place order**
 - Piliin ang **Cash on Delivery** → **Place Order** (pinakamabilis at walang aasahang internet)
   > "May **Pay Online** din po through PayMongo — GCash, Maya, GrabPay o card. Sa secure page po ng PayMongo nagbabayad, kaya wala kaming hinahawakang card details, at awtomatikong nakukumpirma ang bayad."
-- Sa Order Confirmation, ituro ang **Coupon (DEMO20)** line → *"Naka-record din po ito sa invoice at sa confirmation email."*
+- Sa Order Confirmation, ituro ang **Voucher (DEMO20)** line → *"Naka-record din po ito sa invoice at sa confirmation email."*
 
 ---
 
@@ -111,20 +112,20 @@
 
 **Gawin (sunud-sunod):**
 1. **Dashboard** — ipakita ang KPIs + Revenue Trends chart (5 sec lang)
-2. **Orders** → buksan ang kaka-place lang na order → ituro ang **Coupon (DEMO20)** line → palitan ang status sa **Confirmed**
+2. **Orders** → buksan ang kaka-place lang na order → ituro ang **Voucher (DEMO20)** line → palitan ang status sa **Confirmed**
    > "Nakikita po ng admin ang bawat discount na ibinigay, at naka-log sa Audit Log ang mga pagbabago."
 3. **Coupons** → ituro ang DEMO20: **Used 1 / 5** at ang **Given** na halaga
    > "Awtomatiko pong nabibilang ang gamit. Kapag naabot ang limit, hindi na po ito tatanggapin — kahit sabay pang mag-checkout ang dalawang customer sa huling slot."
    - *Optional:* pindutin ang **Edit** o **Deactivate** para ipakitang buo ang management
 4. **Sales Report** (1 min)
-   - Pindutin ang **This month** → ituro ang Total sales, Orders, Average order, at ang hati ng **Discounts given** (PWD/Senior vs Coupons)
+   - Pindutin ang **This month** → ituro ang Total sales, Orders, Average order, at ang hati ng **Discounts given** (PWD/Senior vs Vouchers vs Shipping)
    - I-scroll: **Daily sales chart → Top products → By payment method → Orders list**
      > "Ito po ang sagot kung paano malalaman ng may-ari ang benta sa kahit anong petsa — hindi na po kailangang mag-compute nang mano-mano."
    - Pindutin ang **Export Excel** → buksan ang file → ipakita ang 4 na sheet (Summary, Orders, Top Products, Daily Sales)
      > "Naka-format na po ito para sa accounting — may peso formatting, filters, at totals na hindi kasama ang cancelled orders."
    - *Kung kapos sa oras:* **Print** na lang ang ipakita (may sariling report header)
 5. **AI Insights** (pindutin ang "AI Insights" button sa admin panel) → i-type: **"magkano discount natin this month?"**
-   > "Pati po ang AI assistant ng admin ay alam ang coupons at discounts — galing sa totoong data, hindi hula."
+   > "Pati po ang AI assistant ng admin ay alam ang vouchers at discounts — galing sa totoong data, hindi hula."
 6. **⭐ AI Generate Product — ang pang-finale:**
    > "Ito po ang pang-apat naming AI feature. Sir/Ma'am, **anong product po ang gusto niyong idagdag sa store?**"
    - I-type ang sagot ng panelist → **Generate** → ~8-10 sec → lalabas ang draft (photo, name, price, description)
@@ -138,14 +139,15 @@
 ### 7. AI Chatbot (1 min, pang-sara)
 **Sa Tab 1:** buksan ang chat widget (💬)
 
-**Pindutin ang quick button na "Promos & Coupons"** — sasagot ang bot ng mga code na magagamit ngayon (kasama ang DEMO20 na kakagawa lang) at kung paano gamitin.
+**Pindutin ang quick button na "My Vouchers"** — sasagot ang bot ng mga voucher sa wallet ng customer at kung paano gamitin.
+**Ipakita ang handoff:** i-type ang "Gusto kong makausap ang tao" → **Talk to a person** → lilipat sa Live Support kasama ang buong usapan.
 **O i-type:** "How does the virtual try-on work?" o "Is there VAT?"
 > "Ang chatbot po namin ay Gemini-powered at may kaalaman sa buong system — features, products, at maging sa orders ng naka-login na customer."
 
 ---
 
 ### 8. Closing (30 sec)
-> "Sa kabuuan po: isang kumpletong e-commerce platform na may **limang AI features** — Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generation, at AI Support — na may human oversight sa bawat AI decision, secure na server-side AI integration, at kumpletong admin operations — promo codes, sales reports na nae-export sa Excel, hanggang audit logging. Salamat po!"
+> "Sa kabuuan po: isang kumpletong e-commerce platform na may **limang AI features** — Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generation, at AI Support — na may human oversight sa bawat AI decision, secure na server-side AI integration, at kumpletong admin operations — vouchers, sales reports na nae-export sa Excel, hanggang audit logging. Salamat po!"
 
 ---
 
@@ -162,10 +164,11 @@
 | **"Ano ang kinaiba niyo sa Shopee/Lazada?"** | Hindi kami marketplace — specialized print shop na may AI-powered fitting at design tools na wala sa kanila |
 | **"Bakit walang VAT ang custom orders?"** | Quote-based po ang custom pricing at VAT-inclusive na — ibang pricing model sa retail products |
 | **"Made to Order pero may stock?"** | Ang stock po ng concept products ay production capacity — kung ilan ang kaya naming i-produce sa isang batch |
-| **"Paano kung dalawang customer ang sabay gumamit ng huling coupon?"** | Atomic po ang pag-claim: iisang UPDATE na may kondisyong `times_used < max_uses`. Isa lang ang makakakuha; ang isa ay hindi matutuloy ang order at sasabihan kung bakit — hindi siya masisingil ng presyong hindi niya nakita |
-| **"Pwede bang dayain ang coupon sa browser?"** | Hindi po. Ang browser ay pang-display lang; sa pag-place ng order, kinukuwenta ulit ng server ang presyo mula sa database at chine-check ulit ang coupon |
+| **"Paano kung dalawang customer ang sabay gumamit ng huling voucher?"** | Atomic po ang pag-claim: iisang UPDATE na may kondisyong `times_used < max_uses`. Isa lang ang makakakuha; ang isa ay hindi matutuloy ang order at sasabihan kung bakit — hindi siya masisingil ng presyong hindi niya nakita |
+| **"Pwede bang dayain ang voucher sa browser?"** | Hindi po. Ang browser ay pang-display lang; sa pag-place ng order, kinukuwenta ulit ng server ang presyo mula sa database at chine-check kung nasa wallet talaga ng customer ang voucher at hindi pa nagagamit |
+| **"Paano kung ma-cancel ang order?"** | Babalik po ang voucher sa wallet ng customer at mababawas ulit ang bilang ng gamit |
 | **"Bakit hindi mapalitan ang code kapag na-edit?"** | Naka-save po ang code sa bawat order at doon nakabatay ang "Given" totals — kapag pinalitan, masisira ang tracking. Gumawa na lang po ng bagong coupon |
-| **"Pwede bang pagsabayin ang PWD at coupon?"** | Opo. Parehong kinukuwenta sa item subtotal, tapos ang 12% VAT ay sa natitira. Hindi po kasama ang delivery fee sa coupon |
+| **"Pwede bang pagsabayin ang PWD at voucher?"** | Opo. Parehong kinukuwenta sa item subtotal, tapos ang 12% VAT ay sa natitira. Shipping voucher lang ang bumabawas sa delivery fee |
 | **"Paano malalaman ng may-ari ang benta?"** | Sales Report: kahit anong date range, summary, daily chart, top products, by payment method, at Export Excel / Print. Pareho ang patakaran sa Dashboard: hindi kasama ang cancelled orders |
 | **"Bakit hindi kasama ang cancelled sa benta?"** | Walang perang pumasok sa cancelled — pero nakalista pa rin ito (naka-strikethrough) at may hiwalay na bilang para transparent |
 

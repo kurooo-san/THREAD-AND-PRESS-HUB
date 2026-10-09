@@ -514,21 +514,20 @@ if ($action === 'suggest_reply') {
     $online = (paymongoIsConfigured() && paymongoTableExists())
         ? 'Pay Online through PayMongo (' . implode(', ', array_map(fn($m) => $methodLabels[$m] ?? aia_label($m), paymongoMethods())) . '), confirmed automatically, nothing to upload'
         : 'online payment is switched off right now';
-    // Only codes a customer could use right now (already public on promotion.php).
-    $promos = array_filter(
-        aia_rows($conn, "SELECT code, discount_type, discount_value, min_subtotal, max_uses, times_used, valid_from, valid_until, is_active FROM coupons"),
-        fn($c) => couponStatus($c)[0] === 'Active'
-    );
+    // Only this customer's own unused vouchers: vouchers are given, never typed or shared.
+    $promos = array_filter(voucherWallet($custId), fn($c) => couponStatus($c)[0] === 'Active');
     $promoLine = $promos
-        ? 'Usable codes now: ' . implode('; ', array_map(fn($c) => $c['code'] . ' (' . aia_coupon_off($c)
-            . ($c['valid_until'] ? ', until ' . date('M d, Y', strtotime($c['valid_until'])) : '') . ')', $promos)) . '.'
-        : 'There are no usable promo codes right now.';
+        ? "This customer's usable vouchers: " . implode('; ', array_map(fn($c) => voucherLabel($c)
+            . ($c['kind'] === 'shipping' ? ' (shipping voucher)' : '')
+            . ((float) $c['min_subtotal'] > 0 ? ', min. spend ' . aia_peso((float) $c['min_subtotal']) : '')
+            . ($c['valid_until'] ? ', until ' . date('M d, Y', strtotime($c['valid_until'])) : ''), $promos)) . '.'
+        : 'This customer has no usable vouchers right now; do not promise one.';
     $facts = "STORE FACTS:
 - Contact: " . SUPPORT_EMAIL . " or the Live Support chat. No phone number or street address is published; never invent one.
-- Delivery: Rizal and Metro Manila 1-2 business days; Bulacan, Cavite, Laguna, Batangas, Quezon and Pampanga 2-3 business days; rest of Luzon, Visayas and Mindanao 3-5 business days. Fees by area: " . implode('; ', $zones) . ". Store Pickup is free. No free-shipping promo.
+- Delivery: Rizal and Metro Manila 1-2 business days; Bulacan, Cavite, Laguna, Batangas, Quezon and Pampanga 2-3 business days; rest of Luzon, Visayas and Mindanao 3-5 business days. Fees by area: " . implode('; ', $zones) . ". Store Pickup is free. No automatic free shipping; only a shipping voucher lowers the delivery fee.
 - Payment: " . $online . "; or cash (Cash on Delivery / Cash on Pickup). Store Pickup is cash only. No manual QR / screenshot uploads anymore.
 - 12% VAT is added at checkout. PWD / Senior Citizen: 20% off with a verified ID.
-- Promo codes: entered in the coupon box at checkout, one per order; PWD/Senior accounts get both. All current promos are on the Promotions page. " . $promoLine . "
+- Vouchers: given by the shop, shown in My Vouchers; no codes to type. At checkout the best one is picked automatically (one discount voucher off the items, one shipping voucher off the delivery fee); PWD/Senior accounts get both. A voucher used on a cancelled order goes back to the wallet. " . $promoLine . "
 - Returns/exchanges: within 30 days, unused with original tags; free shipping on exchanges.
 - Cancelling: only while the order is still Pending, done by the shop on request.
 - Custom (Design Studio) orders take 5-7 business days to produce after payment is confirmed. Custom statuses: Pending Payment -> Payment Uploaded / Verified -> Processing -> Printing -> Ready for Pickup -> Delivered.

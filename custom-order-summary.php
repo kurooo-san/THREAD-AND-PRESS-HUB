@@ -92,7 +92,7 @@ $printSizeNames = ['small' => 'Small (4×4")', 'medium' => 'Medium (8×8")', 'la
 
 // Handle order creation
 $error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order']) && verifyCsrfToken()) {
     $stmt = $conn->prepare("INSERT INTO custom_orders (user_id, design_id, design_image, product_type, apparel_color, size, quantity, base_price, print_cost, color_cost, subtotal, discount_type, discount_amount, total_price, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_payment')");
     $notes = trim($_POST['notes'] ?? $design['notes'] ?? '');
     // custom_orders has no column for sleeve/logo prints; they are print work,
@@ -493,6 +493,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order'])) {
 
     <!-- Proceed to Payment -->
     <form method="POST">
+        <?php echo csrfTokenField(); ?>
         <input type="hidden" name="create_order" value="1">
         <input type="hidden" name="notes" value="<?php echo htmlspecialchars($design['notes'] ?? ''); ?>">
         <button type="submit" class="btn-proceed">

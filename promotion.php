@@ -21,6 +21,14 @@ $inWallet = isset($_SESSION['user_id'])
     ? array_map('intval', array_column(voucherWallet((int) $_SESSION['user_id']), 'id'))
     : [];
 
+// A coupon already handed to specific customers is theirs to see: hide it from
+// everyone else (guests too). Coupons nobody holds yet are public promos.
+if (vouchersReady()) {
+    $given = array_map('intval', array_column($conn->query("SELECT DISTINCT coupon_id FROM user_coupons")->fetch_all(MYSQLI_ASSOC), 'coupon_id'));
+    $coupons = array_values(array_filter($coupons, fn($c) =>
+        !in_array((int) $c['id'], $given, true) || in_array((int) $c['id'], $inWallet, true)));
+}
+
 $gradients = [
     'linear-gradient(135deg, #1a1a1a 0%, #333 100%)',
     'linear-gradient(135deg, #667bc0 0%, #8a9dd8 100%)',

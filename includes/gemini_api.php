@@ -41,11 +41,9 @@ if (empty($userMessage)) {
 }
 
 // --- Build dynamic context from database ---
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 $dynamicContext = '';
 
-if (!$conn->connect_error) {
-    configureDbConnection($conn);
+if ($conn) {
     try {
         // Product catalog for context: only what is actually for sale.
         $productContext = '';

@@ -45,7 +45,7 @@ flowchart TD
     F -- "No" --> E
     F -- "Yes" --> G["Select product, colour and size"]
     G --> H["Add to cart"]
-    H --> I["Checkout — PWD/Senior discount, coupon code, 12% VAT"]
+    H --> I["Checkout — PWD/Senior discount, auto-picked voucher, 12% VAT"]
     I --> V{"Coupon still valid?"}
     V -- "No" --> I
     V -- "Yes or none" --> J{"Payment method?"}
@@ -73,7 +73,7 @@ flowchart TD
     E --> F{"Select a task"}
     F -- "Products" --> G["Add, edit or restock catalogue items"]
     F -- "Orders" --> H["Update order status"]
-    F -- "Coupons" --> I["Create, edit, activate or delete promo codes"]
+    F -- "Coupons" --> I["Create, edit, activate, delete and give vouchers"]
     F -- "Sales Report" --> J["Pick a date range — Print or Export Excel"]
     F -- "Custom orders" --> L["Approve design, advance to printing"]
     F -- "Users" --> M["Edit, ban or remove"]
@@ -121,7 +121,7 @@ flowchart TD
 
     HUB -- "Buy ready-made" --> PICK["Choose colour, size,<br/>quantity"]
     PICK --> CART["Add to cart"]
-    CART --> CHK["Checkout<br/>delivery or pickup,<br/>Senior / PWD 20% discount,<br/>coupon code, 12% VAT"]
+    CART --> CHK["Checkout<br/>delivery or pickup,<br/>Senior / PWD 20% discount,<br/>voucher (auto-picked), 12% VAT"]
     CHK --> CPN{"Coupon entered?"}
     CPN -- "Yes" --> CPV{"Server: still valid<br/>and a use left?"}
     CPV -- "No" --> CHK

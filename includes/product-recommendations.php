@@ -22,12 +22,6 @@ if (empty($query)) {
 }
 
 try {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
-    
-    if ($conn->connect_error) {
-        throw new Exception('Database connection failed');
-    }
-    configureDbConnection($conn);
 
     // Keyword mapping for product categories
     $keywordMap = [

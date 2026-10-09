@@ -14,12 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken()) {
 }
 
 $pageTitle = 'Chatbot FAQ Management';
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-configureDbConnection($conn);
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

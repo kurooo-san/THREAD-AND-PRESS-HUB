@@ -12,6 +12,16 @@ $userId = $_SESSION['user_id'];
 $isAdmin = (($_SESSION['user_type'] ?? '') === 'admin');
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// Writes come from js/chatbot.js and js/support-chat.js with the X-CSRF-Token header.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $sentToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string) $sentToken)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Invalid security token. Please refresh the page.']);
+        exit();
+    }
+}
+
 switch ($action) {
     case 'get_conversations':
         if ($isAdmin) {

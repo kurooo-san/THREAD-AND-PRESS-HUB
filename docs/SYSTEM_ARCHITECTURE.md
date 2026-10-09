@@ -6,7 +6,7 @@
 
 ## 1. System Overview
 
-**Thread & Press Hub** is a full-stack e-commerce web application for selling apparel (t-shirts, hoodies, pants, dresses, accessories) with an integrated **custom apparel Design Studio** (2D canvas + live 3D preview), **AI features powered by Google Gemini** (chatbot, Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generator, admin AI Insights), **online payment through PayMongo**, **promo codes (coupons)**, **sales reporting**, **support chat**, and an **admin dashboard**.
+**Thread & Press Hub** is a full-stack e-commerce web application for selling apparel (t-shirts, hoodies, pants, dresses, accessories) with an integrated **custom apparel Design Studio** (2D canvas + live 3D preview), **AI features powered by Google Gemini** (chatbot, Virtual Try-On, AI Stylist, AI Design Generator, AI Product Generator, admin AI Insights), **online payment through PayMongo**, **vouchers given by the admin**, **sales reporting**, **support chat**, and an **admin dashboard**.
 
 Live deployment: Railway (Docker, Apache + PHP 8.2). Local development: XAMPP.
 
@@ -85,7 +85,7 @@ One database, `threadpresshub`. `database/schema.sql` creates all **25 tables**;
 |---|---|
 | **Accounts** | `users` (role in `user_type`: regular, pwd, senior, admin; PWD/Senior ID), `user_addresses` (up to 3 saved addresses), `password_resets`, `remember_tokens`, `login_attempts` |
 | **Catalog** | `products` (gender, colours, sizes, price, stock, image, AI print file), `product_reviews` (1–5 stars, verified purchase) |
-| **Shop orders** | `orders` (subtotal, PWD/Senior discount, coupon code + discount, delivery fee, total, payment method/status), `order_items` |
+| **Shop orders** | `orders` (subtotal, PWD/Senior discount, item and shipping vouchers + discounts, delivery fee, total, payment method/status), `order_items` |
 | **Promotions** | `coupons` (percent/fixed, minimum subtotal, max uses, times used, validity dates, active flag) |
 | **Custom design** | `custom_designs` (front/back images, editor data, print files), `custom_orders`, `custom_order_payments` |
 | **Payments** | `paymongo_sessions` (online checkout sessions for shop and custom orders), `payment_submissions` and `gcash_transactions` (legacy manual payments, kept for old orders) |
@@ -120,7 +120,7 @@ Key relationships:
 | Homepage | `index.php` | Hero, categories, new arrivals, AI Try-On spotlight |
 | Shop | `shop.php` | Filters (Men/Women/Kids, type, colour, size), search, sort, Quick Add |
 | Product page | `product.php` | Details, colours/sizes, stock, reviews (`includes/reviews.php`) |
-| Promotions | `promotion.php` | Active promo codes, read live from `coupons` |
+| Promotions | `promotion.php` | Public promos (coupons not yet given to anyone) plus the viewer's own vouchers |
 | Info pages | `pages.php`, `about.php`, `privacy-policy.php` | Size guide, FAQs, policies |
 
 ### 5.3 Shopping Cart & Checkout Module
@@ -164,7 +164,7 @@ Key relationships:
 ### 5.8 AI Module (Google Gemini)
 | Component | File | Description |
 |-----------|------|-------------|
-| Chatbot | `js/chatbot.js`, `includes/gemini_api.php` | Store-aware assistant (products, the customer's own orders, delivery, payment, promo codes) |
+| Chatbot | `js/chatbot.js`, `includes/gemini_api.php` | Store-aware assistant (products, the customer's own orders, delivery, payment, their own vouchers); hands off to Live Support |
 | Virtual Try-On | `try-on.php`, `js/try-on.js`, `includes/tryon-ajax.php`, `tryon-save.php` | AI image of the customer wearing a product |
 | AI Stylist / Size finder | `includes/tryon-suggest.php`, `includes/tryon-size.php` | Product suggestions; size from height/weight (formula fallback) |
 | AI Design Generator | `includes/custom-design-ajax.php` | Artwork from a text prompt |
@@ -285,7 +285,7 @@ Sales Report and AI Insights
 User message ──> includes/gemini_api.php
                    │ builds context from the database:
                    │  products · this customer's orders only · delivery fees
-                   │  payment options · promo codes usable now · admin FAQ
+                   │  payment options · this customer's vouchers · admin FAQ
                    ▼
                  Gemini API (server-side key) ──> reply ──> saved to chat_history
 ```

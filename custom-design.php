@@ -2802,7 +2802,7 @@ function handleImageUpload(input) {
     fd.append('action', 'upload_asset');
     fd.append('asset', file);
 
-    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd })
+    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } })
         .then(r => r.json())
         .then(data => {
             if (!data.success) {
@@ -2876,7 +2876,7 @@ function generateAIDesign() {
     fd.append('action', 'ai_generate');
     fd.append('prompt', prompt);
 
-    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd })
+    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } })
         .then(r => r.json())
         .then(data => {
             if (!data.success) {
@@ -3447,7 +3447,7 @@ function handleSleeveUpload(input) {
     const fd = new FormData();
     fd.append('action', 'upload_asset');
     fd.append('asset', file);
-    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd })
+    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } })
         .then(r => r.json())
         .then(data => {
             if (!data.success) { showToast(data.message || 'Upload failed.', 'error'); return; }
@@ -3499,7 +3499,7 @@ function generateSleeveAI() {
     const fd = new FormData();
     fd.append('action', 'ai_generate');
     fd.append('prompt', prompt);
-    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd })
+    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } })
         .then(r => r.json())
         .then(data => {
             if (!data.success) { showToast(data.message || 'AI design failed.', 'error'); return; }
@@ -4338,6 +4338,7 @@ function submitDesign() {
             
             fetch('includes/custom-design-ajax.php', {
                 method: 'POST',
+                headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' },
                 body: formData
             })
             .then(r => r.json())
@@ -5048,7 +5049,7 @@ function uploadCanvasAsset(cv) {
             const fd = new FormData();
             fd.append('action', 'upload_asset');
             fd.append('asset', blob, 'artwork.png');
-            fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd })
+            fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } })
                 .then(r => r.json())
                 .then(data => data.success ? resolve(data.url) : reject(new Error(data.message)))
                 .catch(reject);

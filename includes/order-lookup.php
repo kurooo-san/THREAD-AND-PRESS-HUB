@@ -40,12 +40,6 @@ if (empty($query)) {
 }
 
 try {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
-    
-    if ($conn->connect_error) {
-        throw new Exception('Database connection failed');
-    }
-    configureDbConnection($conn);
 
     // Check if query is an order ID (number) or a status request
     $orderId = null;

@@ -14,7 +14,7 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 - **Quick Add**: Pick colour, size and quantity in a bottom sheet, then Add to Cart or Buy Now
 - **Shopping Cart**: Add/remove items with quantity management
 - **Product Reviews**: Star ratings and reviews on product pages
-- **Coupons / Promo Codes**: Type a code in the "Have a coupon code?" box at checkout and the discount shows in the order summary before placing the order
+- **Vouchers**: The admin gives vouchers to customers (no codes to type). They land in **My Vouchers**; at checkout the voucher that saves the most is picked automatically (one discount voucher off the items, one shipping voucher off the delivery fee) and can be switched or removed. A voucher used on an order that gets cancelled goes back to the wallet
   - Percent or fixed discounts, optional minimum subtotal, usage limit and validity dates, all set by the admin
   - One code per order; works together with the PWD/Senior discount
   - Checked again on the server when the order is placed, so a code that expired or ran out in the meantime stops the order with a clear message instead of charging a price the customer did not see
@@ -33,7 +33,7 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 - **Email Notifications**: Welcome email, order and custom-order confirmations, and status updates
 
 ### 🤖 AI Features (Google Gemini)
-- **AI Chatbot**: Floating shopping assistant that answers with real store data and recommends products; past conversations are saved in **Chat History**. It knows the promo codes usable right now (live from the database) and how to apply them, with a **Promos & Coupons** quick button
+- **AI Chatbot**: Floating shopping assistant that answers with real store data and recommends products; past conversations are saved in **Chat History**. It knows the logged-in customer's own vouchers (live from their wallet), with a **My Vouchers** quick button. When it cannot help, it hands the chat to **Live Support** with the conversation attached
 - **Virtual Try-On (LiveLook)**: Uses the camera (or an uploaded photo) and shows an AI-generated preview of the customer wearing the selected product. Includes an **AI Stylist** and a size suggestion from height and weight (with a formula fallback when the AI is unavailable)
 - **AI Design Generator**: Describe an idea in the Design Studio and Gemini creates a print-ready graphic, for the front, back or sleeves
 - **Hourly limits**: Every Gemini call costs money and anyone can register, so each customer has an hourly limit per feature. Admins have no limit
@@ -74,16 +74,16 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 ### 👨‍💼 Admin Features
 - **Dashboard**: Overview of sales, users, products, and orders
 - **Product Management**: Add, edit, and manage products and stock
-- **Order Management**: View all orders and update their status; the coupon and its discount show on each order
-- **Coupons**: Create, edit, activate/deactivate and delete promo codes. Shows each code's status (Active, Scheduled, Expired, Used up, Inactive), how many times it was used and the total discount given. The code itself is fixed once created, since orders and the totals are matched by it
-- **Sales Report**: Sales for any date range (with This month, Last month, Last 30 days and This year shortcuts): total sales, orders, average order, discounts given (PWD/Senior and coupons), delivery fees, cancelled orders, a daily sales chart, top products, sales by payment method and the full order list
+- **Order Management**: View all orders and update their status; the vouchers and their discounts show on each order; Verify/Reject payment and status changes save without reloading
+- **Coupons / Vouchers**: Create, edit, activate/deactivate and delete coupons, then **Give** them to selected customers or to all customers with an optional gift note (customers are emailed). Shows each code's status (Active, Scheduled, Expired, Used up, Inactive), how many times it was used and the total discount given. The code itself is fixed once created, since orders and the totals are matched by it
+- **Sales Report**: Sales for any date range (with This month, Last month, Last 30 days and This year shortcuts): total sales, orders, average order, discounts given (PWD/Senior, item vouchers and shipping vouchers), delivery fees, cancelled orders, a daily sales chart, top products, sales by payment method and the full order list
   - **Export Excel**: A formatted `.xlsx` with Summary, Orders, Top Products and Daily Sales sheets (peso formatting, real dates, frozen headers, filters and totals)
   - **Print**: Printer-friendly layout with its own report header
   - Counts sales the same way as the Dashboard: non-cancelled shop and custom orders
 - **User Management**: Monitor customer accounts
 - **AI Assistant** (read-only):
   - **AI Insights**: Ask questions like "best seller this month?", "what needs my attention?" or "how much discount did we give this month?". Answers come from a fixed data snapshot (sales, orders, stock, coupons and discounts, reviews); the AI never writes SQL and never sees customer emails, phones, addresses or payment details
-  - **Suggest Reply**: Drafts a support-chat reply that the admin reviews before sending; it can quote the promo codes usable right now
+  - **Suggest Reply**: Drafts a support-chat reply that the admin reviews before sending; it can quote the vouchers in that customer's wallet
 - **AI Product Generator**: Type a product idea; Gemini drafts the details, print artwork and product photo, and the admin approves before it goes live
 - **Custom Orders & Designs**: Review customer designs and manage custom orders
 - **Support Chat**: Reply to customer conversations
@@ -182,7 +182,7 @@ Register a normal account, then set its `user_type` to `admin` in the `users` ta
 3. **Browse the Shop**: Filter by Men, Women, Kids and type, or try a product on with **Try On**
 4. **Add to Cart**: Choose colour, size and quantity
 5. **Or Design Your Own**: Start from a template or a blank apparel in the Design Studio, check it in 3D, and submit it as a custom order
-6. **Checkout**: Review order, select payment method, and apply discount or coupon if eligible
+6. **Checkout**: Review order, select payment method, and the best voucher is pre-selected (switch or remove it)
 7. **Payment**: Pay online through PayMongo or select Cash on Delivery
 8. **Track Order**: View order status in "My Orders" or "My Custom Orders"
 
@@ -192,7 +192,7 @@ Register a normal account, then set its `user_type` to `admin` in the `users` ta
 2. **Dashboard**: View key metrics, or ask the AI Assistant
 3. **Manage Products**: Add new apparel items (by hand or with the AI Product Generator) and manage existing ones
 4. **Manage Orders**: View and update order and custom-order statuses, and review customer designs
-5. **Coupons**: Create promo codes; they appear on the Promotions page and in the chatbot right away
+5. **Coupons**: Create a coupon and give it as a voucher; it shows in the customer's My Vouchers, at checkout and in the chatbot right away. Coupons not given to anyone yet are listed on the Promotions page
 6. **Sales Report**: Pick a date range, then Print or Export Excel
 7. **Payments**: Verify payment proofs left from the old manual payment flow
 8. **Support**: Answer support chats and contact messages
@@ -214,9 +214,9 @@ The older GCash/Maya/QR payment pages (`payment_gcash.php`, `payment_maya.php`, 
 - **Senior Citizens**: 20% discount
   - Requires valid Senior ID during checkout
 - **Regular Users**: No discount
-- **Coupons**: Any account can add one promo code per order, on top of the PWD/Senior discount
+- **Vouchers**: One discount voucher and one shipping voucher per order, on top of the PWD/Senior discount
 
-At checkout the order is worked out as: item subtotal − PWD/Senior discount − coupon, then 12% VAT on what is left, then the delivery fee. The PWD/Senior discount and a percent coupon are both worked out on the item subtotal, and a coupon never applies to the delivery fee. Custom (Design Studio) orders do not take promo codes.
+At checkout the order is worked out as: item subtotal − PWD/Senior discount − discount voucher, then 12% VAT on what is left, then the delivery fee minus any shipping voucher. The PWD/Senior discount and a percent voucher are both worked out on the item subtotal; only a shipping voucher touches the delivery fee. Custom (Design Studio) orders do not take vouchers.
 
 ## Database Tables
 
@@ -226,8 +226,8 @@ At checkout the order is worked out as: item subtotal − PWD/Senior discount �
 |---|---|
 | `users` | Accounts with roles (customer, admin) and PWD/Senior ID for discounts |
 | `products` | Apparel with category, gender, colours, sizes, price, stock and image |
-| `orders`, `order_items` | Shop orders with totals, discounts, the coupon used, and the colour/size of each item |
-| `coupons` | Promo codes with discount type and value, minimum subtotal, usage limit and count, and validity dates |
+| `orders`, `order_items` | Shop orders with totals, discounts, the vouchers used, and the colour/size of each item |
+| `coupons` | Vouchers (discount or shipping) with discount type and value, minimum subtotal, usage limit and count, and validity dates |
 | `product_reviews` | Star ratings and reviews, one per customer per product |
 | `user_addresses` | Up to 3 saved delivery addresses per customer |
 | `paymongo_sessions` | Online checkout sessions for shop and custom orders |

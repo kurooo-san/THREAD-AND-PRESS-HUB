@@ -35,6 +35,7 @@ function rpHas(mysqli $conn, string $sql): bool {
 }
 $hasCustomOrders = rpHas($conn, "SHOW TABLES LIKE 'custom_orders'");
 $hasCouponCols   = rpHas($conn, "SHOW COLUMNS FROM orders LIKE 'coupon_code'");
+$hasShipVoucher  = rpHas($conn, "SHOW COLUMNS FROM orders LIKE 'shipping_discount'");
 
 // ---------------------------------------------------------------
 // Every order in range, shop + custom, newest first.
@@ -52,6 +53,10 @@ function rpFetch(mysqli $conn, string $sql, string $from, string $to): array {
     return $rows;
 }
 $couponSel = $hasCouponCols ? "o.coupon_discount, o.coupon_code" : "0 AS coupon_discount, NULL AS coupon_code";
+// A shipping voucher only lowers delivery_fee; show its amount and code next to the item voucher.
+$couponSel .= $hasShipVoucher
+    ? ", o.shipping_discount, o.shipping_coupon_code"
+    : ", 0 AS shipping_discount, NULL AS shipping_coupon_code";
 $rows = rpFetch($conn, "SELECT o.id, o.created_at, u.fullname, 'Shop' AS kind, o.status, o.payment_method, o.payment_status,
                                o.subtotal, o.discount_amount, $couponSel, o.delivery_fee, o.total
                         FROM orders o LEFT JOIN users u ON u.id = o.user_id
@@ -59,7 +64,7 @@ $rows = rpFetch($conn, "SELECT o.id, o.created_at, u.fullname, 'Shop' AS kind, o
 if ($hasCustomOrders) {
     $rows = array_merge($rows, rpFetch($conn, "SELECT c.id, c.created_at, u.fullname, 'Custom' AS kind, c.status, 'custom' AS payment_method,
                                                       NULL AS payment_status, c.subtotal, c.discount_amount, 0 AS coupon_discount,
-                                                      NULL AS coupon_code, 0 AS delivery_fee, c.total_price AS total
+                                                      NULL AS coupon_code, 0 AS shipping_discount, NULL AS shipping_coupon_code, 0 AS delivery_fee, c.total_price AS total
                                                FROM custom_orders c LEFT JOIN users u ON u.id = c.user_id
                                                WHERE c.created_at >= ? AND c.created_at < ?", $fromSql, $toSql));
 }
@@ -68,7 +73,7 @@ usort($rows, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 // ---------------------------------------------------------------
 // Totals. Sales exclude cancelled orders, same rule as the dashboard.
 // ---------------------------------------------------------------
-$sum = ['sales' => 0.0, 'orders' => 0, 'discounts' => 0.0, 'coupons' => 0.0, 'delivery' => 0.0, 'cancelled' => 0, 'cancelled_value' => 0.0];
+$sum = ['sales' => 0.0, 'orders' => 0, 'discounts' => 0.0, 'coupons' => 0.0, 'shipping' => 0.0, 'delivery' => 0.0, 'cancelled' => 0, 'cancelled_value' => 0.0];
 $byDay = [];
 $byPayment = [];
 for ($d = $from; $d <= $to; $d = date('Y-m-d', strtotime($d . ' +1 day'))) {
@@ -85,6 +90,7 @@ foreach ($rows as $r) {
     $sum['orders']++;
     $sum['discounts'] += (float)$r['discount_amount'];
     $sum['coupons']   += (float)$r['coupon_discount'];
+    $sum['shipping']  += (float)$r['shipping_discount'];
     $sum['delivery']  += (float)$r['delivery_fee'];
 
     $day = substr($r['created_at'], 0, 10);
@@ -138,7 +144,8 @@ if (($_GET['export'] ?? '') === 'xlsx') {
         ['Orders', ['v' => $sum['orders'], 's' => 'int']],
         ['Average order', $m($avgOrder)],
         ['PWD / Senior discounts', $m($sum['discounts'])],
-        ['Coupon discounts', $m($sum['coupons'])],
+        ['Voucher discounts (items)', $m($sum['coupons'])],
+        ['Shipping voucher discounts', $m($sum['shipping'])],
         ['Delivery fees', $m($sum['delivery'])],
         ['Cancelled orders', ['v' => $sum['cancelled'], 's' => 'int']],
         ['Value of cancelled orders', $m($sum['cancelled_value'])],
@@ -158,7 +165,7 @@ if (($_GET['export'] ?? '') === 'xlsx') {
         [['v' => $period, 's' => 'muted']],
         [['v' => 'Cancelled orders are listed but left out of the totals row.', 's' => 'muted']],
         [],
-        $hdr(['Order', 'Date', 'Customer', 'Type', 'Status', 'Payment', 'Payment status', 'Subtotal', 'PWD/Senior discount', 'Coupon', 'Coupon discount', 'Delivery fee', 'Total']),
+        $hdr(['Order', 'Date', 'Customer', 'Type', 'Status', 'Payment', 'Payment status', 'Subtotal', 'PWD/Senior discount', 'Vouchers', 'Voucher discount', 'Shipping voucher', 'Delivery fee', 'Total']),
     ];
     foreach ($rows as $r) {
         $orders[] = [
@@ -171,8 +178,9 @@ if (($_GET['export'] ?? '') === 'xlsx') {
             $r['payment_status'] ? $label($r['payment_status']) : '',
             $m($r['subtotal']),
             $m($r['discount_amount']),
-            $r['coupon_code'] ?? '',
+            implode(' + ', array_filter([$r['coupon_code'], $r['shipping_coupon_code']])),
             $m($r['coupon_discount']),
+            $m($r['shipping_discount']),
             $m($r['delivery_fee']),
             $m($r['total']),
         ];
@@ -184,7 +192,7 @@ if (($_GET['export'] ?? '') === 'xlsx') {
         $orders[] = [
             ['v' => 'Total (excl. cancelled)', 's' => 'total'], ['v' => '', 's' => 'total'], ['v' => '', 's' => 'total'],
             ['v' => '', 's' => 'total'], ['v' => '', 's' => 'total'], ['v' => '', 's' => 'total'], ['v' => '', 's' => 'total'],
-            $sumIf('H'), $sumIf('I'), ['v' => '', 's' => 'total'], $sumIf('K'), $sumIf('L'), $sumIf('M'),
+            $sumIf('H'), $sumIf('I'), ['v' => '', 's' => 'total'], $sumIf('K'), $sumIf('L'), $sumIf('M'), $sumIf('N'),
         ];
     } else {
         $orders[] = [['v' => 'No orders in this period.', 's' => 'muted']];
@@ -218,8 +226,8 @@ if (($_GET['export'] ?? '') === 'xlsx') {
 
     $file = xlsxBuild([
         ['name' => 'Summary',      'widths' => [30, 18, 18],                                               'rows' => $summary],
-        ['name' => 'Orders',       'widths' => [10, 22, 26, 9, 18, 24, 18, 13, 23, 13, 19, 14, 14], 'rows' => $orders,
-         'freeze' => 5, 'filter' => $rows ? "A5:M{$last}" : null],
+        ['name' => 'Orders',       'widths' => [10, 22, 26, 9, 18, 24, 18, 13, 23, 16, 19, 18, 14, 14], 'rows' => $orders,
+         'freeze' => 5, 'filter' => $rows ? "A5:N{$last}" : null],
         ['name' => 'Top Products', 'widths' => [8, 40, 12, 16],                                           'rows' => $products, 'freeze' => 4],
         ['name' => 'Daily Sales',  'widths' => [22, 10, 16],                                              'rows' => $daily, 'freeze' => 4],
     ]);
@@ -305,8 +313,8 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
             <h5><?php echo $peso($avgOrder); ?></h5><p class="mb-0 text-muted small">Average order</p>
         </div></div>
         <div class="col-6 col-md-3"><div class="admin-card text-center rp-stat">
-            <h5><?php echo $peso($sum['discounts'] + $sum['coupons']); ?></h5>
-            <p class="mb-0 text-muted small">Discounts given<br><span style="font-size:.75rem;">PWD/Senior <?php echo $peso($sum['discounts']); ?> · Coupons <?php echo $peso($sum['coupons']); ?></span></p>
+            <h5><?php echo $peso($sum['discounts'] + $sum['coupons'] + $sum['shipping']); ?></h5>
+            <p class="mb-0 text-muted small">Discounts given<br><span style="font-size:.75rem;">PWD/Senior <?php echo $peso($sum['discounts']); ?> · Vouchers <?php echo $peso($sum['coupons']); ?> · Shipping <?php echo $peso($sum['shipping']); ?></span></p>
         </div></div>
         <div class="col-6 col-md-3"><div class="admin-card text-center rp-stat">
             <h5><?php echo $peso($sum['delivery']); ?></h5><p class="mb-0 text-muted small">Delivery fees</p>
@@ -400,8 +408,8 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
                         <td class="small"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $r['status']))); ?></td>
                         <td class="small"><?php echo $isCustom ? 'Custom order' : htmlspecialchars(paymentMethodLabel($r['payment_method'])); ?></td>
                         <td class="text-end small">
-                            <?php $disc = (float)$r['discount_amount'] + (float)$r['coupon_discount']; echo $disc > 0 ? '-' . $peso($disc) : '—'; ?>
-                            <?php if (!empty($r['coupon_code'])): ?><br><span class="text-muted"><?php echo htmlspecialchars($r['coupon_code']); ?></span><?php endif; ?>
+                            <?php $disc = (float)$r['discount_amount'] + (float)$r['coupon_discount'] + (float)$r['shipping_discount']; echo $disc > 0 ? '-' . $peso($disc) : '—'; ?>
+                            <?php $codes = implode(' + ', array_filter([$r['coupon_code'], $r['shipping_coupon_code']])); if ($codes !== ''): ?><br><span class="text-muted"><?php echo htmlspecialchars($codes); ?></span><?php endif; ?>
                         </td>
                         <td class="text-end fw-bold"><?php echo $peso($r['total']); ?></td>
                     </tr>

@@ -73,12 +73,24 @@ function configureDbConnection(mysqli $db): void
     $db->query("SET time_zone = '+08:00'");
 }
 
-// Create connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+// Create connection. A fresh Railway container gets "Connection refused" for
+// its first ~2 seconds, so retry briefly before giving up.
+$conn = null;
+for ($try = 1; $try <= 4 && !$conn; $try++) {
+    try {
+        $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+        if ($conn->connect_error) throw new mysqli_sql_exception($conn->connect_error);
+    } catch (mysqli_sql_exception $e) {
+        $conn = null;
+        error_log("[db] connect attempt $try failed: " . $e->getMessage());
+        if ($try < 4) usleep(750000);
+    }
+}
+if (!$conn) {
+    // Never echo the driver message: it can carry the host and user.
+    http_response_code(503);
+    header('Retry-After: 5');
+    die('The shop is starting up. Please refresh in a few seconds.');
 }
 
 configureDbConnection($conn);

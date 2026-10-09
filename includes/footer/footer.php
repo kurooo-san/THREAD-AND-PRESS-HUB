@@ -147,6 +147,7 @@
         }
     </script>
     
+    <script>window.CSRF_TOKEN = <?php echo json_encode(generateCsrfToken()); ?>;</script>
     <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../js/live-status.js' : 'js/live-status.js'; ?>?v=<?php echo @filemtime(__DIR__ . '/../../js/live-status.js'); ?>"></script>
 
     <?php if (strpos($_SERVER['PHP_SELF'], '/admin/') === false): ?>

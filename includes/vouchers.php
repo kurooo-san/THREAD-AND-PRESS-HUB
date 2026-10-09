@@ -149,6 +149,36 @@ function voucherClaim(int $userId, array $voucher, int $orderId): bool {
 }
 
 /**
+ * Puts the vouchers spent on a cancelled order back in the customer's wallet
+ * and frees their coupon use. Safe to call twice: a returned voucher no longer
+ * points at the order. Returns how many came back.
+ */
+function voucherRelease(int $orderId): int {
+    global $conn;
+    if (!vouchersReady()) return 0;
+    $stmt = $conn->prepare("SELECT id, coupon_id FROM user_coupons WHERE order_id = ? AND used_at IS NOT NULL");
+    $stmt->bind_param("i", $orderId);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    $back = $conn->prepare("UPDATE user_coupons SET used_at = NULL, order_id = NULL WHERE id = ? AND order_id = ?");
+    $free = $conn->prepare("UPDATE coupons SET times_used = times_used - 1 WHERE id = ? AND times_used > 0");
+    $n = 0;
+    foreach ($rows as $r) {
+        $back->bind_param("ii", $r['id'], $orderId);
+        $back->execute();
+        if ($back->affected_rows !== 1) continue;
+        $free->bind_param("i", $r['coupon_id']);
+        $free->execute();
+        $n++;
+    }
+    $back->close();
+    $free->close();
+    return $n;
+}
+
+/**
  * Gives a coupon to customers. $userIds is a list of ids, or null for every
  * customer (admins excluded). Someone who already holds it is skipped, so
  * giving twice never doubles a voucher. Returns the ids that newly got it.

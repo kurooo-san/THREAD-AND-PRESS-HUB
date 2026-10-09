@@ -67,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                       AND LOWER(payment_method) = 'cod'
                                       AND payment_status = 'unpaid'");
                     }
+                    if ($status === 'cancelled') {
+                        voucherRelease((int)$order_id);
+                    }
                     require_once '../includes/email-helper.php';
                     sendOrderStatusEmail($conn, $order_id, $status);
                     logAudit('order_status_updated', 'order', $order_id, "Status changed to: $status");
@@ -147,13 +150,13 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                             <?php // Any non-cash channel can land here (e-wallet, InstaPay, bank transfer). ?>
                             <?php if ($ps === 'pending_verification' && $order['payment_method'] !== 'cod'): ?>
                                 <div class="btn-group btn-group-sm mt-1" role="group">
-                                    <form method="POST" class="d-inline" onsubmit="return confirm('Verify this payment?');">
+                                    <form method="POST" class="d-inline" data-ajax onsubmit="return confirm('Verify this payment?');">
                                         <?php echo csrfTokenField(); ?>
                                         <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
                                         <input type="hidden" name="action" value="verify_payment">
                                         <button type="submit" class="btn btn-success btn-sm" title="Approve"><i class="fas fa-check"></i></button>
                                     </form>
-                                    <form method="POST" class="d-inline" onsubmit="return confirm('Reject this payment?');">
+                                    <form method="POST" class="d-inline" data-ajax onsubmit="return confirm('Reject this payment?');">
                                         <?php echo csrfTokenField(); ?>
                                         <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
                                         <input type="hidden" name="action" value="reject_payment">

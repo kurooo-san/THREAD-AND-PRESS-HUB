@@ -138,7 +138,7 @@ const SupportWidget = {
         formData.append('subject', subject);
         formData.append('message', message);
         try {
-            const res = await fetch(this.ajaxUrl, { method: 'POST', body: formData });
+            const res = await fetch(this.ajaxUrl, { method: 'POST', body: formData, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'create failed');
             this.handoffConvId = data.conversation_id;
@@ -263,7 +263,7 @@ const SupportWidget = {
         formData.append('message', message);
 
         try {
-            const res = await fetch(this.ajaxUrl, { method: 'POST', body: formData });
+            const res = await fetch(this.ajaxUrl, { method: 'POST', body: formData, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } });
             const data = await res.json();
             if (data.success) {
                 form.reset();
@@ -372,7 +372,7 @@ const SupportWidget = {
         }
 
         try {
-            const res = await fetch(this.ajaxUrl, { method: 'POST', body: formData });
+            const res = await fetch(this.ajaxUrl, { method: 'POST', body: formData, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } });
             const data = await res.json();
             if (data.success) {
                 this.appendSupportMessage(data.message);

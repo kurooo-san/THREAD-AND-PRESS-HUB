@@ -137,6 +137,7 @@
 
         fetch(ajaxUrl, {
             method: 'POST',
+            headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' },
             body: formData
         })
         .then(res => res.json())

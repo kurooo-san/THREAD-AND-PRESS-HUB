@@ -20,6 +20,16 @@ if (!isLoggedIn()) {
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// Saves, uploads and AI runs come from custom-design.php with the X-CSRF-Token header.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $sentToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string) $sentToken)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Your session expired. Refresh the page and try again.']);
+        exit();
+    }
+}
 $userId = (int) $_SESSION['user_id'];
 
 switch ($action) {
