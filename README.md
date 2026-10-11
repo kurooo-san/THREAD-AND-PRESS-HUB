@@ -15,14 +15,14 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 - **Quick Add**: Pick colour, size and quantity in a bottom sheet, then Add to Cart or Buy Now
 - **Shopping Cart**: Add/remove items with quantity management
 - **Product Reviews**: Star ratings and reviews on product pages
-- **Vouchers**: The admin gives vouchers to customers (no codes to type). They land in **My Vouchers**; at checkout the voucher that saves the most is picked automatically (one discount voucher off the items, one shipping voucher off the delivery fee) and can be switched or removed. A voucher used on an order that gets cancelled goes back to the wallet
+- **Vouchers**: The admin gives vouchers to customers (no codes to type). They land in **My Vouchers**; at checkout the voucher that saves the most is picked automatically (one discount voucher off the items, one shipping voucher off the delivery fee) and can be switched or removed. A voucher used on an order that gets cancelled goes back to the wallet; if the admin un-cancels the order the voucher is taken back, or the order stays cancelled when the customer already spent that voucher elsewhere
   - Percent or fixed discounts, optional minimum subtotal, usage limit and validity dates, all set by the admin
   - One discount voucher and one shipping voucher per order; works together with the PWD/Senior discount
   - Checked again on the server when the order is placed (it must still be in the customer's own wallet), so a voucher that expired or ran out in the meantime stops the order with a clear message instead of charging a price the customer did not see
   - The **Promotions** page shows public promos and the customer's own vouchers; vouchers given to someone else stay private
 - **Special Discounts**:
-  - PWD Discount: 20% off with valid PWD ID
-  - Senior Citizen Discount: 20% off with valid Senior ID
+  - PWD Discount: 20% off with valid PWD ID (the ID number is required when registering as PWD)
+  - Senior Citizen Discount: 20% off with valid Senior ID (the ID number is required when registering as Senior)
 - **Payment Options**:
   - Online payment through PayMongo's hosted checkout (GCash, Maya, cards and GrabPay by default). The amount is always built from the database, never from the browser
   - Cash on Delivery: Pay when order arrives
@@ -212,9 +212,9 @@ The older GCash/Maya/QR payment pages (`payment_gcash.php`, `payment_maya.php`, 
 ## Discount System
 
 - **PWD (Person with Disability)**: 20% discount
-  - Requires valid PWD ID during checkout
+  - PWD ID number required at registration; the valid ID is checked on delivery
 - **Senior Citizens**: 20% discount
-  - Requires valid Senior ID during checkout
+  - Senior ID number required at registration; the valid ID is checked on delivery
 - **Regular Users**: No discount
 - **Vouchers**: One discount voucher and one shipping voucher per order, on top of the PWD/Senior discount
 

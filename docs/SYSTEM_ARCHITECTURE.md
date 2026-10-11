@@ -97,7 +97,7 @@ Key relationships:
 - `users` 1—N `orders`, `custom_designs`, `custom_orders`, `product_reviews`, `user_addresses`, `support_conversations`, `chat_history`
 - `orders` 1—N `order_items`; `products` 1—N `order_items` and `product_reviews`
 - `custom_designs` 1—N `custom_orders`; `custom_orders` 1—N `custom_order_payments`
-- `users` 1—N `user_coupons` N—1 `coupons`: one row per voucher given; `used_at` + `order_id` are set when it is spent and cleared again if that order is cancelled
+- `users` 1—N `user_coupons` N—1 `coupons`: one row per voucher given; `used_at` + `order_id` are set when it is spent and cleared again if that order is cancelled (`released_order_id` remembers that order so un-cancelling can take the voucher back)
 - `coupons` 1—N `orders` (by `coupon_code` and `shipping_coupon_code`); each order keeps its own copy of the codes and discounts, so editing or deleting a coupon never changes a past order
 - `paymongo_sessions` → `orders` or `custom_orders` (by `order_kind` + `order_id`)
 
@@ -109,7 +109,7 @@ Key relationships:
 | Component | File | Description |
 |-----------|------|-------------|
 | Login | `login.php` | Email/password (bcrypt), rate-limited by email + device and by IP, optional "Remember me" (30 days) |
-| Registration | `register.php` | Account type (Regular/PWD/Senior), live password-rule checklist |
+| Registration | `register.php` | Account type (Regular/PWD/Senior; the PWD/Senior ID number is required, checked in the form and on the server), live password-rule checklist |
 | Profile | `profile.php` | Personal info, up to 3 saved addresses, password change |
 | Forgot / Reset Password | `forgot-password.php`, `reset-password.php` | Emailed one-time link; a reset signs out every remembered device |
 | Logout | `logout.php` | Session destruction |
@@ -138,13 +138,13 @@ Key relationships:
 |-----------|------|-------------|
 | My Orders | `orders.php`, `order_details.php` | History, status, voucher/discount lines; the page updates by itself when the shop changes the status (`js/live-status.js` polling `order-status.php`) |
 | Invoices | `invoice.php`, `custom-invoice.php` | PDF invoices (Dompdf) |
-| Admin Orders | `admin/orders.php`, `admin/order_details.php` | Status updates and Verify/Reject payment save without reloading (`<form data-ajax>`); cancelling returns the order's vouchers |
+| Admin Orders | `admin/orders.php`, `admin/order_details.php` | Status updates and Verify/Reject payment save without reloading (`<form data-ajax>`); cancelling returns the order's vouchers; un-cancelling takes them back in the same transaction, or is refused if a returned voucher was already spent on another order |
 
 ### 5.5 Vouchers Module
 | Component | File | Description |
 |-----------|------|-------------|
 | Admin Coupons | `admin/coupons.php` | Create, edit, activate/deactivate, delete; **Give** to selected customers or all, with a gift note (customer is emailed); shows status, holders, uses and discount given |
-| Rules | `includes/vouchers.php`, `includes/config.php` | `couponCheck()`, `voucherGive()`, `voucherClaim()` + `incrementCouponUsage()` (atomic: cannot exceed max uses), `voucherRelease()` (on cancel), `couponStatus()` |
+| Rules | `includes/vouchers.php`, `includes/config.php` | `couponCheck()`, `voucherGive()`, `voucherClaim()` + `incrementCouponUsage()` (atomic: cannot exceed max uses), `voucherRelease()` (on cancel), `voucherReclaim()` (on un-cancel), `couponStatus()` |
 | Customer side | `vouchers.php`, `checkout.php`, `promotion.php`, chatbot | My Vouchers wallet; auto-picked at checkout; Promotions shows public promos and the viewer's own vouchers; the chatbot quotes only this customer's vouchers |
 
 ### 5.6 Sales Report Module

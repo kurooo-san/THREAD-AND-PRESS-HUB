@@ -168,7 +168,7 @@
 | **"Made to Order pero may stock?"** | Ang stock po ng concept products ay production capacity — kung ilan ang kaya naming i-produce sa isang batch |
 | **"Paano kung dalawang customer ang sabay gumamit ng huling voucher?"** | Atomic po ang pag-claim: iisang UPDATE na may kondisyong `times_used < max_uses`. Isa lang ang makakakuha; ang isa ay hindi matutuloy ang order at sasabihan kung bakit — hindi siya masisingil ng presyong hindi niya nakita |
 | **"Pwede bang dayain ang voucher sa browser?"** | Hindi po. Ang browser ay pang-display lang; sa pag-place ng order, kinukuwenta ulit ng server ang presyo mula sa database at chine-check kung nasa wallet talaga ng customer ang voucher at hindi pa nagagamit |
-| **"Paano kung ma-cancel ang order?"** | Babalik po ang voucher sa wallet ng customer at mababawas ulit ang bilang ng gamit |
+| **"Paano kung ma-cancel ang order?"** | Babalik po ang voucher sa wallet ng customer at mababawas ulit ang bilang ng gamit. Kapag in-un-cancel ng admin, babawiin ulit ang voucher; kung nagamit na ito ng customer sa ibang order, hindi papayagan ang un-cancel para hindi magamit nang dalawang beses |
 | **"Bakit hindi mapalitan ang code kapag na-edit?"** | Naka-save po ang code sa bawat order at doon nakabatay ang "Given" totals — kapag pinalitan, masisira ang tracking. Gumawa na lang po ng bagong coupon |
 | **"Pwede bang pagsabayin ang PWD at voucher?"** | Opo. Parehong kinukuwenta sa item subtotal, tapos ang 12% VAT ay sa natitira. Shipping voucher lang ang bumabawas sa delivery fee |
 | **"Paano malalaman ng may-ari ang benta?"** | Sales Report: kahit anong date range, summary, daily chart, top products, by payment method, at Export Excel / Print. Pareho ang patakaran sa Dashboard: hindi kasama ang cancelled orders |
