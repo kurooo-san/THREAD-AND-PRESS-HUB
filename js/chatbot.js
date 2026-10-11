@@ -164,7 +164,8 @@ const SupportWidget = {
         // answering and "Back to AI" while talking to our team.
         if (tab === 'ai') {
             tabAI.hidden = true;
-            tabSupport.hidden = false;
+            // Customers reach our team by typing "talk to a person"; this only shows for unread replies.
+            tabSupport.hidden = document.getElementById('support-unread-badge').style.display === 'none';
             panelAI.classList.add('active');
             panelSupport.classList.remove('active');
             headerAvatar.innerHTML = '<i class="fas fa-robot"></i>';
@@ -359,6 +360,13 @@ const SupportWidget = {
 
         if (!message && !hasImage) return;
 
+        // Typed "back to AI": return to the AI chat instead of sending it to our team.
+        if (!hasImage && /^\s*(go\s+)?(back\s+to|balik(\s+(na\s+)?(ako\s+)?sa)?|talk\s+to)\s+(the\s+)?(ai|bot|chatbot)\s*[.!]*\s*$/i.test(message)) {
+            input.value = '';
+            this.switchTab('ai');
+            return;
+        }
+
         this.isSending = true;
         input.value = '';
 
@@ -462,6 +470,9 @@ const SupportWidget = {
                     badge.style.display = '';
                 } else {
                     badge.style.display = 'none';
+                }
+                if (document.getElementById('panel-ai').classList.contains('active')) {
+                    document.getElementById('tab-support').hidden = !(data.count > 0);
                 }
             }
         } catch (e) {}
@@ -574,6 +585,16 @@ function initChatbot() {
         // Add user message
         addUserMessage(message);
         chatInput.value = '';
+
+        // Typed "talk to a person" (or similar): skip the AI and hand over now.
+        if (WANTS_PERSON.test(message)) {
+            chatInput.disabled = sendBtn.disabled = true;   // a second Enter would open a duplicate chat
+            const ok = await SupportWidget.handoffFromAI('');
+            chatInput.disabled = sendBtn.disabled = false;
+            if (!ok) addBotMessage("⚠️ I couldn't reach our team just now. Please try again in a moment.");
+            return;
+        }
+
         chatInput.disabled = true;
         sendBtn.disabled = true;
         
@@ -635,6 +656,9 @@ function initChatbot() {
         chatMessages.appendChild(card);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
+
+    // English and Tagalog ways of asking for a real person.
+    const WANTS_PERSON = /\b(talk|speak|chat)\s+(to|with)\s+(a\s+|an\s+|the\s+|your\s+)?(real\s+)?(person|human|agent|admin|staff|someone|team)\b|\blive\s+(support|agent|chat)\b|\b(makausap|makakausap|kausapin|kausap)\b.*\b(tao|admin|staff|agent)\b/i;
 
     async function startHandoff(btn, summary) {
         btn.disabled = true;

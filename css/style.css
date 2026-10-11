@@ -2219,6 +2219,7 @@ body.admin-page .cafe-navbar { position: relative; }
     transition: var(--transition);
 }
 .chat-modebar-btn[hidden] { display: none; }
+.chat-modebar:not(:has(.chat-modebar-btn:not([hidden]))) { display: none; }
 .chat-modebar-btn:hover { background: var(--bg-light); }
 .chat-modebar-end { margin-left: auto; }
 .chat-tab-badge {

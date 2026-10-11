@@ -165,7 +165,7 @@ Key relationships:
 ### 5.8 AI Module (Google Gemini)
 | Component | File | Description |
 |-----------|------|-------------|
-| Chatbot | `js/chatbot.js`, `includes/gemini_api.php` | Store-aware assistant (products, the customer's own orders, delivery, payment, their own vouchers). When it cannot help it offers **Talk to a person**, which opens a Live Support conversation with the AI chat attached |
+| Chatbot | `js/chatbot.js`, `includes/gemini_api.php` | Store-aware assistant (products, the customer's own orders, delivery, payment, their own vouchers). When it cannot help it offers **Talk to a person**, which opens a Live Support conversation with the AI chat attached. Typing "talk to a person" (or a Tagalog version) skips the AI and hands over at once; typing "back to AI" in Live Support returns to the AI |
 | Virtual Try-On | `try-on.php`, `js/try-on.js`, `includes/tryon-ajax.php`, `tryon-save.php` | AI image of the customer wearing a product |
 | AI Stylist / Size finder | `includes/tryon-suggest.php`, `includes/tryon-size.php` | Product suggestions; size from height/weight (formula fallback) |
 | AI Design Generator | `includes/custom-design-ajax.php` | Artwork from a text prompt |
@@ -176,7 +176,7 @@ Key relationships:
 ### 5.9 Support & Contact Module
 | Component | File | Description |
 |-----------|------|-------------|
-| Chat window | `includes/footer/footer.php`, `js/chatbot.js` | One floating window with two tabs: AI Assistant and Live Support (conversations, unread badge, handoff) |
+| Chat window | `includes/footer/footer.php`, `js/chatbot.js` | One floating window for the AI Assistant and Live Support (conversations, handoff). The "My support chats" button shows only when there is an unread reply from our team |
 | Support Chat | `support-chat.php`, `js/support-chat.js`, `includes/support-chat-ajax.php`, `includes/support-chat-config.php` | Full-page customer ↔ admin chat with images and unread counts |
 | Admin Chat | `admin/support-chat.php` | Conversations, AI Suggest Reply |
 | Contact Form | `contact.php`, `includes/contact-config.php`, `admin/contact-management.php` | Categorised messages, responses |

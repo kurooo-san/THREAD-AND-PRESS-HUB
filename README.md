@@ -59,7 +59,7 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 
 ### 💬 Chat Window: AI Assistant + Live Support
 - One floating chat window with two tabs: the **AI Assistant** and **Live Support** (chat with an admin, unread-message badge, image attachments on the full Support Chat page)
-- **AI-to-human handoff**: when the AI cannot help (refunds, complaints, a request for a real person) it offers **Talk to a person**; the customer can also tap that quick button anytime. A Live Support conversation opens with the AI chat attached, so the customer does not repeat themselves
+- **AI-to-human handoff**: when the AI cannot help (refunds, complaints, a request for a real person) it offers **Talk to a person**; the customer can also tap that quick button anytime, or just type "talk to a person" (English or Tagalog, e.g. "makausap ang tao") to skip the AI. A Live Support conversation opens with the AI chat attached, so the customer does not repeat themselves. Typing "back to AI" (or "balik sa AI") returns to the AI. The "My support chats" button only shows when our team has an unread reply
 
 ### 📱 Mobile App Layout & Installable App (PWA)
 - Can be installed on phones and tablets from the browser (manifest + service worker), in portrait or landscape

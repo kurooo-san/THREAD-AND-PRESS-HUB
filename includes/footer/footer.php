@@ -173,7 +173,7 @@
             <button type="button" class="chat-modebar-btn" id="tab-ai" hidden>
                 <i class="fas fa-arrow-left"></i> Back to AI
             </button>
-            <button type="button" class="chat-modebar-btn chat-modebar-end" id="tab-support">
+            <button type="button" class="chat-modebar-btn chat-modebar-end" id="tab-support" hidden>
                 <i class="fas fa-headset"></i> My support chats
                 <span class="chat-tab-badge" id="support-unread-badge" style="display:none;">0</span>
             </button>

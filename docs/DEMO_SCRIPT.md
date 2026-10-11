@@ -142,7 +142,7 @@
 **Sa Tab 1:** buksan ang chat widget (💬)
 
 **Pindutin ang quick button na "My Vouchers"** — sasagot ang bot ng mga voucher sa wallet ng customer at kung paano gamitin.
-**Ipakita ang handoff:** i-type ang "Gusto kong makausap ang tao" → **Talk to a person** → lilipat sa Live Support kasama ang buong usapan.
+**Ipakita ang handoff:** i-type ang "talk to a person" o "Gusto kong makausap ang tao" → diretsong lilipat sa Live Support kasama ang buong usapan (hindi na dadaan sa AI). I-type ang "back to AI" para bumalik sa AI.
 **O i-type:** "How does the virtual try-on work?" o "Is there VAT?"
 > "Ang chatbot po namin ay Gemini-powered at may kaalaman sa buong system — features, products, at maging sa orders ng naka-login na customer."
 
