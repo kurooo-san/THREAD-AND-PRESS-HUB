@@ -96,6 +96,12 @@ function vouchersReady(): bool {
                           ADD COLUMN `shipping_coupon_code` VARCHAR(50) DEFAULT NULL,
                           ADD COLUMN `shipping_discount` DECIMAL(10,2) NOT NULL DEFAULT 0.00");
         }
+        // The cancelled order a voucher was returned from, so un-cancelling can take it back.
+        if ($conn->query("SHOW COLUMNS FROM user_coupons LIKE 'released_order_id'")->num_rows === 0) {
+            $conn->query("ALTER TABLE user_coupons
+                          ADD COLUMN `released_order_id` int(11) DEFAULT NULL,
+                          ADD KEY `idx_released_order` (`released_order_id`)");
+        }
     } catch (mysqli_sql_exception $e) {
         error_log('[vouchers] schema: ' . $e->getMessage());
         return $ready = false;
@@ -162,7 +168,9 @@ function voucherRelease(int $orderId): int {
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
-    $back = $conn->prepare("UPDATE user_coupons SET used_at = NULL, order_id = NULL WHERE id = ? AND order_id = ?");
+    // MySQL applies SET left to right: copy order_id before clearing it.
+    $back = $conn->prepare("UPDATE user_coupons SET released_order_id = order_id, used_at = NULL, order_id = NULL
+                             WHERE id = ? AND order_id = ?");
     $free = $conn->prepare("UPDATE coupons SET times_used = times_used - 1 WHERE id = ? AND times_used > 0");
     $n = 0;
     foreach ($rows as $r) {
@@ -176,6 +184,40 @@ function voucherRelease(int $orderId): int {
     $back->close();
     $free->close();
     return $n;
+}
+
+/**
+ * Un-cancelling an order: spends the vouchers voucherRelease() returned from
+ * it again. Call inside a transaction (after vouchersReady()). Returns '' when
+ * done, or why the order must stay cancelled: the customer already spent a
+ * returned voucher on another order, or the coupon has no uses left.
+ */
+function voucherReclaim(int $orderId): string {
+    global $conn;
+    if (!vouchersReady()) return '';
+    $stmt = $conn->prepare("SELECT id, coupon_id, order_id, used_at FROM user_coupons WHERE released_order_id = ?");
+    $stmt->bind_param("i", $orderId);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    foreach ($rows as $r) {
+        if ($r['used_at'] !== null) {
+            return "The customer already used this order's returned voucher on Order #" . (int)$r['order_id'] . ', so this order stays cancelled.';
+        }
+    }
+    $take = $conn->prepare("UPDATE user_coupons SET used_at = NOW(), order_id = ?, released_order_id = NULL
+                             WHERE id = ? AND released_order_id = ? AND used_at IS NULL");
+    foreach ($rows as $r) {
+        $take->bind_param("iii", $orderId, $r['id'], $orderId);
+        $take->execute();
+        if ($take->affected_rows !== 1 || !incrementCouponUsage((int)$r['coupon_id'])) {
+            $take->close();
+            return "This order's voucher has no uses left, so this order stays cancelled.";
+        }
+    }
+    $take->close();
+    return '';
 }
 
 /**

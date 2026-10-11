@@ -57,9 +57,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!in_array($status, $allowed, true)) {
                 $error = 'Invalid status value.';
             } else {
+                $old = $conn->prepare("SELECT status FROM orders WHERE id = ?");
+                $old->bind_param("i", $order_id);
+                $old->execute();
+                $oldStatus = ($old->get_result()->fetch_row() ?: [null])[0];
+                $old->close();
+                // Un-cancelling takes back the vouchers the cancel returned; both or neither.
+                $uncancel = $oldStatus === 'cancelled' && $status !== 'cancelled';
+                if ($uncancel) {
+                    vouchersReady();   // its ALTERs would commit the transaction early
+                    $conn->begin_transaction();
+                    $why = voucherReclaim((int)$order_id);
+                    if ($why !== '') $conn->rollback();
+                }
                 $stmt = $conn->prepare("UPDATE orders SET status = ? WHERE id = ?");
                 $stmt->bind_param("si", $status, $order_id);
-                if ($stmt->execute()) {
+                if ($uncancel && $why !== '') {
+                    $error = $why;
+                } elseif ($stmt->execute()) {
+                    if ($uncancel) $conn->commit();
                     // Auto-mark COD orders as paid (verified) once completed
                     if ($status === 'completed' && $hasPaymentStatusCol) {
                         $conn->query("UPDATE orders SET payment_status = 'verified'
@@ -75,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     logAudit('order_status_updated', 'order', $order_id, "Status changed to: $status");
                     $success = 'Order status updated successfully!';
                 } else {
+                    if ($uncancel) $conn->rollback();
                     $error = 'Failed to update order status!';
                 }
                 $stmt->close();
