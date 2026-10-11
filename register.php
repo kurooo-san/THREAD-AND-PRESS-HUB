@@ -33,6 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'All required fields must be filled!';
     } elseif (empty($street_address) || empty($barangay) || empty($city) || empty($province) || empty($zipcode)) {
         $error = 'All delivery address fields are required!';
+    } elseif ($user_type === 'pwd' && $pwd_id === '') {
+        $error = 'Please enter your PWD ID number.';
+    } elseif ($user_type === 'senior' && $senior_id === '') {
+        $error = 'Please enter your Senior Citizen ID number.';
     } elseif (!preg_match('/^[0-9]{4}$/', $zipcode)) {
         // Same rule as saved addresses (addressValidate), so the signup address
         // can always become the customer's first saved address.
@@ -120,8 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label class="form-label">Account Type *</label>
                 <select class="form-control" name="user_type" id="userType" required style="border-radius:12px; padding: 0.75rem 1rem;">
                     <option value="regular">Regular Customer</option>
-                    <option value="pwd">Person with Disability (PWD)</option>
-                    <option value="senior">Senior Citizen</option>
+                    <option value="pwd"<?php echo ($_POST['user_type'] ?? '') === 'pwd' ? ' selected' : ''; ?>>Person with Disability (PWD)</option>
+                    <option value="senior"<?php echo ($_POST['user_type'] ?? '') === 'senior' ? ' selected' : ''; ?>>Senior Citizen</option>
                 </select>
             </div>
 
@@ -302,7 +306,12 @@ html.dark-mode .pw-dot { background: #555; }
 document.getElementById('userType').addEventListener('change', function() {
     document.getElementById('pwdIdGroup').style.display = this.value === 'pwd' ? 'block' : 'none';
     document.getElementById('seniorIdGroup').style.display = this.value === 'senior' ? 'block' : 'none';
+    // The ID is required only for the discount type picked (register.php checks it too).
+    document.querySelector('[name="pwd_id"]').required = this.value === 'pwd';
+    document.querySelector('[name="senior_id"]').required = this.value === 'senior';
 });
+// After a failed submit, show the ID field for the type that is still picked.
+document.getElementById('userType').dispatchEvent(new Event('change'));
 </script>
 
 <?php include 'includes/footer/footer.php'; ?>
