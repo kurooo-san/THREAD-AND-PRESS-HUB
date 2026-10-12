@@ -65,6 +65,11 @@ RUN { \
         echo '<FilesMatch "\.(sql|env|md|lock|bak)$">'; \
         echo '    Require all denied'; \
         echo '</FilesMatch>'; \
+        echo '# Design editor states are read by custom-design-ajax.php only;'; \
+        echo '# uploads/.htaccess is not in the image (uploads/ is a volume).'; \
+        echo '<LocationMatch "^/uploads/.*\.json$">'; \
+        echo '    Require all denied'; \
+        echo '</LocationMatch>'; \
         echo 'ServerTokens Prod'; \
         echo 'ServerSignature Off'; \
         echo 'ServerName localhost'; \

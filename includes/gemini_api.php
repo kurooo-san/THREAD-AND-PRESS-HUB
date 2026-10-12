@@ -30,6 +30,14 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// CSRF (same header pattern as admin/ai-assistant-ajax.php).
+$sentToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string) $sentToken)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Invalid security token. Please refresh the page.']);
+    exit();
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
 // Bounded, so one request cannot send the AI (and the quota) a novel.
 $userMessage = mb_substr(trim((string) ($input['message'] ?? '')), 0, 1000);

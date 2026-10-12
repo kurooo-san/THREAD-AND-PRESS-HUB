@@ -12,7 +12,7 @@ async function getChatbotResponse(message) {
         // Send to Gemini API with full conversation history
         const response = await fetch('includes/gemini_api.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
             body: JSON.stringify({ 
                 message: message,
                 history: conversationHistory

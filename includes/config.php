@@ -427,6 +427,23 @@ function tryAutoLoginViaRememberCookie() {
 // Auto-login attempt on every request
 tryAutoLoginViaRememberCookie();
 
+// A ban ends a session that is already open, not only the next login.
+if (isset($_SESSION['user_id']) && $conn) {
+    try {
+        $bs = $conn->prepare("SELECT status FROM users WHERE id = ?");
+        $bs->bind_param("i", $_SESSION['user_id']);
+        $bs->execute();
+        $st = $bs->get_result()->fetch_assoc();
+        $bs->close();
+        if ($st && ($st['status'] ?? '') === 'banned') {
+            clearRememberCookie();
+            $_SESSION = [];
+        }
+    } catch (mysqli_sql_exception $e) {
+        // No status column yet (migrate_system_fixes.sql not applied): nothing to check.
+    }
+}
+
 // =============================================================
 // Coupon helpers
 // =============================================================
