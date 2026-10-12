@@ -79,6 +79,21 @@ if (!function_exists('paymongoFulfilSession')) {
         }
 
         paymongoUpdateSessionStatus($sessionId, 'paid', $check['paymentId'], $check['method']);
+
+        // Receipt goes out once, from whichever path (return page or webhook)
+        // settles the session first; the "already settled" exit above skips it.
+        // shortcut: a webhook and a return landing in the same instant can both send it; claim the row atomically if that shows up.
+        if ($kind === 'order') {
+            try {
+                global $conn;
+                require_once __DIR__ . '/email-helper.php';
+                sendOrderConfirmationEmail($conn, $orderId);
+            } catch (Throwable $e) {
+                // Non-fatal: a receipt that fails to send must not lose a real payment.
+                error_log('[paymongo] receipt email failed: ' . $e->getMessage());
+            }
+        }
+
         return ['ok' => true, 'paid' => true, 'kind' => $kind, 'orderId' => $orderId, 'error' => ''];
     }
 

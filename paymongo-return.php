@@ -73,16 +73,7 @@ if ($outcome['ok'] && $outcome['paid']) {
         'kind'     => $kind === 'custom' ? 'custom_paymongo' : 'order_paymongo',
         'total'    => (float) $session['amount'],
     ]);
-
-    // Non-fatal: a receipt that fails to send must not lose a real payment.
-    try {
-        require_once 'includes/email-helper.php';
-        if ($kind === 'order' && function_exists('sendOrderConfirmationEmail')) {
-            sendOrderConfirmationEmail($conn, $orderId);
-        }
-    } catch (Throwable $e) {
-        error_log('[paymongo] receipt email failed: ' . $e->getMessage());
-    }
+    // The receipt email is sent by paymongoFulfilSession(), once.
 
     header('Location: ' . $trackUrl);
     exit;
