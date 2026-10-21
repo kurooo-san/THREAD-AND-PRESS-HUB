@@ -85,7 +85,7 @@ One database, `threadpresshub`. `database/schema.sql` creates **25 tables**. The
 |---|---|
 | **Accounts** | `users` (role in `user_type`: regular, pwd, senior, admin; PWD/Senior ID), `user_addresses` (up to 3 saved addresses), `password_resets`, `remember_tokens`, `login_attempts` |
 | **Catalog** | `products` (gender, colours, sizes, price, stock, image, AI print file), `product_reviews` (1–5 stars, verified purchase) |
-| **Shop orders** | `orders` (subtotal, PWD/Senior discount, item and shipping vouchers + discounts, delivery fee, total, payment method/status), `order_items` |
+| **Shop orders** | `orders` (subtotal, PWD/Senior discount, item and shipping vouchers + discounts, delivery fee, total, payment method/status, `stock_returned`), `order_items` |
 | **Vouchers** | `coupons` (kind: discount or shipping; percent/fixed, minimum subtotal, max uses, times used, validity dates, active flag), `user_coupons` (who holds which voucher, gift note, who gave it, when it was used and on which order) |
 | **Custom design** | `custom_designs` (front/back images, editor data, print files), `custom_orders`, `custom_order_payments` |
 | **Payments** | `paymongo_sessions` (online checkout sessions for shop and custom orders), `payment_submissions` and `gcash_transactions` (legacy manual payments, kept for old orders) |
@@ -120,7 +120,7 @@ Key relationships:
 |-----------|------|-------------|
 | Homepage | `index.php` | Hero, categories, new arrivals, AI Try-On spotlight |
 | Shop | `shop.php` | Filters (Men/Women/Kids, type, colour, size), search, sort, Quick Add. Guests can browse; adding to cart asks them to sign in and finishes the add after login |
-| Product page | `product.php` | Details, colours/sizes, stock, reviews (`includes/reviews.php`) |
+| Product page | `product.php` | Details, colours/sizes, stock, reviews (`includes/reviews.php`), estimated delivery date for the customer's area |
 | Promotions | `promotion.php` | Public promos (coupons not yet given to anyone) plus the viewer's own vouchers |
 | Info pages | `pages.php`, `about.php`, `privacy-policy.php` | Size guide, FAQs, policies |
 
@@ -128,17 +128,19 @@ Key relationships:
 | Component | File | Description |
 |-----------|------|-------------|
 | Cart | `cart.php` | Cart with selectable lines; Buy Now skips the cart (`js/buy-now.js`) |
-| Checkout | `checkout.php` | Saved address or new one, delivery area/fee (`includes/delivery-zones.php`), PWD/Senior discount, **voucher picker** (best voucher pre-selected; one discount + one shipping voucher), 12% VAT, payment method. Prices are always recomputed from the database |
+| Checkout | `checkout.php` | Saved address or new one, delivery area/fee (`includes/delivery-zones.php`), PWD/Senior discount, **voucher picker** (best voucher pre-selected; one discount + one shipping voucher), 12% VAT, payment method, estimated delivery date that follows the chosen area or pickup. Prices are always recomputed from the database |
+| Duplicate check | `includes/duplicate-order.php` | `findDuplicateOrder()`: same customer + same items (product, colour, size, quantity) in a non-cancelled order within `DUPLICATE_ORDER_WINDOW_MIN` (10) minutes → checkout asks to confirm; a confirmed repeat is noted on the order |
+| Delivery estimate | `includes/delivery-zones.php` | `estimatedDelivery()` (working days per zone, Sundays skipped), `orderDeliveryEstimate()` for past orders (zone read back from the fee paid). Unit-tested in `tests/DeliveryEstimateAndDuplicateTest.php` |
 | Voucher rules | `includes/vouchers.php` | `couponCheck()` (pure rules, unit-tested), `voucherBestPick()`, wallet, claim and release |
 | Online payment | `paymongo-checkout.php`, `paymongo-return.php`, `paymongo-webhook.php`, `includes/paymongo.php`, `includes/paymongo-fulfil.php` | PayMongo hosted checkout; the webhook marks the order paid |
-| Confirmation | `order_confirmation.php` | Summary with the full price breakdown |
+| Confirmation | `order_confirmation.php` | Summary with the full price breakdown and the estimated delivery date |
 
 ### 5.4 Order Management Module
 | Component | File | Description |
 |-----------|------|-------------|
 | My Orders | `orders.php`, `order_details.php` | History, status, voucher/discount lines; the page updates by itself when the shop changes the status (`js/live-status.js` polling `order-status.php`) |
 | Invoices | `invoice.php`, `custom-invoice.php` | PDF invoices (Dompdf) |
-| Admin Orders | `admin/orders.php`, `admin/order_details.php` | Status updates and Verify/Reject payment save without reloading (`<form data-ajax>`); cancelling returns the order's vouchers; un-cancelling takes them back in the same transaction, or is refused if a returned voucher was already spent on another order |
+| Admin Orders | `admin/orders.php`, `admin/order_details.php` | Status updates and Verify/Reject payment save without reloading (`<form data-ajax>`); cancelling returns the order's vouchers; un-cancelling takes them back in the same transaction, or is refused if a returned voucher was already spent on another order. Cancelling also returns the stock once (`returnOrderStock()`, flagged by `orders.stock_returned`); un-cancelling takes it back (`takeBackOrderStock()`) or is refused when stock ran out. **Delete** is offered for cancelled, unpaid orders only: removes the order, its items, payment submissions, PayMongo session and payment screenshot, and writes `order_deleted` to the audit log |
 
 ### 5.5 Vouchers Module
 | Component | File | Description |
@@ -157,7 +159,7 @@ Key relationships:
 | Component | File | Description |
 |-----------|------|-------------|
 | Design Studio | `custom-design.php`, `js/design-3d.js` | Canvas designer with templates, sleeves, logo spot, live 3D model |
-| Design AJAX | `includes/custom-design-ajax.php` | Save/list/load designs, image uploads, AI artwork |
+| Design AJAX | `includes/custom-design-ajax.php` | Save/list/load/delete designs, image uploads, AI artwork. Delete is refused when a custom order uses the design (`custom_orders.design_id` is ON DELETE CASCADE), and removes the design's own files |
 | Apparel config | `includes/apparel-config.php` | Apparel types, prices, print areas |
 | Order flow | `custom-order-summary.php`, `custom-payment.php`, `my-custom-orders.php`, `custom-order-tracking.php` | Summary → payment → tracking |
 | Admin | `admin/custom-designs.php`, `admin/custom-orders.php` | Review designs, manage production status |

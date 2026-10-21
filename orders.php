@@ -30,7 +30,7 @@ $orders_result = $stmt->get_result();
                         <div class="order-header">
                             <div>
                                 <div class="order-id">Order #<?php echo htmlspecialchars($order['id']); ?></div>
-                                <small class="text-muted"><?php echo date('F d, Y H:i A', strtotime($order['created_at'])); ?></small>
+                                <small class="text-muted"><?php echo date('F d, Y g:i A', strtotime($order['created_at'])); ?></small>
                             </div>
                             <div class="text-end">
                                 <div class="order-status status-<?php echo htmlspecialchars($order['status']); ?>">

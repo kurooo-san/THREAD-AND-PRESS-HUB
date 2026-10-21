@@ -1,6 +1,7 @@
 <?php
 require 'includes/config.php';
 require_once 'includes/payment-config.php';   // paymentMethodLabel()
+require_once 'includes/delivery-zones.php';   // orderDeliveryEstimate()
 redirectToLogin();
 
 $pageTitle = 'Order Details';
@@ -60,7 +61,10 @@ $items_result = $items_stmt->get_result();
                         </div>
                         <div class="col-md-6 text-md-end">
                             <h6 class="text-muted mb-2">Order Date</h6>
-                            <p><?php echo date('F d, Y H:i A', strtotime($order['created_at'])); ?></p>
+                            <p><?php echo date('F d, Y g:i A', strtotime($order['created_at'])); ?></p>
+                            <?php if ($eta = orderDeliveryEstimate($order)): ?>
+                                <p class="mb-0"><i class="fas fa-truck me-1"></i> <?php echo htmlspecialchars($eta); ?></p>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -195,14 +199,14 @@ $items_result = $items_stmt->get_result();
                                 <p class="mb-0" style="color: var(--primary); font-weight: 700;">
                                     <i class="fas fa-check-circle"></i> Order Placed
                                 </p>
-                                <small class="text-muted"><?php echo date('F d, Y H:i A', strtotime($order['created_at'])); ?></small>
+                                <small class="text-muted"><?php echo date('F d, Y g:i A', strtotime($order['created_at'])); ?></small>
                             </div>
                             <?php if ($order['status'] !== 'pending'): ?>
                             <div class="mb-3">
                                 <p class="mb-0" style="color: var(--primary); font-weight: 700;">
                                     <i class="fas fa-check-circle"></i> Order <?php echo ucfirst(str_replace('_', ' ', $order['status'])); ?>
                                 </p>
-                                <small class="text-muted"><?php echo date('F d, Y H:i A', strtotime($order['updated_at'])); ?></small>
+                                <small class="text-muted"><?php echo date('F d, Y g:i A', strtotime($order['updated_at'])); ?></small>
                             </div>
                             <?php endif; ?>
                         </div>

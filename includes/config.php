@@ -572,6 +572,68 @@ function tryReserveStock($productId, $qty) {
     return $affected === 1;
 }
 
+/**
+ * True when cancelled orders can give their stock back. Adds orders.stock_returned
+ * if missing -- call it BEFORE begin_transaction(), an ALTER commits early.
+ * The flag stops a double return, and stops un-cancelling an order cancelled
+ * before this existed from taking its stock a second time.
+ */
+function orderStockReady() {
+    global $conn;
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    if (!productsHasStockColumn()) return $ready = false;
+    if ($conn->query("SHOW COLUMNS FROM orders LIKE 'stock_returned'")->num_rows === 0) {
+        $conn->query("ALTER TABLE orders ADD COLUMN `stock_returned` TINYINT(1) NOT NULL DEFAULT 0");
+    }
+    return $ready = true;
+}
+
+/** Cancelling: put the order's items back on the shelf, once. Run inside the cancel transaction. */
+function returnOrderStock($orderId) {
+    global $conn;
+    $orderId = (int)$orderId;
+    $flag = $conn->prepare("UPDATE orders SET stock_returned = 1 WHERE id = ? AND stock_returned = 0");
+    $flag->bind_param("i", $orderId);
+    $flag->execute();
+    $first = $flag->affected_rows === 1;
+    $flag->close();
+    if (!$first) return;
+
+    $stmt = $conn->prepare("UPDATE products p
+                            JOIN (SELECT product_id, SUM(quantity) AS q FROM order_items WHERE order_id = ? GROUP BY product_id) oi
+                              ON oi.product_id = p.id
+                            SET p.stock = p.stock + oi.q");
+    $stmt->bind_param("i", $orderId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+/**
+ * Un-cancelling: take back the stock returnOrderStock() gave back. False when
+ * an item no longer has enough -- the caller rolls the transaction back.
+ */
+function takeBackOrderStock($orderId) {
+    global $conn;
+    $orderId = (int)$orderId;
+    $flag = $conn->prepare("UPDATE orders SET stock_returned = 0 WHERE id = ? AND stock_returned = 1");
+    $flag->bind_param("i", $orderId);
+    $flag->execute();
+    $returned = $flag->affected_rows === 1;
+    $flag->close();
+    if (!$returned) return true;   // nothing was given back, so nothing to take
+
+    $stmt = $conn->prepare("SELECT product_id, SUM(quantity) AS q FROM order_items WHERE order_id = ? GROUP BY product_id");
+    $stmt->bind_param("i", $orderId);
+    $stmt->execute();
+    $items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    foreach ($items as $it) {
+        if (!tryReserveStock($it['product_id'], $it['q'])) return false;
+    }
+    return true;
+}
+
 // =============================================================
 // reCAPTCHA helpers (Google reCAPTCHA v2 "I'm not a robot")
 // =============================================================

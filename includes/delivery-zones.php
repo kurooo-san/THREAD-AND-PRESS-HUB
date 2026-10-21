@@ -17,13 +17,17 @@
 if (!defined('DELIVERY_ZONES')) {
 
     define('DELIVERY_ZONES', [
-        'rizal'     => ['label' => 'Rizal (Cainta, Taytay, Antipolo, nearby)', 'fee' => 50.00],
-        'ncr'       => ['label' => 'Metro Manila / NCR',                        'fee' => 100.00],
-        'nearby'    => ['label' => 'Bulacan, Cavite, Laguna, Batangas, Quezon, Pampanga', 'fee' => 150.00],
-        'luzon'     => ['label' => 'Rest of Luzon',                             'fee' => 200.00],
-        'visayas'   => ['label' => 'Visayas',                                   'fee' => 250.00],
-        'mindanao'  => ['label' => 'Mindanao',                                  'fee' => 300.00],
+        // 'days' = [min, max] working days (Sundays skipped) for the delivery estimate.
+        'rizal'     => ['label' => 'Rizal (Cainta, Taytay, Antipolo, nearby)', 'fee' => 50.00,  'days' => [1, 2]],
+        'ncr'       => ['label' => 'Metro Manila / NCR',                        'fee' => 100.00, 'days' => [1, 2]],
+        'nearby'    => ['label' => 'Bulacan, Cavite, Laguna, Batangas, Quezon, Pampanga', 'fee' => 150.00, 'days' => [2, 3]],
+        'luzon'     => ['label' => 'Rest of Luzon',                             'fee' => 200.00, 'days' => [3, 5]],
+        'visayas'   => ['label' => 'Visayas',                                   'fee' => 250.00, 'days' => [3, 5]],
+        'mindanao'  => ['label' => 'Mindanao',                                  'fee' => 300.00, 'days' => [3, 5]],
     ]);
+
+    /** Working days until a store-pickup order is ready. */
+    define('PICKUP_READY_DAYS', 1);
 
     /** Zone used when the customer has not chosen one yet. */
     define('DELIVERY_ZONE_DEFAULT', 'rizal');
@@ -151,6 +155,67 @@ if (!defined('DELIVERY_ZONES')) {
                   . DELIVERY_ZONES[$declaredZone]['label'] . ' was selected — please confirm the shipping fee.';
         }
         return ['zone' => $declaredZone, 'fee' => deliveryFee($declaredZone), 'locked' => false, 'flag' => $flag];
+    }
+
+    /**
+     * Estimated arrival for an order placed at $from (default now): the
+     * zone's day range counted in working days, Sundays skipped.
+     *
+     * @return array{from: int, to: int, label: string}
+     */
+    function estimatedDelivery(string $zone, string $method = 'delivery', ?int $from = null): array
+    {
+        $from = $from ?? time();
+        if ($method === 'pickup') {
+            $min = $max = PICKUP_READY_DAYS;
+        } else {
+            [$min, $max] = DELIVERY_ZONES[isDeliveryZone($zone) ? $zone : DELIVERY_ZONE_DEFAULT]['days'];
+        }
+
+        $addDays = static function (int $n) use ($from): int {
+            $t = $from;
+            while ($n > 0) {
+                $t = strtotime('+1 day', $t);
+                if (date('w', $t) !== '0') $n--;
+            }
+            return $t;
+        };
+        $a = $addDays($min);
+        $b = $addDays($max);
+        $label = date('M j', $a) === date('M j', $b) ? date('M j', $a) : date('M j', $a) . ' – ' . date('M j', $b);
+        return ['from' => $a, 'to' => $b, 'label' => $label];
+    }
+
+    /**
+     * Zone an existing order was charged at, from its full (pre-voucher)
+     * delivery fee, falling back to the address text. NULL when neither says.
+     * orders has no zone column; the fee is what the customer actually paid for.
+     */
+    function deliveryZoneOfOrder(float $fullFee, ?string $address): ?string
+    {
+        foreach (DELIVERY_ZONES as $key => $z) {
+            if (abs((float) $z['fee'] - $fullFee) < 0.01) return $key;
+        }
+        return detectDeliveryZone($address);
+    }
+
+    /**
+     * Ready-to-print estimate for an order row (needs created_at, status,
+     * delivery_fee, delivery_address, optional shipping_discount), or NULL
+     * when the order is finished/cancelled or its zone cannot be told.
+     */
+    function orderDeliveryEstimate(array $order): ?string
+    {
+        if (in_array($order['status'] ?? '', ['completed', 'cancelled'], true)) return null;
+        $placed = strtotime((string) ($order['created_at'] ?? '')) ?: time();
+        if (($order['delivery_address'] ?? '') === 'Store Pickup') {
+            return 'Ready for pickup by ' . estimatedDelivery('', 'pickup', $placed)['label'];
+        }
+        $zone = deliveryZoneOfOrder(
+            (float) ($order['delivery_fee'] ?? 0) + (float) ($order['shipping_discount'] ?? 0),
+            $order['delivery_address'] ?? null
+        );
+        return $zone === null ? null : 'Estimated delivery: ' . estimatedDelivery($zone, 'delivery', $placed)['label'];
     }
 
     /** Zone table in the shape the checkout JavaScript expects. */

@@ -69,7 +69,7 @@ $items_result = $items_stmt->get_result();
                     </div>
                     <div class="col-md-6">
                         <p class="text-muted mb-1">Order Date</p>
-                        <p style="color: var(--coffee-dark); font-weight: 600;"><?php echo date('F d, Y H:i A', strtotime($order['created_at'])); ?></p>
+                        <p style="color: var(--coffee-dark); font-weight: 600;"><?php echo date('F d, Y g:i A', strtotime($order['created_at'])); ?></p>
                     </div>
                 </div>
             </div>
@@ -223,6 +223,18 @@ $items_result = $items_stmt->get_result();
                         <i class="fas fa-save"></i> Update Status
                     </button>
                 </form>
+                <?php if ($order['status'] === 'cancelled' && !in_array($order['payment_status'] ?? 'unpaid', ['verified', 'pending_verification'], true)): ?>
+                    <?php // A plain (non-AJAX) post: the order is gone afterwards, so land on the list. ?>
+                    <form method="POST" action="orders.php" class="mt-2"
+                          onsubmit="return confirm('Permanently delete Order #<?php echo (int)$order['id']; ?>? This cannot be undone.');">
+                        <?php echo csrfTokenField(); ?>
+                        <input type="hidden" name="action" value="delete_order">
+                        <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i class="fas fa-trash"></i> Delete Order
+                        </button>
+                    </form>
+                <?php endif; ?>
             </div>
         </div>
     </div>

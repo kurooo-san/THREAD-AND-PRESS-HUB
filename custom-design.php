@@ -1088,6 +1088,9 @@ if ($tableCheck->num_rows === 0) {
 .design-edit-btn { border: 1px solid #d9d9d9; background: #fff; color: #333; font-weight: 600; }
 .design-edit-btn:hover { border-color: var(--design-gold); color: #8a6d3b; }
 html.dark-mode .design-edit-btn { background: #2a2a31; border-color: #3a3a44; color: #ddd; }
+.design-delete-btn { border: 1px solid #f1c4c4; background: #fff; color: #b42318; font-weight: 600; }
+.design-delete-btn:hover { background: #fdecec; color: #8f1c13; }
+html.dark-mode .design-delete-btn { background: #2a2a31; border-color: #5a2a2a; color: #f19999; }
 /* Shown instead of the button when a design cannot be ordered. */
 .design-blocked {
     font-size: 0.74rem; color: #8a6d3b; background: #fff8e6;
@@ -4637,6 +4640,7 @@ function loadMyDesigns() {
         if (data.success && data.designs.length > 0) {
             if (noMsg) noMsg.style.display = 'none';
             grid.innerHTML = data.designs.map(renderDesignCard).join('');
+            if (noMsg) grid.prepend(noMsg); // keep it (hidden) for when the last design is removed
         } else {
             grid.innerHTML = '';
             if (noMsg) {
@@ -4734,9 +4738,29 @@ function renderDesignCard(d) {
                            <i class="fas fa-pen"></i> Edit design
                        </a>`
                     : ''}
+                <button type="button" class="btn btn-sm w-100 mt-2 design-delete-btn"
+                        onclick="deleteDesign(${parseInt(d.id, 10)}, this)">
+                    <i class="fas fa-trash"></i> Remove design
+                </button>
             </div>
         </div>
     `;
+}
+
+// The server refuses a design that an order uses and says so.
+function deleteDesign(id, btn) {
+    if (!confirm('Remove this saved design? This cannot be undone.')) return;
+    btn.disabled = true;
+    const fd = new FormData();
+    fd.append('action', 'delete');
+    fd.append('id', id);
+    fetch('includes/custom-design-ajax.php', { method: 'POST', body: fd, headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' } })
+    .then(r => r.json())
+    .then(data => {
+        showToast(data.message || (data.success ? 'Design removed.' : 'Could not remove the design.'), data.success ? 'success' : 'error');
+        if (data.success) loadMyDesigns(); else btn.disabled = false;
+    })
+    .catch(() => { showToast('Network error. Please try again.', 'error'); btn.disabled = false; });
 }
 
 // ===== Utilities =====

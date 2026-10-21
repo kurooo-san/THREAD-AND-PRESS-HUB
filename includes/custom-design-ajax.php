@@ -51,6 +51,9 @@ switch ($action) {
     case 'editor':
         handleEditor($conn, $userId);
         break;
+    case 'delete':
+        handleDelete($conn, $userId);
+        break;
     default:
         echo json_encode(['success' => false, 'message' => 'Invalid action.']);
 }
@@ -575,6 +578,63 @@ function handleList($conn, $userId) {
     $stmt->close();
 
     echo json_encode(['success' => true, 'designs' => $designs]);
+}
+
+/**
+ * POST action=delete { id }: remove one of the customer's own saved designs.
+ *
+ * custom_orders.design_id is ON DELETE CASCADE, so deleting a design that an
+ * order uses would silently erase that order and its payments. The DELETE
+ * itself carries the "no order uses it" condition, so an order placed at the
+ * same moment cannot slip in between a check and the delete.
+ */
+function handleDelete($conn, $userId)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Invalid request.']);
+        return;
+    }
+    $designId = (int) ($_POST['id'] ?? 0);
+
+    $stmt = $conn->prepare("SELECT * FROM custom_designs WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $designId, $userId);
+    $stmt->execute();
+    $design = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$design) {
+        echo json_encode(['success' => false, 'message' => 'Design not found.']);
+        return;
+    }
+
+    $stmt = $conn->prepare("DELETE FROM custom_designs
+                            WHERE id = ? AND user_id = ? AND order_id IS NULL
+                              AND NOT EXISTS (SELECT 1 FROM custom_orders co WHERE co.design_id = custom_designs.id)");
+    $stmt->bind_param("ii", $designId, $userId);
+    $stmt->execute();
+    $deleted = $stmt->affected_rows > 0;
+    $stmt->close();
+
+    if (!$deleted) {
+        echo json_encode(['success' => false, 'message' => 'This design is part of an order, so it can no longer be removed.']);
+        return;
+    }
+
+    // Its files were written for this design alone (shared uploads live in
+    // uploads/design_assets/ and are left alone). Only paths of the exact
+    // shape saveDesignImage()/handleSave() produce are touched.
+    $data  = json_decode((string) ($design['design_data'] ?? ''), true);
+    $data  = is_array($data) ? $data : [];
+    $paths = [$design['design_image'] ?? '', $design['design_image_back'] ?? '',
+              $design['print_front'] ?? '', $design['print_back'] ?? '', $data['editorFile'] ?? ''];
+    foreach ((array) ($data['extraPrints'] ?? []) as $p) $paths[] = $p;
+    foreach ($paths as $p) {
+        if (is_string($p) && preg_match('#^uploads/designs/[\w.-]+$#', $p)) {
+            @unlink(dirname(__DIR__) . '/' . $p);
+        }
+    }
+
+    echo json_encode(['success' => true, 'message' => 'Design removed.']);
 }
 
 function handleGet($conn, $userId) {

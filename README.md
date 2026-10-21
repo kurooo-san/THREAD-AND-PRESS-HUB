@@ -27,6 +27,8 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
   - Online payment through PayMongo's hosted checkout (GCash, Maya, cards and GrabPay by default). The amount is always built from the database, never from the browser
   - Cash on Delivery: Pay when order arrives
 - **Order Tracking**: View order history and current status; an open order page updates by itself (with a toast) when the shop changes the status, no refresh needed
+- **Estimated Delivery**: The product page, checkout, order confirmation and order details show the expected arrival date, worked out from the delivery area (Rizal/NCR 1–2, nearby provinces 2–3, rest of Luzon, Visayas and Mindanao 3–5 working days, Sundays skipped) or the pickup-ready date. The same table in `includes/delivery-zones.php` sets the fee, the date and the Shipping page
+- **Duplicate Order Check**: If the customer already placed a non-cancelled order with exactly the same items (product, colour, size, quantity) in the last 10 minutes, checkout warns them and asks them to confirm before placing another. A confirmed repeat is noted on the order for the admin
 - **PDF Invoices**: Download an invoice for shop orders and custom orders
 - **About & Contact Pages**: Learn more about us and reach out via contact form
 - **User Profile**: Update personal information and manage account
@@ -54,7 +56,7 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 - **Sleeves and logo**: Separate editors for the left/right sleeve and the corporate pocket logo
 - **3D Garment Preview**: See the same design live on a 3D model (rotate and zoom); falls back to the 2D editor if the device has no WebGL
 - **Live price estimate**: Counts the print colours and updates the price as you design
-- **Drafts**: Unsaved work is kept on the device and offered back the next time; saved designs can be opened again from **My Designs**
+- **Drafts**: Unsaved work is kept on the device and offered back the next time; saved designs can be opened again from **My Designs**, or removed (a design that an order uses cannot be removed, so the order and its payment are never lost)
 - **Custom Orders**: Order summary, payment, and a tracking page for each custom order (My Custom Orders)
 
 ### 💬 Chat Window: AI Assistant + Live Support
@@ -76,7 +78,7 @@ A PHP and MySQL apparel shop with a custom design studio, AI features powered by
 ### 👨‍💼 Admin Features
 - **Dashboard**: Overview of sales, users, products, and orders
 - **Product Management**: Add, edit, and manage products and stock
-- **Order Management**: View all orders and update their status; the vouchers and their discounts show on each order; Verify/Reject payment and status changes save without reloading
+- **Order Management**: View all orders and update their status; the vouchers and their discounts show on each order; Verify/Reject payment and status changes save without reloading. Cancelling returns the stock and vouchers (once); un-cancelling takes them back, or is refused when the stock ran out. A cancelled, unpaid order can then be **deleted** permanently, together with its payment screenshot; each delete is written to the audit log
 - **Coupons / Vouchers**: Create, edit, activate/deactivate and delete coupons, then **Give** them to selected customers or to all customers with an optional gift note (customers are emailed). Shows each code's status (Active, Scheduled, Expired, Used up, Inactive), how many times it was used and the total discount given. The code itself is fixed once created, since orders and the totals are matched by it
 - **Sales Report**: Sales for any date range (with This month, Last month, Last 30 days and This year shortcuts): total sales, orders, average order, discounts given (PWD/Senior, item vouchers and shipping vouchers), delivery fees, cancelled orders, a daily sales chart, top products, sales by payment method and the full order list
   - **Export Excel**: A formatted `.xlsx` with Summary, Orders, Top Products and Daily Sales sheets (peso formatting, real dates, frozen headers, filters and totals)
@@ -228,7 +230,7 @@ At checkout the order is worked out as: item subtotal − PWD/Senior discount �
 |---|---|
 | `users` | Accounts with roles (customer, admin) and PWD/Senior ID for discounts |
 | `products` | Apparel with category, gender, colours, sizes, price, stock and image |
-| `orders`, `order_items` | Shop orders with totals, discounts, the vouchers used, and the colour/size of each item |
+| `orders`, `order_items` | Shop orders with totals, discounts, the vouchers used, and the colour/size of each item. `orders.stock_returned` (added automatically on the first cancel) records that a cancel already put the stock back |
 | `coupons` | Vouchers (discount or shipping) with discount type and value, minimum subtotal, usage limit and count, and validity dates |
 | `product_reviews` | Star ratings and reviews, one per customer per product |
 | `user_addresses` | Up to 3 saved delivery addresses per customer |

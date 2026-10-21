@@ -127,21 +127,13 @@ $pageTitle = 'Pages';
             </thead>
             <tbody>
                 <?php
-                // Estimated transit time per zone. The FEE is never written here
-                // — it comes from DELIVERY_ZONES, the same table checkout charges
-                // from, so this page cannot quote a price the cart disagrees with.
-                $shippingEta = [
-                    'rizal'    => '1-2 business days',
-                    'ncr'      => '1-2 business days',
-                    'nearby'   => '2-3 business days',
-                    'luzon'    => '3-5 business days',
-                    'visayas'  => '3-5 business days',
-                    'mindanao' => '3-5 business days',
-                ];
+                // Fee and transit days both come from DELIVERY_ZONES, the same
+                // table checkout charges and estimates from, so this page cannot
+                // quote a price or a date the cart disagrees with.
                 foreach (DELIVERY_ZONES as $zoneKey => $zone): ?>
                 <tr>
                     <td><?php echo htmlspecialchars($zone['label']); ?></td>
-                    <td><?php echo htmlspecialchars($shippingEta[$zoneKey] ?? '3-5 business days'); ?></td>
+                    <td><?php echo (int) $zone['days'][0] . '-' . (int) $zone['days'][1]; ?> business days</td>
                     <td>₱<?php echo number_format((float) $zone['fee'], 2); ?></td>
                 </tr>
                 <?php endforeach; ?>

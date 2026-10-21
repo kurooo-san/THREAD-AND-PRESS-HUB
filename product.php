@@ -1,6 +1,7 @@
 <?php
 require 'includes/config.php';
 require_once 'includes/reviews.php';
+require_once 'includes/delivery-zones.php';
 // Guests may browse (same rule as shop.php); adding to cart asks them to sign in.
 
 $productId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -25,6 +26,30 @@ $pageTitle = $product['name'];
 $userId    = (int) ($_SESSION['user_id'] ?? 0);
 $hasStock  = productsHasStockColumn();
 $stockVal  = $hasStock ? (int) ($product['stock'] ?? 0) : null;
+// Delivery estimate: the customer's own area when the profile names one,
+// otherwise the full range across all areas (never one area's dates for all).
+$etaZone = null;
+if ($userId > 0) {
+    $uStmt = $conn->prepare("SELECT province, city FROM users WHERE id = ?");
+    $uStmt->bind_param('i', $userId);
+    $uStmt->execute();
+    $u = $uStmt->get_result()->fetch_assoc();
+    $uStmt->close();
+    $etaZone = $u ? detectDeliveryZone(trim(($u['province'] ?? '') . ' ' . ($u['city'] ?? ''))) : null;
+}
+if ($etaZone !== null) {
+    $etaText = 'Delivers to ' . DELIVERY_ZONES[$etaZone]['label'] . ' by ' . estimatedDelivery($etaZone)['label'];
+} else {
+    $etaFrom = PHP_INT_MAX;
+    $etaTo   = 0;
+    foreach (array_keys(DELIVERY_ZONES) as $zk) {
+        $e = estimatedDelivery($zk);
+        $etaFrom = min($etaFrom, $e['from']);
+        $etaTo   = max($etaTo, $e['to']);
+    }
+    $etaText = 'Estimated delivery: ' . date('M j', $etaFrom) . ' – ' . date('M j', $etaTo) . ', depending on your area';
+}
+
 
 // ---------------------------------------------------------------
 // Review submission (POST -> redirect -> GET, so a refresh cannot
@@ -181,6 +206,11 @@ function pdStarSvg(): string
                 <?php endif; ?>
                 <a href="shop.php" class="pd-btn pd-btn-ghost">Continue shopping</a>
             </div>
+            <?php if (!($stockVal !== null && $stockVal <= 0)): ?>
+            <div class="pd-stock" style="margin: 14px 0 0;">
+                <i class="fas fa-truck"></i> <?php echo htmlspecialchars($etaText); ?> &middot; or pick up at our store
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 

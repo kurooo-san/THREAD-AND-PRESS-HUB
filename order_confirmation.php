@@ -1,5 +1,6 @@
 <?php
 require 'includes/config.php';
+require_once 'includes/delivery-zones.php';   // orderDeliveryEstimate()
 redirectToLogin();
 
 $pageTitle = 'Order Confirmation';
@@ -66,6 +67,9 @@ if ($successFlash !== null) {
                     <div class="mb-4" style="background: var(--bg-light); border-radius: var(--radius-sm); padding: 1rem;">
                         <h5 class="mb-1">Order Number</h5>
                         <h3 style="font-weight: 800;">#<?php echo htmlspecialchars($order['id']); ?></h3>
+                        <?php if ($eta = orderDeliveryEstimate($order)): ?>
+                            <p class="mb-0 mt-2"><i class="fas fa-truck me-1"></i> <?php echo htmlspecialchars($eta); ?></p>
+                        <?php endif; ?>
                     </div>
 
                     <div class="text-start">

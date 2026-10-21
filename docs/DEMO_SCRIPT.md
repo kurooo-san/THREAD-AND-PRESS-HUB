@@ -1,6 +1,6 @@
 # 🎓 Thread & Press Hub — Capstone Defense Demo Script
 
-**Total demo time:** ~15–17 minutes (adjust per panel rules)
+**Total demo time:** ~16–19 minutes (adjust per panel rules)
 **Kailangan:** 2 browser tabs — Tab 1: customer (naka-login), Tab 2: admin
 
 ---
@@ -19,6 +19,8 @@
 - [ ] **BACKUP:** screen-record ang isang successful run ng buong demo. Kung mag-fail ang internet/AI sa defense, may video ka.
 - [ ] Backup ng database (export sa phpMyAdmin) + kopya ng buong folder + `.env`
 - [ ] Naka-print o nasa slides ang `docs/QR-system-link.png` (QR ng live Railway site) para ma-scan ng panel at ma-try nila mismo. I-scan muna sa sariling phone para sigurado.
+- [ ] May **hiwalay na test order** (COD, walang voucher) na pang-cancel at pang-delete sa Step 6 — **huwag ang DEMO20 order**, kasi babalik ang voucher pag na-cancel at magiging "Used 0 / 5" sa Coupons
+- [ ] May **province** sa profile ng demo customer (para "Delivers to … by …" ang lumabas sa product page, hindi ang pangkalahatang range)
 - [ ] Isara ang mga hindi kailangang tabs/apps (para walang notification na sisingit)
 
 ---
@@ -49,6 +51,9 @@
 > "Pansinin niyo po ang badge na ito — babalikan natin 'to mamaya sa admin side. Spoiler po: AI ang gumawa ng produktong 'yan." 😏
 *(Nagtatanim ka ng curiosity — babalik ka rito sa Step 6.)*
 
+- **Buksan ang isang product** → ituro ang 🚚 linya sa ilalim ng Add to Cart: *"Delivers to Metro Manila by Oct 22 – Oct 23"*
+  > "May estimated delivery date po agad — naka-base sa area ng customer at sa shipping policy namin, at hindi binibilang ang Linggo. Kung guest, ang buong range ang ipinapakita."
+
 ---
 
 ### 3. ⭐ Virtual Try-On + AI Stylist (3–4 min) — ANG BIDA
@@ -77,7 +82,9 @@
 2. **I-drag, i-resize, i-rotate** ang artwork; ipakita ang **Layers panel** (reorder/delete)
 3. Magdagdag ng text (pangalan ng panelist? 😄) → ipakita sa **Live 3D Preview** → pindutin **Spin** at **Flip**
 4. Ituro ang **Price Estimate** na live nag-a-update
-5. **Submit & Proceed to Order** → ipakita ang order summary → **Proceed to Payment** → ipakita na **parehong payment options** ang custom at regular orders: **Pay Online (PayMongo)** o **Cash on Delivery**
+5. *Optional:* sa **My Designs**, ituro ang **Remove design** button
+   > "Pwede pong burahin ng customer ang sariling design para hindi kalat ang account niya. Pero kapag may order na gumagamit ng design, hindi po ito mabubura — para hindi madamay ang order at ang bayad."
+6. **Submit & Proceed to Order** → ipakita ang order summary → **Proceed to Payment** → ipakita na **parehong payment options** ang custom at regular orders: **Pay Online (PayMongo)** o **Cash on Delivery**
 
 ---
 
@@ -98,6 +105,8 @@
   - May linya sa summary: **Voucher (DEMO20)**
 - Ituro ang breakdown: **Subtotal → Discount (PWD/Senior 20%) → Voucher → VAT 12% → Delivery fee → Total**
   > "Transparent po ang computation. Pwede pong pagsabayin ang PWD/Senior discount at voucher, at ang 12% VAT ay kinukuwenta pagkatapos ng discounts."
+- Ituro ang **Estimated Delivery** sa summary → palitan ang Delivery Area (hal. Mindanao) → nagbabago ang petsa → piliin ang **Store Pickup** → nagiging **"Ready for Pickup"**
+  > "Iisang table po ang pinagkukunan ng delivery fee at ng estimated date, kaya hindi sila magkakasalungat."
 - *Optional:* kung may minimum spend ang voucher, ituro ang **"Add ₱… more to unlock"** progress bar
   > "Bawat voucher po ay chine-check ulit sa server — expiry, limit, minimum order, at kung sa customer talaga ito. Kahit baguhin pa sa browser, hindi po ito tatanggapin."
 
@@ -105,10 +114,17 @@
 - Piliin ang **Cash on Delivery** → **Place Order** (pinakamabilis at walang aasahang internet)
   > "May **Pay Online** din po through PayMongo — GCash, Maya, GrabPay o card. Sa secure page po ng PayMongo nagbabayad, kaya wala kaming hinahawakang card details, at awtomatikong nakukumpirma ang bayad."
 - Sa Order Confirmation, ituro ang **Voucher (DEMO20)** line → *"Naka-record din po ito sa invoice at sa confirmation email."*
+- Ituro ang 🚚 **Estimated delivery** sa ilalim ng Order Number (nandoon din sa My Orders → order details)
+
+**E. Duplicate order check** *(optional, ~30 sec)*
+- Idagdag ulit sa cart ang **parehong item, kulay, size at dami** → Checkout → Place Order
+- Lalabas ang babala: *"You already placed an order with these same items 1 minute ago (Order #…)"* + link papunta sa order + checkbox
+  > "Para po hindi aksidenteng madoble ang order — dahil sa double-click, o dahil bukas sa dalawang tab. Hindi po namin hinaharangan, kasi minsan sinasadya ng customer na umorder ulit; kailangan lang niyang i-confirm. Sampung minuto pabalik po ang tinitingnan."
+- Kapag tsinek ang box at itinuloy, may tala sa order para kay admin: **[Same items as Order #… - customer confirmed]** → ipapakita sa Step 6
 
 ---
 
-### 6. Admin Side (4 min)
+### 6. Admin Side (5 min)
 **Lipat sa Tab 2 (Admin)**
 
 **Gawin (sunud-sunod):**
@@ -118,17 +134,24 @@
 3. **Coupons** → ituro ang DEMO20: **Used 1 / 5** at ang **Given** na halaga
    > "Awtomatiko pong nabibilang ang gamit. Kapag naabot ang limit, hindi na po ito tatanggapin — kahit sabay pang mag-checkout ang dalawang customer sa huling slot."
    - *Optional:* pindutin ang **Edit** o **Deactivate** para ipakitang buo ang management
-4. **Sales Report** (1 min)
+4. **Cancel → Delete** (gamitin ang **hiwalay na test order**, hindi ang DEMO20 order)
+   - Kung ginawa ang Step 5E: buksan ang duplicate order → ituro sa **Notes** ang *[Same items as Order #… - customer confirmed]*
+   - Palitan ang status sa **Cancelled**
+     > "Pag na-cancel po, awtomatikong naibabalik ang stock at ang voucher. Kapag in-un-cancel, babawasan ulit ang stock — at kapag kulang na ang stock, hindi papayagan."
+   - Lilitaw ang 🗑️ **Delete** button → pindutin → confirm
+     > "Cancelled orders lang po ang pwedeng i-delete, at hindi kapag may bayad na — kailangang manatili ang record para sa refund. Kasamang nabubura ang payment screenshot, kaya dito po talaga natitipid ang storage. Naka-record pa rin sa Audit Log kung sinong admin ang nag-delete."
+   - *Optional:* buksan ang **Audit Log** → *"Cancelled order #… permanently deleted"*
+5. **Sales Report** (1 min)
    - Pindutin ang **This month** → ituro ang Total sales, Orders, Average order, at ang hati ng **Discounts given** (PWD/Senior vs Vouchers vs Shipping)
    - I-scroll: **Daily sales chart → Top products → By payment method → Orders list**
      > "Ito po ang sagot kung paano malalaman ng may-ari ang benta sa kahit anong petsa — hindi na po kailangang mag-compute nang mano-mano."
    - Pindutin ang **Export Excel** → buksan ang file → ipakita ang 4 na sheet (Summary, Orders, Top Products, Daily Sales)
      > "Naka-format na po ito para sa accounting — may peso formatting, filters, at totals na hindi kasama ang cancelled orders."
    - *Kung kapos sa oras:* **Print** na lang ang ipakita (may sariling report header)
-5. **AI Insights** (pindutin ang "AI Insights" button sa admin panel) → i-type: **"magkano discount natin this month?"**
+6. **AI Insights** (pindutin ang "AI Insights" button sa admin panel) → i-type: **"magkano discount natin this month?"**
    > "Pati po ang AI assistant ng admin ay alam ang vouchers at discounts — galing sa totoong data, hindi hula."
    - *Follow-up kung may oras:* **"ilang customer na ang nabigyan ng voucher at ilan pa ang hindi nagagamit?"**
-6. **⭐ AI Generate Product — ang pang-finale:**
+7. **⭐ AI Generate Product — ang pang-finale:**
    > "Ito po ang pang-apat naming AI feature. Sir/Ma'am, **anong product po ang gusto niyong idagdag sa store?**"
    - I-type ang sagot ng panelist → **Generate** → ~8-10 sec → lalabas ang draft (photo, name, price, description)
    - > "AI ang nag-draft, pero admin ang nag-a-approve — human oversight po."
@@ -173,6 +196,13 @@
 | **"Pwede bang pagsabayin ang PWD at voucher?"** | Opo. Parehong kinukuwenta sa item subtotal, tapos ang 12% VAT ay sa natitira. Shipping voucher lang ang bumabawas sa delivery fee |
 | **"Paano malalaman ng may-ari ang benta?"** | Sales Report: kahit anong date range, summary, daily chart, top products, by payment method, at Export Excel / Print. Pareho ang patakaran sa Dashboard: hindi kasama ang cancelled orders |
 | **"Bakit hindi kasama ang cancelled sa benta?"** | Walang perang pumasok sa cancelled — pero nakalista pa rin ito (naka-strikethrough) at may hiwalay na bilang para transparent |
+| **"Paano niyo nalalaman na duplicate ang order?"** | Parehong customer, parehong items (product, kulay, size, dami — kahit iba ang pagkakasunod), at may order na hindi cancelled sa loob ng huling 10 minuto. Babala lang, hindi block — kailangang i-confirm ng customer, at may tala sa order para makita ni admin |
+| **"Paano kung mali talaga ang na-order na duplicate?"** | I-cancel ni admin → babalik ang stock at voucher → saka pwedeng i-delete |
+| **"Saan galing ang estimated delivery date?"** | Sa shipping policy namin per area (Rizal/NCR 1–2 araw, karatig-probinsya 2–3, Luzon/Visayas/Mindanao 3–5), working days at hindi kasama ang Linggo. Iisang table ang pinagkukunan ng fee, ng petsa, at ng Shipping page. Sa lumang order, kinukuha ang area mula sa delivery fee na binayaran |
+| **"Bakit kailangang i-cancel muna bago i-delete?"** | Para siguradong naibalik na ang stock at voucher bago mawala ang record. Hindi rin pwedeng i-delete ang may bayad na — kailangan iyon sa refund/dispute. Bawat delete ay naka-audit log |
+| **"Malaki ba talaga ang natitipid sa pag-delete?"** | Maliit po ang order record mismo (~160 bytes). Ang malaki ay ang payment screenshot — kasama po iyong nabubura |
+| **"Naibabalik ba ang stock pag na-cancel?"** | Opo, isang beses lang (may flag para hindi madoble). Pag in-un-cancel, babawasan ulit; kung kulang na ang stock, hindi papayagan |
+| **"Pwede bang burahin ng customer ang design niya?"** | Opo, pero kung hindi pa ito ginagamit sa order. Kapag may order na, hindi na ito mabubura para hindi madamay ang order at ang bayad |
 
 ## 🚨 CONTINGENCY PLANS
 

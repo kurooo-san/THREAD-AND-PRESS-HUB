@@ -50,6 +50,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Failed to update payment.';
             }
             $stmt->close();
+        } elseif ($action === 'delete_order') {
+            // Permanent delete, for cancelled orders only. Cancelling already
+            // returned the stock and vouchers, so nothing is lost but the row.
+            $o = $conn->prepare("SELECT * FROM orders WHERE id = ?");
+            $o->bind_param("i", $order_id);
+            $o->execute();
+            $ord = $o->get_result()->fetch_assoc();
+            $o->close();
+            $hasTable = fn($t) => (($r = $conn->query("SHOW TABLES LIKE '$t'")) && $r->num_rows > 0);
+
+            $paidOnline = false;
+            if ($ord && $hasTable('paymongo_sessions')) {
+                $p = $conn->prepare("SELECT 1 FROM paymongo_sessions WHERE order_kind = 'order' AND order_id = ? AND status = 'paid' LIMIT 1");
+                $p->bind_param("i", $order_id);
+                $p->execute();
+                $paidOnline = $p->get_result()->num_rows > 0;
+                $p->close();
+            }
+
+            if (!$ord) {
+                $error = 'Order not found. It may have been deleted already.';
+            } elseif ($ord['status'] !== 'cancelled') {
+                $error = 'Only cancelled orders can be deleted. Cancel the order first.';
+            } elseif ($paidOnline || in_array($ord['payment_status'] ?? 'unpaid', ['verified', 'pending_verification'], true)) {
+                // The payment record must stay for refunds and disputes.
+                $error = 'This order has a payment on record, so it is kept for the payment history.';
+            } else {
+                $hasSubs = $hasTable('payment_submissions');
+                $proofs  = [(string) ($ord['payment_proof'] ?? '')];
+                if ($hasSubs) {
+                    $ps = $conn->prepare("SELECT proof_path FROM payment_submissions WHERE order_id = ?");
+                    $ps->bind_param("i", $order_id);
+                    $ps->execute();
+                    foreach ($ps->get_result()->fetch_all(MYSQLI_ASSOC) as $row) $proofs[] = (string) $row['proof_path'];
+                    $ps->close();
+                }
+
+                // Rows that point at the order without a foreign key go with it,
+                // so nothing is left referring to an order that no longer exists.
+                // order_items and gcash_transactions follow by ON DELETE CASCADE.
+                $cleanup = [];
+                if ($hasSubs) $cleanup[] = "DELETE FROM payment_submissions WHERE order_id = ?";
+                if ($hasTable('paymongo_sessions')) $cleanup[] = "DELETE FROM paymongo_sessions WHERE order_kind = 'order' AND order_id = ?";
+                if ($hasTable('user_coupons')) {
+                    $uc = $conn->query("SHOW COLUMNS FROM user_coupons LIKE 'released_order_id'");
+                    if ($uc && $uc->num_rows > 0) $cleanup[] = "UPDATE user_coupons SET released_order_id = NULL WHERE released_order_id = ?";
+                }
+
+                $conn->begin_transaction();
+                try {
+                    foreach ($cleanup as $sql) {
+                        $c = $conn->prepare($sql);
+                        $c->bind_param("i", $order_id);
+                        $c->execute();
+                        $c->close();
+                    }
+                    // Status re-checked in the DELETE itself, in case it was un-cancelled meanwhile.
+                    $d = $conn->prepare("DELETE FROM orders WHERE id = ? AND status = 'cancelled'");
+                    $d->bind_param("i", $order_id);
+                    $d->execute();
+                    $gone = $d->affected_rows === 1;
+                    $d->close();
+                    if (!$gone) throw new Exception('Only cancelled orders can be deleted.');
+                    $conn->commit();
+                } catch (Throwable $e) {
+                    $conn->rollback();
+                    error_log('[orders] delete failed: ' . $e->getMessage());
+                    $gone = false;
+                    $error = 'Could not delete this order. ' . ($e instanceof Exception && !($e instanceof mysqli_sql_exception) ? $e->getMessage() : 'Please try again.');
+                }
+
+                if ($gone) {
+                    // Files only after the commit: a rolled-back delete keeps its proof.
+                    require_once '../includes/payment-proof-handler.php';
+                    foreach (array_unique(array_filter($proofs)) as $rel) {
+                        // Older orders kept the screenshot under uploads/payments/ (web root).
+                        $abs = preg_match('#^uploads/payments/[\w.-]+$#', $rel)
+                            ? dirname(__DIR__) . '/' . $rel
+                            : paymentResolveProofPath($rel);
+                        if ($abs !== null && is_file($abs)) @unlink($abs);
+                    }
+                    $dir = PAYMENT_PROOF_STORAGE . DIRECTORY_SEPARATOR . (int) $order_id;
+                    if (is_dir($dir)) @rmdir($dir);   // only succeeds when empty
+                    logAudit('order_deleted', 'order', $order_id,
+                        'Cancelled order #' . (int) $order_id . ' (₱' . number_format((float) $ord['total'], 2) . ') permanently deleted');
+                    $success = 'Order #' . (int) $order_id . ' was permanently deleted.';
+                }
+            }
         } else {
             // Default: update order status
             $allowed = ['pending','confirmed','preparing','out_for_delivery','completed','cancelled'];
@@ -62,20 +150,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $old->execute();
                 $oldStatus = ($old->get_result()->fetch_row() ?: [null])[0];
                 $old->close();
-                // Un-cancelling takes back the vouchers the cancel returned; both or neither.
+                // Cancelling puts the stock back; un-cancelling takes back the
+                // stock and the vouchers the cancel returned. All or nothing.
                 $uncancel = $oldStatus === 'cancelled' && $status !== 'cancelled';
-                if ($uncancel) {
-                    vouchersReady();   // its ALTERs would commit the transaction early
+                $cancel   = $oldStatus !== 'cancelled' && $status === 'cancelled';
+                $tx       = $uncancel || $cancel;
+                $why      = '';
+                if ($tx) {
+                    // Their ALTERs would commit the transaction early.
+                    $stockOn = orderStockReady();
+                    if ($uncancel) vouchersReady();
                     $conn->begin_transaction();
-                    $why = voucherReclaim((int)$order_id);
+                    if ($uncancel) $why = voucherReclaim((int)$order_id);
+                    if ($why === '' && $stockOn) {
+                        if ($cancel) {
+                            returnOrderStock($order_id);
+                        } elseif (!takeBackOrderStock($order_id)) {
+                            $why = 'Not enough stock left to restore this order. Restock the items first, then try again.';
+                        }
+                    }
                     if ($why !== '') $conn->rollback();
                 }
                 $stmt = $conn->prepare("UPDATE orders SET status = ? WHERE id = ?");
                 $stmt->bind_param("si", $status, $order_id);
-                if ($uncancel && $why !== '') {
+                if ($why !== '') {
                     $error = $why;
                 } elseif ($stmt->execute()) {
-                    if ($uncancel) $conn->commit();
+                    if ($tx) $conn->commit();
                     // Auto-mark COD orders as paid (verified) once completed
                     if ($status === 'completed' && $hasPaymentStatusCol) {
                         $conn->query("UPDATE orders SET payment_status = 'verified'
@@ -91,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     logAudit('order_status_updated', 'order', $order_id, "Status changed to: $status");
                     $success = 'Order status updated successfully!';
                 } else {
-                    if ($uncancel) $conn->rollback();
+                    if ($tx) $conn->rollback();
                     $error = 'Failed to update order status!';
                 }
                 $stmt->close();
@@ -206,6 +307,17 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                             <a href="../invoice.php?order_id=<?php echo $order['id']; ?>" class="btn btn-sm btn-outline-secondary" target="_blank" title="Download Invoice PDF">
                                 <i class="fas fa-file-pdf"></i>
                             </a>
+                            <?php if ($order['status'] === 'cancelled' && !in_array($order['payment_status'] ?? 'unpaid', ['verified', 'pending_verification'], true)): ?>
+                                <form method="POST" class="d-inline" data-ajax
+                                      onsubmit="return confirm('Permanently delete Order #<?php echo (int)$order['id']; ?>? This cannot be undone.');">
+                                    <?php echo csrfTokenField(); ?>
+                                    <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
+                                    <input type="hidden" name="action" value="delete_order">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete order" aria-label="Delete order #<?php echo (int)$order['id']; ?>">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endwhile; ?>

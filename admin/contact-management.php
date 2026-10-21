@@ -275,7 +275,7 @@ $categories = getContactCategories();
                     <?php if ($message['phone']): ?>
                     Phone: <a href="tel:<?php echo htmlspecialchars($message['phone']); ?>"><?php echo htmlspecialchars($message['phone']); ?></a><br>
                     <?php endif; ?>
-                    Submitted: <?php echo date('F d, Y H:i A', strtotime($message['created_at'])); ?>
+                    Submitted: <?php echo date('F d, Y g:i A', strtotime($message['created_at'])); ?>
                 </small>
             </div>
             <div class="col-md-4 text-end">

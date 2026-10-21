@@ -89,7 +89,7 @@ try {
             $response .= "Total: ₱" . number_format($order['total'], 2) . "\n";
             $payIcon = ($order['payment_method'] === 'cod') ? "💵" : "💳";
             $response .= "Payment: {$payIcon} " . paymentMethodLabel($order['payment_method']) . "\n";
-            $response .= "Order Date: " . date('F d, Y H:i A', strtotime($order['created_at'])) . "\n";
+            $response .= "Order Date: " . date('F d, Y g:i A', strtotime($order['created_at'])) . "\n";
             
             if ($order['status'] !== 'completed' && $order['status'] !== 'cancelled') {
                 $response .= "\n⏩ **Next Steps:** Your order is being processed. You'll receive updates soon!";

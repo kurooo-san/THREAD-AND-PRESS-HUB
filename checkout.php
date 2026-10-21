@@ -3,6 +3,7 @@ require 'includes/config.php';
 require_once 'includes/delivery-zones.php';
 require_once 'includes/paymongo.php';   // online payment runs through the gateway
 require_once 'includes/addresses.php'; // saved delivery addresses (max 3)
+require_once 'includes/duplicate-order.php';
 
 // Only offer online payment when the gateway is actually usable.
 $gatewayReady = paymongoIsConfigured() && paymongoTableExists();
@@ -11,6 +12,7 @@ redirectToLogin();
 $pageTitle = 'Checkout';
 $error = '';
 $success = '';
+$duplicate_order = null;
 
 // Get user discount type and address from database
 $user_discount = 'regular';
@@ -267,6 +269,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         }
 
+        // Same items ordered a few minutes ago (double submit, or a second
+        // tab)? Ask once; the confirm box below sends confirm_duplicate.
+        if (empty($error) && is_array($items_to_validate)) {
+            $duplicate_order = findDuplicateOrder($conn, (int) $_SESSION['user_id'], $items_to_validate);
+            if ($duplicate_order && !empty($_POST['confirm_duplicate'])) {
+                // Confirmed on purpose: tell the admin which order it repeats.
+                $notes = trim($notes . "\n[Same items as Order #" . $duplicate_order['id'] . ' - customer confirmed]');
+                $duplicate_order = null;
+            } elseif ($duplicate_order) {
+                $mins  = $duplicate_order['minutes'];
+                $error = 'You already placed an order with these same items '
+                       . ($mins < 1 ? 'less than a minute' : $mins . ' minute' . ($mins === 1 ? '' : 's'))
+                       . ' ago (Order #' . $duplicate_order['id'] . ').';
+            }
+        }
+
         if (empty($error)) {
         // Get validated cart data
         $cart_items = $cart_items_raw;
@@ -492,7 +510,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 2rem;">Checkout</h1>
 
     <?php if ($error): ?>
-        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?>
+            <?php if ($duplicate_order): ?>
+                <a href="order_details.php?id=<?php echo (int) $duplicate_order['id']; ?>" class="alert-link">View that order</a>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="confirm_duplicate" value="1" id="confirmDuplicate" form="checkoutForm" required>
+                    <label class="form-check-label" for="confirmDuplicate">Yes, I want to place another order with the same items.</label>
+                </div>
+            <?php endif; ?>
+        </div>
     <?php endif; ?>
 
     <form method="POST" id="checkoutForm">
@@ -831,6 +857,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <span id="summaryDelivery">₱<?php echo number_format(deliveryFee(guessDeliveryZone($user_data['province'] ?? null, $user_data['city'] ?? null)), 2); ?></span>
                     </div>
 
+                    <div class="summary-row">
+                        <span id="summaryEtaLabel">Estimated Delivery:</span>
+                        <span id="summaryEta"></span>
+                    </div>
+
                     <div class="summary-row" id="shipVoucherRow" style="display:none;">
                         <span>Shipping voucher (<span id="shipVoucherLabel"></span>):</span>
                         <span id="summaryShipVoucher" style="color: #16a34a; font-weight: 600;">-₱0.00</span>
@@ -866,6 +897,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // total are computed from one table. The server re-derives the fee on submit;
 // this copy only drives what the customer sees.
 const DELIVERY_ZONE_FEES = <?php echo json_encode(deliveryZonesForJs()); ?>;
+// Arrival dates per area (and pickup), counted from now on the server.
+const DELIVERY_ETAS = <?php
+    $etas = ['pickup' => estimatedDelivery('', 'pickup')['label']];
+    foreach (array_keys(DELIVERY_ZONES) as $zk) $etas[$zk] = estimatedDelivery($zk)['label'];
+    echo json_encode($etas);
+?>;
 
 /** Fee for the current delivery method and selected area. */
 function currentDeliveryFee() {
@@ -1056,6 +1093,12 @@ function updateOrderSummary() {
     document.getElementById('summaryVat').textContent = '₱' + vat.toFixed(2);
     document.getElementById('summaryDelivery').textContent = '₱' + deliveryFee.toFixed(2);
     document.getElementById('summaryTotal').textContent = '₱' + total.toFixed(2);
+
+    const isPickup = (document.querySelector('input[name="delivery_method"]:checked') || {}).value === 'pickup';
+    const zoneSel  = document.getElementById('deliveryZone');
+    document.getElementById('summaryEtaLabel').textContent = isPickup ? 'Ready for Pickup:' : 'Estimated Delivery:';
+    document.getElementById('summaryEta').textContent = DELIVERY_ETAS[isPickup ? 'pickup' : (zoneSel && zoneSel.value)]
+        || DELIVERY_ETAS[<?php echo json_encode(DELIVERY_ZONE_DEFAULT); ?>];
 
     // Update discount label
     const labels = {'regular': 'No Discount', 'pwd': 'PWD (20%)', 'senior': 'Senior (20%)'};
