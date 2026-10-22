@@ -144,8 +144,11 @@ if (productsHasStockColumn()) {
 }
 
 // ---------------------------------------------------------------
-// Revenue chart — last 6 months, regular + custom orders combined
+// Revenue chart — last 3/6/12 months (?range=), regular + custom orders combined
 // ---------------------------------------------------------------
+$range = in_array((int) ($_GET['range'] ?? 6), [3, 6, 12], true) ? (int) ($_GET['range'] ?? 6) : 6;
+// From the 1st of the oldest month, so the chart shows exactly $range months.
+$since = "DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL " . ($range - 1) . " MONTH)";
 $revenue_data = [];
 if ($hasCustomOrders) {
     $revenue_query = $conn->query("
@@ -154,19 +157,19 @@ if ($hasCustomOrders) {
                COALESCE(r.order_count, 0) + COALESCE(c.order_count, 0) as order_count
         FROM (
             SELECT DATE_FORMAT(created_at, '%Y-%m') as month, DATE_FORMAT(created_at, '%b') as label
-            FROM orders WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+            FROM orders WHERE created_at >= {$since}
             UNION
             SELECT DATE_FORMAT(created_at, '%Y-%m'), DATE_FORMAT(created_at, '%b')
-            FROM custom_orders WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+            FROM custom_orders WHERE created_at >= {$since}
         ) m
         LEFT JOIN (
             SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total) as revenue, COUNT(*) as order_count
-            FROM orders WHERE status != 'cancelled' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+            FROM orders WHERE status != 'cancelled' AND created_at >= {$since}
             GROUP BY DATE_FORMAT(created_at, '%Y-%m')
         ) r ON m.month = r.month
         LEFT JOIN (
             SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_price) as revenue, COUNT(*) as order_count
-            FROM custom_orders WHERE status NOT IN ('cancelled') AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+            FROM custom_orders WHERE status NOT IN ('cancelled') AND created_at >= {$since}
             GROUP BY DATE_FORMAT(created_at, '%Y-%m')
         ) c ON m.month = c.month
         ORDER BY m.month ASC
@@ -178,7 +181,7 @@ if ($hasCustomOrders) {
                COALESCE(SUM(total), 0) as revenue,
                COUNT(*) as order_count
         FROM orders
-        WHERE status != 'cancelled' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+        WHERE status != 'cancelled' AND created_at >= {$since}
         GROUP BY DATE_FORMAT(created_at, '%Y-%m')
         ORDER BY month ASC
     ");
@@ -218,11 +221,13 @@ function adStatusPill(string $status): string
             <p>Kumusta, <?php echo htmlspecialchars($adminFirstName); ?> — eto ang nangyayari sa store mo ngayon.</p>
         </div>
         <div class="ad-head-actions">
-            <select class="ad-select" id="adRange" aria-label="Date range">
-                <option value="6">Last 6 months</option>
-                <option value="3">Last 3 months</option>
-                <option value="12">Last 12 months</option>
-            </select>
+            <form method="get">
+                <select class="ad-select" id="adRange" name="range" aria-label="Date range" onchange="this.form.submit()">
+                    <?php foreach ([6, 3, 12] as $r): ?>
+                    <option value="<?php echo $r; ?>"<?php echo $r === $range ? ' selected' : ''; ?>>Last <?php echo $r; ?> months</option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
         </div>
     </div>
 
