@@ -140,7 +140,7 @@ if (($_GET['export'] ?? '') === 'xlsx') {
         [['v' => $made, 's' => 'muted']],
         [],
         $hdr(['Summary', 'Value']),
-        ['Total sales', $m($sum['sales'])],
+        ['Total order value', $m($sum['sales'])],
         ['Orders', ['v' => $sum['orders'], 's' => 'int']],
         ['Average order', $m($avgOrder)],
         ['PWD / Senior discounts', $m($sum['discounts'])],
@@ -150,7 +150,7 @@ if (($_GET['export'] ?? '') === 'xlsx') {
         ['Cancelled orders', ['v' => $sum['cancelled'], 's' => 'int']],
         ['Value of cancelled orders', $m($sum['cancelled_value'])],
         [],
-        [['v' => 'Sales = totals of non-cancelled shop and custom orders, the same rule as the Dashboard.', 's' => 'muted']],
+        [['v' => 'Total order value = totals of non-cancelled shop and custom orders, including ones not yet paid, the same rule as the Dashboard.', 's' => 'muted']],
         [],
         $hdr(['Payment method', 'Orders', 'Sales']),
     ];
@@ -273,7 +273,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-chart-line"></i> Sales Report
         </h1>
-        <p class="text-muted">Sales for <?php echo $rangeLabel; ?>. Cancelled orders are not counted as sales.</p>
+        <p class="text-muted">Sales for <?php echo $rangeLabel; ?>. Totals include orders not yet paid; cancelled orders are not counted.</p>
     </div>
 
     <div class="admin-card mb-4 no-print">
@@ -304,7 +304,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
 
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3"><div class="admin-card text-center rp-stat">
-            <h5><?php echo $peso($sum['sales']); ?></h5><p class="mb-0 text-muted small">Total sales</p>
+            <h5><?php echo $peso($sum['sales']); ?></h5><p class="mb-0 text-muted small">Total order value</p>
         </div></div>
         <div class="col-6 col-md-3"><div class="admin-card text-center rp-stat">
             <h5><?php echo number_format($sum['orders']); ?></h5><p class="mb-0 text-muted small">Orders</p>
