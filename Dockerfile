@@ -5,7 +5,8 @@
 # server is single-threaded, so one slow AI request (the product
 # generator budgets up to 240s) blocked every other visitor.
 # =========================================================
-FROM php:8.2-apache
+# Pinned to the 2026-10-21 patch for CVE-2026-109618 / CVE-2026-109619 (php2shell).
+FROM php:8.2.35-apache
 
 # ---- PHP extensions -----------------------------------------------
 # mysqli/pdo_mysql : the app's database layer
