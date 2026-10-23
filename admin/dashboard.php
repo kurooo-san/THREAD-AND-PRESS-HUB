@@ -143,6 +143,24 @@ if (productsHasStockColumn()) {
     if ($ls_q) { while ($r = $ls_q->fetch_assoc()) { $low_stock[] = $r; } }
 }
 
+// Overstock: well-stocked products that sold nothing in the same 90 days as Top Selling.
+$slow_stock = [];
+if (productsHasStockColumn()) {
+    $ss_q = $conn->query("
+        SELECT p.id, p.name, p.image, p.stock
+        FROM products p
+        WHERE p.status = 'active' AND p.stock > 5
+          AND NOT EXISTS (
+              SELECT 1 FROM order_items oi JOIN orders o ON o.id = oi.order_id
+              WHERE oi.product_id = p.id AND o.status != 'cancelled'
+                AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+          )
+        ORDER BY p.stock DESC
+        LIMIT 8
+    ");
+    if ($ss_q) { while ($r = $ss_q->fetch_assoc()) { $slow_stock[] = $r; } }
+}
+
 // ---------------------------------------------------------------
 // Revenue chart — last 3/6/12 months (?range=), regular + custom orders combined
 // ---------------------------------------------------------------
@@ -399,6 +417,7 @@ function adStatusPill(string $status): string
             <?php endif; ?>
         </div>
 
+        <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
         <div class="ad-card">
             <div class="ad-card-head">
                 <h2>Low Stock</h2>
@@ -415,6 +434,28 @@ function adStatusPill(string $status): string
                 </div>
                 <?php endforeach; ?>
             <?php endif; ?>
+        </div>
+
+        <div class="ad-card">
+            <div class="ad-card-head">
+                <div>
+                    <h2>Slow-Moving Stock</h2>
+                    <p>No sales in 90 days</p>
+                </div>
+                <a href="products.php" class="ad-link">Manage →</a>
+            </div>
+            <?php if (empty($slow_stock)): ?>
+                <div class="ad-empty">No overstock. Every stocked product sold recently.</div>
+            <?php else: ?>
+                <?php foreach ($slow_stock as $ss): ?>
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1eee8;">
+                    <img src="../images/products/<?php echo htmlspecialchars($ss['image']); ?>" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:8px;border:1px solid #e6e3dc;flex-shrink:0;">
+                    <span style="flex:1 1 auto;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo htmlspecialchars($ss['name']); ?></span>
+                    <span class="ad-pill s-other"><?php echo (int)$ss['stock']; ?> in stock</span>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
         </div>
     </div>
 

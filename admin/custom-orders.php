@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'])) {
         $stmt->bind_param("ssi", $newStatus, $adminNotes, $updateOrderId);
         if ($stmt->execute()) {
             $success = 'Order #' . $updateOrderId . ' status updated to ' . ucfirst(str_replace('_', ' ', $newStatus)) . '!';
+            logAudit('custom_order_status_updated', 'custom_order', $updateOrderId, "Status changed to: $newStatus");
 
             // If verifying payment, also update payment status
             if ($newStatus === 'payment_verified') {
@@ -72,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_payment'])) {
         $pResult = $conn->query("SELECT custom_order_id FROM custom_order_payments WHERE id = " . $paymentId);
         if ($pRow = $pResult->fetch_assoc()) {
             $conn->query("UPDATE custom_orders SET status = 'payment_verified' WHERE id = " . intval($pRow['custom_order_id']));
+            logAudit('custom_order_status_updated', 'custom_order', intval($pRow['custom_order_id']), 'Status changed to: payment_verified');
 
             // Same customer email as choosing "Payment Verified" in the status form (non-fatal on failure)
             try {

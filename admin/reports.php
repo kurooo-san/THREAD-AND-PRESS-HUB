@@ -120,6 +120,25 @@ $stmt->execute();
 $topProducts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
+// Lead time: order placed -> first audit-log entry for its final status
+// (shop: completed, custom: delivered). Orders finished before status changes
+// were logged have no entry and are left out of the average.
+$leadShop = $leadCustom = ['days' => null, 'n' => 0];
+if (rpHas($conn, "SHOW TABLES LIKE 'audit_log'")) {
+    $leadSql = "SELECT AVG(TIMESTAMPDIFF(MINUTE, t.created_at, a.done_at)) / 1440 AS days, COUNT(*) AS n
+                FROM %s t
+                JOIN (SELECT entity_id, MIN(created_at) AS done_at FROM audit_log
+                      WHERE entity_type = '%s' AND details = 'Status changed to: %s'
+                      GROUP BY entity_id) a ON a.entity_id = t.id
+                WHERE t.status = '%s' AND t.created_at >= ? AND t.created_at < ?";
+    $leadShop = rpFetch($conn, sprintf($leadSql, 'orders', 'order', 'completed', 'completed'), $fromSql, $toSql)[0];
+    if ($hasCustomOrders) {
+        $leadCustom = rpFetch($conn, sprintf($leadSql, 'custom_orders', 'custom_order', 'delivered', 'delivered'), $fromSql, $toSql)[0];
+    }
+}
+$leadFmt = fn(array $l) => !$l['n'] ? '—'
+    : ($l['days'] < 1 ? round($l['days'] * 24, 1) . ' hrs' : round($l['days'], 1) . ' days');
+
 $rangeLabel = date('M d, Y', strtotime($from)) . ' – ' . date('M d, Y', strtotime($to));
 
 // ---------------------------------------------------------------
@@ -321,6 +340,12 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
         </div></div>
         <div class="col-6 col-md-3"><div class="admin-card text-center rp-stat">
             <h5><?php echo number_format($sum['cancelled']); ?></h5><p class="mb-0 text-muted small">Cancelled (<?php echo $peso($sum['cancelled_value']); ?>)</p>
+        </div></div>
+        <div class="col-6 col-md-3"><div class="admin-card text-center rp-stat">
+            <h5><?php echo $leadFmt($leadShop); ?></h5><p class="mb-0 text-muted small">Avg lead time, shop<br><span style="font-size:.75rem;">Placed → completed · <?php echo (int)$leadShop['n']; ?> orders</span></p>
+        </div></div>
+        <div class="col-6 col-md-3"><div class="admin-card text-center rp-stat">
+            <h5><?php echo $leadFmt($leadCustom); ?></h5><p class="mb-0 text-muted small">Avg lead time, custom<br><span style="font-size:.75rem;">Placed → delivered · <?php echo (int)$leadCustom['n']; ?> orders</span></p>
         </div></div>
     </div>
 

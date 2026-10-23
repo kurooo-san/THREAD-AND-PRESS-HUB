@@ -1,6 +1,6 @@
 # 🎓 Thread & Press Hub — Capstone Defense Demo Script
 
-**Total demo time:** ~16–19 minutes (adjust per panel rules)
+**Total demo time:** ~18–21 minutes (adjust per panel rules)
 **Kailangan:** 2 browser tabs — Tab 1: customer (naka-login), Tab 2: admin
 
 ---
@@ -22,6 +22,33 @@
 - [ ] May **hiwalay na test order** (COD, walang voucher) na pang-cancel at pang-delete sa Step 6 — **huwag ang DEMO20 order**, kasi babalik ang voucher pag na-cancel at magiging "Used 0 / 5" sa Coupons
 - [ ] May **province** sa profile ng demo customer (para "Delivers to … by …" ang lumabas sa product page, hindi ang pangkalahatang range)
 - [ ] Isara ang mga hindi kailangang tabs/apps (para walang notification na sisingit)
+- [ ] May **custom orders na "Delivered"** ngayong buwan, pinalitan ang status sa Admin → Custom Orders (para may numero ang "Avg lead time, custom" sa Sales Report; "—" ang lalabas kung wala)
+- [ ] May laman ang **Slow-Moving Stock** at **Low Stock** sa Dashboard (kung parehong walang laman, ayos lang — may sariling paliwanag ang empty state)
+- [ ] May ilang **product reviews** (para may maipakita sa Admin → Reviews sa Step 6)
+
+---
+
+## 🎯 SOP MAP — saan sinasagot ang bawat Specific Problem
+
+Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin ang sagot.
+
+| SOP | Item | Saan ipapakita | Isang linyang sagot |
+|---|---|---|---|
+| 1.1.1 | Accuracy of order records | Step 6.2 Orders + Audit Log | Lahat ng order, discount at status change ay naka-record at naka-log kung sinong admin ang gumawa |
+| 1.1.2 | Processing time | Step 5D + 6.2 | PayMongo ay awtomatikong nagkukumpirma ng bayad; isang click lang ang pagpalit ng status |
+| 1.1.3 | Reduction of order errors | Step 5E + 5C | Duplicate-order check, server-side na pag-compute ng presyo at voucher, stock check |
+| 1.2.1 | Product stock availability | Step 2 (product page) + 6.1 Low Stock | "In stock / Only N left / Out of stock" sa customer; Low Stock panel + notification sa admin |
+| 1.2.2 | Stock accuracy | Step 6.4 Cancel | Nababawas ang stock pag umorder, bumabalik pag na-cancel, isang beses lang |
+| 1.2.3 | Reduction of overstock and unsold inventory | Step 6.1 Slow-Moving Stock | Nakikita ng admin ang mga produktong maraming stock pero walang benta sa 90 araw, kaya hindi na dadagdagan |
+| 1.3.1 | Production efficiency | Step 4 + 6.3b Custom Orders | Malinaw na production stages: processing → printing → ready for pickup → delivered |
+| 1.3.2 | Lead time | Step 6.5 Sales Report | Avg lead time (shop at custom), sinusukat mula sa oras ng order hanggang completed/delivered |
+| 1.3.3 | Workflow transparency | Step 6.3b + Audit Log | Bawat status change ay naka-log na may oras; nakikita ng customer ang tracking page |
+| 1.4.1 | Customer satisfaction | Step 6.3c Reviews | Product reviews at ratings; nakikita ng admin ang average rating bawat produkto |
+| 1.4.2 | Communication efficiency | Step 7 Chatbot | 24/7 AI chatbot + handoff sa live support + email notifications |
+| 1.4.3 | Real-time order status updates | Step 5D + 6.2 | Order status/tracking page at email sa bawat palit ng status |
+| 1.5.1 | Adoption of digital technology | Step 3, 4, 6.7 | Online ordering at payment, at limang AI features (kasama ang AI Generate Product) |
+| 1.5.2 | Reduction of paper-based transactions | Step 5D + 6.5 | Digital invoice, online payment at proof upload, Excel export — walang papel na order form o resibo |
+| 2.x | ISO 25010 | Q&A cheat sheet ("Secure ba?") + buong demo | Functional (buong flow), usability (responsive, dark mode), performance, compatibility (kahit anong browser/phone), reliability (live sa Railway), security (MFA, lockout, CSRF, audit log) |
 
 ---
 
@@ -124,16 +151,21 @@
 
 ---
 
-### 6. Admin Side (5 min)
+### 6. Admin Side (6–7 min)
 **Lipat sa Tab 2 (Admin)**
 
 **Gawin (sunud-sunod):**
-1. **Dashboard** — ipakita ang KPIs + Revenue Trends chart (5 sec lang)
+1. **Dashboard** — ipakita ang KPIs + Revenue Trends chart (5 sec lang), tapos i-scroll pababa sa **Top Selling · Low Stock · Slow-Moving Stock** *(SOP 1.2.1, 1.2.3)*
+   > "Sa iisang tingin po, alam ng may-ari kung ano ang mabenta, ano ang paubos na, at ano ang hindi gumagalaw — yung Slow-Moving po ay mga produktong marami pang stock pero walang benta sa 90 araw, kaya hindi na sila dadagdagan at hindi naiipon ang hindi nabebentang paninda."
 2. **Orders** → buksan ang kaka-place lang na order → ituro ang **Voucher (DEMO20)** line → palitan ang status sa **Confirmed**
    > "Nakikita po ng admin ang bawat discount na ibinigay, at naka-log sa Audit Log ang mga pagbabago."
 3. **Coupons** → ituro ang DEMO20: **Used 1 / 5** at ang **Given** na halaga
    > "Awtomatiko pong nabibilang ang gamit. Kapag naabot ang limit, hindi na po ito tatanggapin — kahit sabay pang mag-checkout ang dalawang customer sa huling slot."
    - *Optional:* pindutin ang **Edit** o **Deactivate** para ipakitang buo ang management
+3b. **Custom Orders** → buksan ang custom order mula sa Step 4 → palitan ang status sa **Printing** *(SOP 1.3.1, 1.3.3)*
+   > "Ito po ang production workflow: processing, printing, ready for pickup, delivered. Bawat palit ay naka-log na may oras — doon po namin kinukuha ang lead time na makikita natin sa Sales Report."
+3c. **Reviews** → ituro ang average rating bawat produkto → i-**Hide** ang isang review, tapos **Unhide** *(SOP 1.4.1)*
+   > "Dito po namin sinusukat ang customer satisfaction. Kapag spam o hindi angkop ang review, pwedeng itago — hindi na ito lalabas at hindi na bibilangin sa rating."
 4. **Cancel → Delete** (gamitin ang **hiwalay na test order**, hindi ang DEMO20 order)
    - Kung ginawa ang Step 5E: buksan ang duplicate order → ituro sa **Notes** ang *[Same items as Order #… - customer confirmed]*
    - Palitan ang status sa **Cancelled**
@@ -142,7 +174,9 @@
      > "Cancelled orders lang po ang pwedeng i-delete, at hindi kapag may bayad na — kailangang manatili ang record para sa refund. Kasamang nabubura ang payment screenshot, kaya dito po talaga natitipid ang storage. Naka-record pa rin sa Audit Log kung sinong admin ang nag-delete."
    - *Optional:* buksan ang **Audit Log** → *"Cancelled order #… permanently deleted"*
 5. **Sales Report** (1 min)
-   - Pindutin ang **This month** → ituro ang Total sales, Orders, Average order, at ang hati ng **Discounts given** (PWD/Senior vs Vouchers vs Shipping)
+   - Pindutin ang **This month** → ituro ang Total order value, Orders, Average order, at ang hati ng **Discounts given** (PWD/Senior vs Vouchers vs Shipping)
+   - Ituro ang **Avg lead time, shop** at **Avg lead time, custom** *(SOP 1.3.2)*
+     > "Ito po ang lead time — gaano katagal mula pag-order ng customer hanggang ma-complete o ma-deliver. Hindi po ito tantiya; kinukuwenta mula sa aktwal na oras na naka-log sa bawat status change."
    - I-scroll: **Daily sales chart → Top products → By payment method → Orders list**
      > "Ito po ang sagot kung paano malalaman ng may-ari ang benta sa kahit anong petsa — hindi na po kailangang mag-compute nang mano-mano."
    - Pindutin ang **Export Excel** → buksan ang file → ipakita ang 4 na sheet (Summary, Orders, Top Products, Daily Sales)
@@ -151,7 +185,7 @@
 6. **AI Insights** (pindutin ang "AI Insights" button sa admin panel) → i-type: **"magkano discount natin this month?"**
    > "Pati po ang AI assistant ng admin ay alam ang vouchers at discounts — galing sa totoong data, hindi hula."
    - *Follow-up kung may oras:* **"ilang customer na ang nabigyan ng voucher at ilan pa ang hindi nagagamit?"**
-7. **⭐ AI Generate Product — ang pang-finale:**
+7. **⭐ AI Generate Product — ang pang-finale** *(SOP 1.5.1)*:
    > "Ito po ang pang-apat naming AI feature. Sir/Ma'am, **anong product po ang gusto niyong idagdag sa store?**"
    - I-type ang sagot ng panelist → **Generate** → ~8-10 sec → lalabas ang draft (photo, name, price, description)
    - > "AI ang nag-draft, pero admin ang nag-a-approve — human oversight po."
@@ -203,6 +237,11 @@
 | **"Malaki ba talaga ang natitipid sa pag-delete?"** | Maliit po ang order record mismo (~160 bytes). Ang malaki ay ang payment screenshot — kasama po iyong nabubura |
 | **"Naibabalik ba ang stock pag na-cancel?"** | Opo, isang beses lang (may flag para hindi madoble). Pag in-un-cancel, babawasan ulit; kung kulang na ang stock, hindi papayagan |
 | **"Pwede bang burahin ng customer ang design niya?"** | Opo, pero kung hindi pa ito ginagamit sa order. Kapag may order na, hindi na ito mabubura para hindi madamay ang order at ang bayad |
+| **"Paano niyo sinusukat ang lead time?"** (1.3.2) | Mula sa oras ng pag-order hanggang sa unang pagkakataong naging Completed (shop) o Delivered (custom), base sa audit log. Average ito ng mga order sa napiling petsa sa Sales Report |
+| **"Bakit '—' ang lead time ng custom?"** | Wala pang custom order na na-deliver sa napiling petsa. Kapag mayroon na, kusang lalabas ang numero |
+| **"Ano ang Slow-Moving Stock?"** (1.2.3) | Aktibong produkto na may higit 5 stock pero walang benta (hindi kasama ang cancelled) sa huling 90 araw — parehong 90 araw ng Top Selling. Senyales ito na huwag nang dagdagan ang stock |
+| **"Paano nababawasan ang papel?"** (1.5.2) | Digital ang order form, invoice (PDF), payment proof (upload), at sales report (Excel). Walang kailangang i-print para makapag-order o makapag-report |
+| **"Paano ang customer satisfaction?"** (1.4.1) | Product reviews at star ratings mula sa customer; average rating bawat produkto sa Admin → Reviews; may hide para sa spam |
 
 ## 🚨 CONTINGENCY PLANS
 
