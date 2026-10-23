@@ -1,0 +1,17 @@
+# Keep private files out of the web root. The Dockerfile has its own Apache
+# deny rules; this file covers XAMPP, where htdocs is served as-is.
+Options -Indexes
+
+# Secrets, dumps, docs and tooling files.
+<FilesMatch "^\.|\.(sql|env|md|lock|bak|log|ini|phar|sh)$|^(composer-setup\.php|composer\.json|package(-lock)?\.json|phpunit\.xml|Dockerfile|railway\.json)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Folders that are never meant to be fetched over HTTP.
+RedirectMatch 404 ^/(.*/)?(\.git|database|scripts|vendor|tests|docker|docs|node_modules)(/|$)
