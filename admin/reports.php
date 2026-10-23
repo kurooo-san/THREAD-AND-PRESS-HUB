@@ -22,7 +22,10 @@ if ($from > $to) { [$from, $to] = [$to, $from]; }
 $fromSql = $from . ' 00:00:00';
 $toSql   = date('Y-m-d', strtotime($to . ' +1 day')) . ' 00:00:00'; // exclusive end
 
+// Weeks run Monday to Sunday.
 $presets = [
+    'This week'    => [date('Y-m-d', strtotime('monday this week')), $today],
+    'Last week'    => [date('Y-m-d', strtotime('monday last week')), date('Y-m-d', strtotime('sunday last week'))],
     'This month'   => [date('Y-m-01'), $today],
     'Last month'   => [date('Y-m-01', strtotime('first day of last month')), date('Y-m-t', strtotime('last day of last month'))],
     'Last 30 days' => [date('Y-m-d', strtotime('-29 days')), $today],
