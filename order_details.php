@@ -13,6 +13,39 @@ if ($order_id === 0) {
     exit();
 }
 
+// Customer confirms they got the parcel: out_for_delivery -> completed.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'order_received') {
+    if (!verifyCsrfToken()) {
+        $_SESSION['error'] = 'Invalid request. Please try again.';
+    } else {
+        // Owner only, and only while out for delivery (the WHERE is the guard).
+        $stmt = $conn->prepare("UPDATE orders SET status = 'completed' WHERE id = ? AND user_id = ? AND status = 'out_for_delivery'");
+        $stmt->bind_param("ii", $order_id, $_SESSION['user_id']);
+        $stmt->execute();
+        $changed = $stmt->affected_rows === 1;
+        $stmt->close();
+        if ($changed) {
+            // Same as admin completing it: a COD order is paid on hand-over.
+            $conn->query("UPDATE orders SET payment_status = 'verified'
+                          WHERE id = " . (int)$order_id . "
+                          AND LOWER(payment_method) = 'cod'
+                          AND payment_status = 'unpaid'");
+            logAudit('order_received', 'order', $order_id, 'Customer confirmed the order was received');
+            try {
+                require_once 'includes/email-helper.php';
+                sendOrderStatusEmail($conn, $order_id, 'completed');
+            } catch (Throwable $mailEx) {
+                error_log('[order_details] received email failed: ' . $mailEx->getMessage());
+            }
+            $_SESSION['success'] = 'Thanks for confirming! Your order is now marked as received.';
+        } else {
+            $_SESSION['error'] = 'This order can only be marked as received while it is out for delivery.';
+        }
+    }
+    header("Location: order_details.php?id=" . $order_id);
+    exit();
+}
+
 // Get order details - check if user is owner or admin
 $stmt = $conn->prepare("SELECT * FROM orders WHERE id = ? AND (user_id = ? OR ? = 'admin')");
 $user_type = $_SESSION['user_type'] ?? '';
@@ -48,6 +81,12 @@ $items_result = $items_stmt->get_result();
                     <li class="breadcrumb-item active">Order #<?php echo htmlspecialchars($order['id']); ?></li>
                 </ol>
             </nav>
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success"><?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?></div>
+            <?php endif; ?>
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-danger"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></div>
+            <?php endif; ?>
             <div class="card" style="border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 <div class="card-body p-4">
                     <h5 class="mb-4" style="font-weight: 700;">Order #<?php echo htmlspecialchars($order['id']); ?></h5>
@@ -58,6 +97,16 @@ $items_result = $items_stmt->get_result();
                             <span class="badge bg-<?php echo $order['status'] === 'completed' ? 'success' : ($order['status'] === 'pending' ? 'warning' : ($order['status'] === 'cancelled' ? 'danger' : 'info')); ?>" style="font-size: 1rem; padding: 0.5rem 1rem;" data-live-label>
                                 <i class="fas fa-circle"></i> <?php echo ucfirst(str_replace('_', ' ', $order['status'])); ?>
                             </span>
+                            <?php if ($order['status'] === 'out_for_delivery' && (int)$order['user_id'] === (int)$_SESSION['user_id']): ?>
+                            <form method="POST" class="mt-3" onsubmit="return confirm('Confirm that you have received this order?');">
+                                <?php echo csrfTokenField(); ?>
+                                <input type="hidden" name="action" value="order_received">
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    <i class="fas fa-box-open me-1"></i> Order Received
+                                </button>
+                                <small class="d-block text-muted mt-1">Tap once the parcel is in your hands.</small>
+                            </form>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-6 text-md-end">
                             <h6 class="text-muted mb-2">Order Date</h6>

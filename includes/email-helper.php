@@ -251,8 +251,8 @@ function sendOrderStatusEmail($conn, $orderId, $newStatus) {
         'pending' => ['Pending', '#f39c12', 'Your order is being reviewed.'],
         'confirmed' => ['Confirmed', '#27ae60', 'Your order has been confirmed and is being processed!'],
         'preparing' => ['Preparing', '#3498db', 'Your order is being prepared for shipment.'],
-        'out_for_delivery' => ['Out for Delivery', '#9b59b6', 'Your order is on its way to you!'],
-        'completed' => ['Completed', '#2ecc71', 'Your order has been delivered. Enjoy your purchase!'],
+        'out_for_delivery' => ['Out for Delivery', '#9b59b6', 'Your order is on its way to you! Once it arrives, tap "Order Received" on your order page to confirm.'],
+        'completed' => ['Completed', '#2ecc71', 'Your order has been delivered and received. Enjoy your purchase!'],
         'cancelled' => ['Cancelled', '#e74c3c', 'Your order has been cancelled.']
     ];
 
@@ -404,7 +404,7 @@ function sendCustomOrderStatusEmail($conn, $customOrderId, $newStatus) {
         'payment_verified' => ['Payment Verified', '#27ae60', 'Your payment is verified! Your custom apparel is queued for production.'],
         'processing'       => ['Processing', '#8e44ad', 'Your custom apparel is now in production.'],
         'printing'         => ['Printing', '#2980b9', 'Your design is being printed right now!'],
-        'ready_pickup'     => ['Ready', '#16a085', 'Your custom order is ready! It will be delivered or is ready for pickup.'],
+        'ready_pickup'     => ['Ready', '#16a085', 'Your custom order is ready! It will be delivered or is ready for pickup. Once you have it, tap "Order Received" on your tracking page to confirm.'],
         'delivered'        => ['Delivered', '#2ecc71', 'Your custom order has been delivered. Enjoy wearing your own design!'],
         'cancelled'        => ['Cancelled', '#e74c3c', 'Your custom order has been cancelled. Contact support if you have questions.'],
     ];

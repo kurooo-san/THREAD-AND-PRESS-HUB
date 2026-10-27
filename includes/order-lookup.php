@@ -91,7 +91,9 @@ try {
             $response .= "Payment: {$payIcon} " . paymentMethodLabel($order['payment_method']) . "\n";
             $response .= "Order Date: " . date('F d, Y g:i A', strtotime($order['created_at'])) . "\n";
             
-            if ($order['status'] !== 'completed' && $order['status'] !== 'cancelled') {
+            if ($order['status'] === 'out_for_delivery') {
+                $response .= "\n⏩ **Next Steps:** Your order is on its way! Once it arrives, open it in My Orders and tap **Order Received**.";
+            } elseif ($order['status'] !== 'completed' && $order['status'] !== 'cancelled') {
                 $response .= "\n⏩ **Next Steps:** Your order is being processed. You'll receive updates soon!";
             }
             

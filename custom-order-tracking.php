@@ -10,6 +10,34 @@ if ($orderId <= 0) {
     exit();
 }
 
+// Customer confirms they got the apparel: ready_pickup -> delivered.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'order_received') {
+    if (!verifyCsrfToken()) {
+        $_SESSION['error'] = 'Invalid request. Please try again.';
+    } else {
+        // Owner only, and only once it is ready (the WHERE is the guard).
+        $stmt = $conn->prepare("UPDATE custom_orders SET status = 'delivered' WHERE id = ? AND user_id = ? AND status = 'ready_pickup'");
+        $stmt->bind_param("ii", $orderId, $_SESSION['user_id']);
+        $stmt->execute();
+        $changed = $stmt->affected_rows === 1;
+        $stmt->close();
+        if ($changed) {
+            logAudit('custom_order_received', 'custom_order', $orderId, 'Customer confirmed the order was received');
+            try {
+                require_once 'includes/email-helper.php';
+                sendCustomOrderStatusEmail($conn, $orderId, 'delivered');
+            } catch (Throwable $mailEx) {
+                error_log('[custom-order-tracking] received email failed: ' . $mailEx->getMessage());
+            }
+            $_SESSION['success'] = 'Thanks for confirming! Your custom order is now marked as received.';
+        } else {
+            $_SESSION['error'] = 'This order can only be marked as received once it is ready.';
+        }
+    }
+    header("Location: custom-order-tracking.php?order_id=" . $orderId);
+    exit();
+}
+
 // Get order details
 $stmt = $conn->prepare("SELECT co.*, cd.design_image as design_preview, cd.design_data, cd.notes as design_notes FROM custom_orders co LEFT JOIN custom_designs cd ON co.design_id = cd.id WHERE co.id = ? AND co.user_id = ?");
 $stmt->bind_param("ii", $orderId, $_SESSION['user_id']);
@@ -319,6 +347,13 @@ if ($successFlash !== null) {
         <p class="text-muted">Track your custom apparel order #<?php echo $orderId; ?></p>
     </div>
 
+    <?php if (isset($_SESSION['success'])): ?>
+        <div class="alert alert-success"><?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?></div>
+    <?php endif; ?>
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></div>
+    <?php endif; ?>
+
     <!-- Current Status -->
     <div class="tracking-card" data-live="status">
         <div class="tracking-card-header">
@@ -408,7 +443,7 @@ if ($successFlash !== null) {
                         ['step' => 2, 'icon' => 'fas fa-check-circle', 'title' => 'Payment Verified',   'desc' => 'Payment has been verified by admin.'],
                         ['step' => 3, 'icon' => 'fas fa-cog',          'title' => 'Processing',         'desc' => 'Your order is being processed and prepared for printing.'],
                         ['step' => 4, 'icon' => 'fas fa-print',        'title' => 'Printing',           'desc' => 'Your custom design is being printed on your apparel.'],
-                        ['step' => 5, 'icon' => 'fas fa-box',          'title' => 'Ready for Pickup',   'desc' => 'Your order is ready! Come pick it up or wait for delivery.'],
+                        ['step' => 5, 'icon' => 'fas fa-box',          'title' => 'Ready for Pickup',   'desc' => 'Your order is ready! Come pick it up or wait for delivery, then tap "Order Received".'],
                         ['step' => 6, 'icon' => 'fas fa-check-double', 'title' => 'Delivered',          'desc' => 'Order has been delivered. Enjoy your custom apparel!'],
                     ];
                     foreach ($steps as $s): 
@@ -434,6 +469,15 @@ if ($successFlash !== null) {
 
     <!-- Actions -->
     <div class="btn-action-row" data-live="actions">
+        <?php if ($order['status'] === 'ready_pickup'): ?>
+        <form method="POST" class="d-inline" onsubmit="return confirm('Confirm that you have received this order?');">
+            <?php echo csrfTokenField(); ?>
+            <input type="hidden" name="action" value="order_received">
+            <button type="submit" class="btn-track-primary" style="background:#27ae60; border:0;">
+                <i class="fas fa-box-open me-2"></i>Order Received
+            </button>
+        </form>
+        <?php endif; ?>
         <a href="custom-design.php" class="btn-track-outline">
             <i class="fas fa-palette me-2"></i>Create New Design
         </a>
