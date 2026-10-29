@@ -1390,6 +1390,26 @@ html.dark-mode .sleeve-tabs button.active { background: rgba(200,169,110,0.18); 
     body .canvas-toolbar > *,
     body .canvas-action-btn { flex-shrink: 0; }
 }
+/* Order panel under the tools. A wrapping flex row left ragged columns and gaps
+   here, so: 3D preview on the left, order details stacked on the right, notes
+   and submit across the bottom. 1100px = where the panel drops below the canvas. */
+@media (max-width: 1100px) {
+    body .design-preview-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem 1.5rem; align-items: start;
+        position: static; max-height: none; overflow: visible; }   /* full width now, so no sticky inner-scroll box */
+    body .design-preview-panel > .preview-section:first-child { grid-row: span 4; }
+    body .design-preview-panel > .submit-section { grid-column: 1 / -1; }
+    body .design-preview-panel .price-select { max-width: 100%; }
+}
+/* Phones: one clean column, and the 10 colour swatches as two even rows of 5
+   instead of 9 plus one left over. */
+@media (max-width: 575.98px) {
+    body .design-preview-panel { grid-template-columns: minmax(0, 1fr); }
+    body .design-preview-panel > .preview-section:first-child { grid-row: auto; }
+    body .design-preview-panel > .preview-section + .preview-section,
+    body .design-preview-panel > .submit-section { border-top: 1px solid #eee; padding-top: 1rem; }
+    body .color-grid,
+    body .apparel-color-grid { display: grid; grid-template-columns: repeat(5, 28px); justify-content: space-between; row-gap: 10px; }
+}
 </style>
 
 <div class="design-tool-container">
