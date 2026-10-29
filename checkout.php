@@ -879,7 +879,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                           // wipes the basket the customer still had waiting. ?>
                     <input type="hidden" name="buy_now" value="<?php echo $buy_now ? '1' : ''; ?>">
 
-                    <button type="submit" class="btn btn-dark btn-lg w-100 mt-4" style="border-radius: var(--radius-sm); padding: 0.75rem;">
+                    <button type="submit" id="placeOrderBtn" class="btn btn-dark btn-lg w-100 mt-4" style="border-radius: var(--radius-sm); padding: 0.75rem;">
                         Place Order <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
                     </button>
 
@@ -1223,6 +1223,28 @@ function toggleDeliveryAddress() {
         updateOrderSummary();
     }
 }
+</script>
+<script>
+// One order per click: a fast double-click could send two requests that both
+// pass the duplicate check before either is saved. The submit event only fires
+// once the browser's own field validation has passed.
+(function () {
+    const form = document.getElementById('checkoutForm');
+    const btn  = document.getElementById('placeOrderBtn');
+    const label = btn.innerHTML;
+    form.addEventListener('submit', function (e) {
+        if (form.dataset.sending) { e.preventDefault(); return; }
+        form.dataset.sending = '1';
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:0.5rem;"></i> Placing order…';
+    });
+    // Back button restores the page from cache: make the button usable again.
+    window.addEventListener('pageshow', function () {
+        delete form.dataset.sending;
+        btn.disabled = false;
+        btn.innerHTML = label;
+    });
+})();
 </script>
 
 <?php include 'includes/footer/footer.php'; ?>
