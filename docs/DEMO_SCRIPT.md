@@ -2,6 +2,7 @@
 
 **Total demo time:** ~18–21 minutes (adjust per panel rules)
 **Kailangan:** 2 browser tabs — Tab 1: customer (naka-login), Tab 2: admin
+**Mas maganda kung may tablet:** Tablet = customer (hawak mo), Laptop = admin (naka-project). Makikita ng panel na pumapasok ang order sa admin nang walang reload.
 
 ---
 
@@ -25,6 +26,9 @@
 - [ ] May **custom orders na "Delivered"** ngayong buwan, pinalitan ang status sa Admin → Custom Orders (para may numero ang "Avg lead time, custom" sa Sales Report; "—" ang lalabas kung wala)
 - [ ] May laman ang **Slow-Moving Stock** at **Low Stock** sa Dashboard (kung parehong walang laman, ayos lang — may sariling paliwanag ang empty state)
 - [ ] May ilang **product reviews** (para may maipakita sa Admin → Reviews sa Step 6)
+- [ ] **Notification bell → Mark seen** sa admin, sa mismong device na gagamitin (naka-save ito per browser — kung hindi, 100+ ang lalabas na "New Orders")
+- [ ] Kung tablet + laptop: parehong naka-open sa **live Railway URL** (hindi localhost — hindi maaabot ng tablet ang XAMPP ng laptop), at nasubukan na sa WiFi/hotspot ng venue
+- [ ] Huwag i-minimize o ilipat sa ibang tab ang admin page habang hinihintay ang order — humihinto ang live update kapag nakatago ang page (babalik agad pagbalik)
 
 ---
 
@@ -35,8 +39,8 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 | SOP | Item | Saan ipapakita | Isang linyang sagot |
 |---|---|---|---|
 | 1.1.1 | Accuracy of order records | Step 6.2 Orders + Audit Log | Lahat ng order, discount at status change ay naka-record at naka-log kung sinong admin ang gumawa |
-| 1.1.2 | Processing time | Step 5D + 6.2 | PayMongo ay awtomatikong nagkukumpirma ng bayad; isang click lang ang pagpalit ng status |
-| 1.1.3 | Reduction of order errors | Step 5E + 5C | Duplicate-order check, server-side na pag-compute ng presyo at voucher, stock check |
+| 1.1.2 | Processing time | Step 5D + 6.0 + 6.2 | PayMongo ay awtomatikong nagkukumpirma ng bayad; lumalabas agad ang bagong order sa admin nang walang reload; isang click lang ang pagpalit ng status |
+| 1.1.3 | Reduction of order errors | Step 5D + 5E + 5C | Naka-lock ang Place Order pagka-click (walang doble sa double-click), duplicate-order check, server-side na pag-compute ng presyo at voucher, stock check |
 | 1.2.1 | Product stock availability | Step 2 (product page) + 6.1 Low Stock | "In stock / Only N left / Out of stock" sa customer; Low Stock panel + notification sa admin |
 | 1.2.2 | Stock accuracy | Step 6.4 Cancel | Nababawas ang stock pag umorder, bumabalik pag na-cancel, isang beses lang |
 | 1.2.3 | Reduction of overstock and unsold inventory | Step 6.1 Slow-Moving Stock | Nakikita ng admin ang mga produktong maraming stock pero walang benta sa 90 araw, kaya hindi na dadagdagan |
@@ -45,10 +49,10 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 | 1.3.3 | Workflow transparency | Step 6.3b + Audit Log | Bawat status change ay naka-log na may oras; nakikita ng customer ang tracking page |
 | 1.4.1 | Customer satisfaction | Step 6.3c Reviews | Product reviews at ratings; nakikita ng admin ang average rating bawat produkto |
 | 1.4.2 | Communication efficiency | Step 7 Chatbot | 24/7 AI chatbot + handoff sa live support + email notifications |
-| 1.4.3 | Real-time order status updates | Step 5D + 6.2 | Order status/tracking page at email sa bawat palit ng status |
+| 1.4.3 | Real-time order status updates | Step 5D + 6.0 + 6.2 | Customer: tracking page na kusang nag-a-update + email sa bawat palit ng status. Admin: kusang pumapasok ang bagong orders, payments, designs at messages sa loob ng ~8 segundo, walang reload |
 | 1.5.1 | Adoption of digital technology | Step 3, 4, 6.7 | Online ordering at payment, at limang AI features (kasama ang AI Generate Product) |
 | 1.5.2 | Reduction of paper-based transactions | Step 5D + 6.5 | Digital invoice, online payment at proof upload, Excel export — walang papel na order form o resibo |
-| 2.x | ISO 25010 | Q&A cheat sheet ("Secure ba?") + buong demo | Functional (buong flow), usability (responsive, dark mode), performance, compatibility (kahit anong browser/phone), reliability (live sa Railway), security (MFA, lockout, CSRF, audit log) |
+| 2.x | ISO 25010 | Q&A cheat sheet ("Secure ba?") + buong demo | Functional (buong flow), usability (responsive sa phone/tablet, dark mode), performance, compatibility (kahit anong browser/phone), reliability (live sa Railway), security (MFA, lockout, CSRF, audit log) |
 
 ---
 
@@ -111,7 +115,9 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 4. Ituro ang **Price Estimate** na live nag-a-update
 5. *Optional:* sa **My Designs**, ituro ang **Remove design** button
    > "Pwede pong burahin ng customer ang sariling design para hindi kalat ang account niya. Pero kapag may order na gumagamit ng design, hindi po ito mabubura — para hindi madamay ang order at ang bayad."
-6. **Submit & Proceed to Order** → ipakita ang order summary → **Proceed to Payment** → ipakita na **parehong payment options** ang custom at regular orders: **Pay Online (PayMongo)** o **Cash on Delivery**
+6. *Optional, kung may tablet:* buksan ang Design sa tablet → ituro na maayos ang layout: 3D preview sa kaliwa, presyo at order details sa kanan, Submit sa ilalim
+   > "Responsive po ang buong site — pareho ang features sa phone, tablet at desktop."
+7. **Submit & Proceed to Order** → ipakita ang order summary → **Proceed to Payment** → ipakita na **parehong payment options** ang custom at regular orders: **Pay Online (PayMongo)** o **Cash on Delivery**
 
 ---
 
@@ -139,6 +145,8 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 
 **D. Place order**
 - Piliin ang **Cash on Delivery** → **Place Order** (pinakamabilis at walang aasahang internet)
+- Ituro na naging **"Placing order…"** ang button at hindi na mapipindot ulit
+  > "Naka-lock po ang button pagka-click, kaya kahit ma-double click, isang order lang ang mabubuo."
   > "May **Pay Online** din po through PayMongo — GCash, Maya, GrabPay o card. Sa secure page po ng PayMongo nagbabayad, kaya wala kaming hinahawakang card details, at awtomatikong nakukumpirma ang bayad."
 - Sa Order Confirmation, ituro ang **Voucher (DEMO20)** line → *"Naka-record din po ito sa invoice at sa confirmation email."*
 - Ituro ang 🚚 **Estimated delivery** sa ilalim ng Order Number (nandoon din sa My Orders → order details)
@@ -146,7 +154,7 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 **E. Duplicate order check** *(optional, ~30 sec)*
 - Idagdag ulit sa cart ang **parehong item, kulay, size at dami** → Checkout → Place Order
 - Lalabas ang babala: *"You already placed an order with these same items 1 minute ago (Order #…)"* + link papunta sa order + checkbox
-  > "Para po hindi aksidenteng madoble ang order — dahil sa double-click, o dahil bukas sa dalawang tab. Hindi po namin hinaharangan, kasi minsan sinasadya ng customer na umorder ulit; kailangan lang niyang i-confirm. Sampung minuto pabalik po ang tinitingnan."
+  > "Dalawang layer po ang proteksyon laban sa dobleng order. Una, naka-lock ang button pagka-click para sa double-click. Pangalawa, itong check na ito — para sa pangalawang tab, o kapag nag-Back at nag-order ulit. Hindi po namin hinaharangan, kasi minsan sinasadya ng customer na umorder ulit; kailangan lang niyang i-confirm. Sampung minuto pabalik po ang tinitingnan."
 - Kapag tsinek ang box at itinuloy, may tala sa order para kay admin: **[Same items as Order #… - customer confirmed]** → ipapakita sa Step 6
 
 ---
@@ -155,6 +163,12 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 **Lipat sa Tab 2 (Admin)**
 
 **Gawin (sunud-sunod):**
+0. **⭐ Real-time — gawin ito habang nagpe-Place Order sa Step 5D** *(SOP 1.1.2, 1.4.3)*
+   - Bago pindutin ang Place Order sa customer, nakabukas na ang **Admin → Dashboard** (o **Orders**) sa Tab 2 / sa laptop
+   - Pagka-place ng order, **huwag i-refresh** — sa loob ng ~8 segundo kusang gagalaw ang **Total Orders, Revenue chart, Recent Orders**, ang **badge sa sidebar**, at tataas ang **notification bell** 🔔
+     > "Hindi na po kailangang i-refresh ng admin ang page. Kada ilang segundo, tahimik na kumukuha ang page ng bagong data at ang nagbagong bahagi lang ang pinapalitan. Ganito rin po sa Payments, Custom Designs, Custom Orders, Users, Sales Report, Contact Messages at Audit Log."
+   - *Kung may oras:* habang may tina-type ka sa admin (hal. notes sa Custom Designs), umorder ulit → hindi mabubura ang tina-type mo; lalabas ang bago pagka-save
+     > "Hindi rin po nito ginagalaw ang form na ginagamit ng admin — naghihintay muna ito hanggang matapos siya."
 1. **Dashboard** — ipakita ang KPIs + Revenue Trends chart (5 sec lang), tapos i-scroll pababa sa **Top Selling · Low Stock · Slow-Moving Stock** *(SOP 1.2.1, 1.2.3)*
    > "Sa iisang tingin po, alam ng may-ari kung ano ang mabenta, ano ang paubos na, at ano ang hindi gumagalaw — yung Slow-Moving po ay mga produktong marami pang stock pero walang benta sa 90 araw, kaya hindi na sila dadagdagan at hindi naiipon ang hindi nabebentang paninda."
 2. **Orders** → buksan ang kaka-place lang na order → ituro ang **Voucher (DEMO20)** line → palitan ang status sa **Confirmed**
@@ -230,6 +244,11 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 | **"Pwede bang pagsabayin ang PWD at voucher?"** | Opo. Parehong kinukuwenta sa item subtotal, tapos ang 12% VAT ay sa natitira. Shipping voucher lang ang bumabawas sa delivery fee |
 | **"Paano malalaman ng may-ari ang benta?"** | Sales Report: kahit anong date range, summary, daily chart, top products, by payment method, at Export Excel / Print. Pareho ang patakaran sa Dashboard: hindi kasama ang cancelled orders |
 | **"Bakit hindi kasama ang cancelled sa benta?"** | Walang perang pumasok sa cancelled — pero nakalista pa rin ito (naka-strikethrough) at may hiwalay na bilang para transparent |
+| **"Real-time ba talaga? Paano?"** | Opo. Kada ~8 segundo, kumukuha ang admin page ng bagong data sa server at ang mga bahaging nagbago lang ang pinapalitan — walang buong reload, walang kurap. Ganoon din kadalas ang notification bell. Humihinto ito kapag nakatago ang tab para hindi nagsasayang ng request |
+| **"Bakit hindi WebSocket / push?"** | Para sa laki ng tindahan namin, sapat at mas simple ang polling kada 8 segundo: gumagana sa kahit anong hosting (Railway, XAMPP) at walang hiwalay na server na kailangang patakbuhin. Kapag lumaki ang traffic, iyon ang susunod na hakbang |
+| **"Paano kung may ine-edit si admin habang may pumasok na bagong data?"** | Hindi po ginagalaw ang bahaging may tina-type, may binagong dropdown, o may bukas na modal. Naghihintay ito hanggang ma-save o ma-clear, saka mag-a-update |
+| **"Paano kung ma-double click ang Place Order?"** | Naka-lock po ang button pagka-click ("Placing order…"), kaya isang request lang ang napapadala. Pangalawang layer ang duplicate-order check para sa pangalawang tab o pag-order ulit |
+| **"Responsive ba sa phone at tablet?"** | Opo — pareho ang features sa phone, tablet at desktop, kasama ang Design Studio at ang buong admin panel |
 | **"Paano niyo nalalaman na duplicate ang order?"** | Parehong customer, parehong items (product, kulay, size, dami — kahit iba ang pagkakasunod), at may order na hindi cancelled sa loob ng huling 10 minuto. Babala lang, hindi block — kailangang i-confirm ng customer, at may tala sa order para makita ni admin |
 | **"Paano kung mali talaga ang na-order na duplicate?"** | I-cancel ni admin → babalik ang stock at voucher → saka pwedeng i-delete |
 | **"Saan galing ang estimated delivery date?"** | Sa shipping policy namin per area (Rizal/NCR 1–2 araw, karatig-probinsya 2–3, Luzon/Visayas/Mindanao 3–5), working days at hindi kasama ang Linggo. Iisang table ang pinagkukunan ng fee, ng petsa, at ng Shipping page. Sa lumang order, kinukuha ang area mula sa delivery fee na binayaran |
@@ -252,3 +271,5 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 | Ayaw ng camera sa venue | Upload Photo mode (may nakahandang full-body photo sa desktop) |
 | Nag-crash ang XAMPP | Restart Apache/MySQL sa XAMPP control panel (~30 sec) |
 | Projector washed out ang dark mode | Manatili sa light mode buong demo |
+| Hindi pumapasok ang order sa admin nang live | Hintayin ang ~8 segundo; siguraduhing naka-focus ang admin tab (hindi minimized). Kung wala pa rin, i-refresh — naka-save na ang order. Malamang internet ang problema |
+| Hindi maabot ng tablet ang site | Gamitin ang live Railway URL / i-scan ang QR; kung walang internet, gawin na lang sa 2 tab ng laptop |
