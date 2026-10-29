@@ -209,7 +209,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
 
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-custom-orders">
+<div class="admin-custom-orders" data-live-poll>
     <div class="mb-4">
         <h1 style="font-size:2rem; font-weight:800;">
             <i class="fas fa-shirt"></i> Custom Orders
@@ -225,7 +225,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
     <?php endif; ?>
 
     <!-- Stats -->
-    <div class="co-stats-row">
+    <div class="co-stats-row" data-live="co-stats">
         <div class="co-stat-card">
             <div class="stat-num"><?php echo $totalOrders; ?></div>
             <div class="stat-text">Total Orders</div>
@@ -262,11 +262,12 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
     </div>
 
     <!-- Orders List -->
+    <div data-live="co-list">
     <?php if ($orders && $orders->num_rows > 0): ?>
         <?php while ($o = $orders->fetch_assoc()): 
             $statusInfo = $statusLabels[$o['status']] ?? ['label' => $o['status'], 'badge' => 'secondary'];
         ?>
-            <div class="co-order-card" data-live="co-<?php echo (int)$o['id']; ?>">
+            <div class="co-order-card">
                 <div class="co-order-grid">
                     <!-- Thumbnail -->
                     <div>
@@ -377,6 +378,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
             <p class="text-muted">Customer custom apparel orders will appear here.</p>
         </div>
     <?php endif; ?>
+    </div>
 </div>
 
 <!-- Image Modal -->

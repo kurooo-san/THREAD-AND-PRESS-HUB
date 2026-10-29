@@ -214,7 +214,7 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
 <?php include '../includes/header/header.php'; ?>
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-container">
+<div class="admin-container" data-live-poll>
     <div class="mb-4">
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-receipt"></i> Manage Orders
@@ -228,7 +228,7 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
         <div class="alert alert-success"><?php echo $success; ?></div>
     <?php endif; ?>
 
-    <div class="admin-card">
+    <div class="admin-card" data-live="orders-list">
         <div class="table-responsive">
             <table class="table">
                 <thead>
@@ -245,7 +245,7 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                 </thead>
                 <tbody>
                     <?php while ($order = $orders->fetch_assoc()): ?>
-                    <tr data-live="order-<?php echo (int)$order['id']; ?>">
+                    <tr>
                         <td><strong>#<?php echo $order['id']; ?></strong></td>
                         <td>
                             <div><?php echo htmlspecialchars($order['fullname']); ?></div>

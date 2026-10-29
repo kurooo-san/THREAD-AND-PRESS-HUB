@@ -71,7 +71,7 @@ $totalPages = ceil($totalLogs / $perPage);
 <?php include '../includes/header/header.php'; ?>
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-container">
+<div class="admin-container" data-live-poll>
     <div class="mb-4">
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-clipboard-list"></i> Audit Log
@@ -101,7 +101,7 @@ $totalPages = ceil($totalLogs / $perPage);
         </form>
     </div>
 
-    <div class="admin-card">
+    <div class="admin-card" data-live="audit-list">
         <p class="text-muted small mb-3"><?php echo number_format($totalLogs); ?> total entries</p>
         <div class="table-responsive">
             <table class="table table-sm">

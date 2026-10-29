@@ -207,9 +207,11 @@ if ($hasCustomOrders) {
 if ($revenue_query) {
     while ($row = $revenue_query->fetch_assoc()) { $revenue_data[] = $row; }
 }
-$chart_labels  = json_encode(array_column($revenue_data, 'label'));
-$chart_revenue = json_encode(array_map('floatval', array_column($revenue_data, 'revenue')));
-$chart_orders  = json_encode(array_map('intval', array_column($revenue_data, 'order_count')));
+$chart_data = [
+    'labels'  => array_column($revenue_data, 'label'),
+    'revenue' => array_map('floatval', array_column($revenue_data, 'revenue')),
+    'orders'  => array_map('intval', array_column($revenue_data, 'order_count')),
+];
 $chart_range   = count($revenue_data)
     ? 'Monthly revenue, ' . $revenue_data[0]['label'] . '–' . end($revenue_data)['label']
     : 'Monthly revenue';
@@ -231,7 +233,7 @@ function adStatusPill(string $status): string
 <?php include '../includes/header/header.php'; ?>
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-container">
+<div class="admin-container" data-live-poll>
 
     <div class="ad-head">
         <div>
@@ -250,7 +252,7 @@ function adStatusPill(string $status): string
     </div>
 
     <!-- Stat cards -->
-    <div class="ad-stats">
+    <div class="ad-stats" data-live="dash-stats">
         <div class="ad-card">
             <div class="ad-stat-top">
                 <span class="ad-stat-label">Total Revenue</span>
@@ -290,7 +292,7 @@ function adStatusPill(string $status): string
 
     <!-- Revenue chart + order status -->
     <div class="ad-row">
-        <div class="ad-card">
+        <div class="ad-card" data-live="dash-chart">
             <div class="ad-card-head">
                 <div>
                     <h2>Revenue Trends</h2>
@@ -304,11 +306,11 @@ function adStatusPill(string $status): string
             <?php if (empty($revenue_data)): ?>
                 <div class="ad-empty">No revenue in this period yet.</div>
             <?php else: ?>
-                <div class="ad-chart-wrap"><canvas id="revenueChart"></canvas></div>
+                <div class="ad-chart-wrap"><canvas id="revenueChart" data-chart="<?php echo htmlspecialchars(json_encode($chart_data), ENT_QUOTES); ?>"></canvas></div>
             <?php endif; ?>
         </div>
 
-        <div class="ad-card">
+        <div class="ad-card" data-live="dash-status">
             <div class="ad-card-head">
                 <h2>Order Status</h2>
                 <span style="font-size:12px;color:#97928a;white-space:nowrap;"><?php echo number_format($status_total); ?> total</span>
@@ -344,7 +346,7 @@ function adStatusPill(string $status): string
     </div>
 
     <!-- Recent orders -->
-    <div class="ad-card" style="margin-bottom:18px;">
+    <div class="ad-card" style="margin-bottom:18px;" data-live="dash-recent">
         <div class="ad-card-head">
             <h2>Recent Orders</h2>
             <a href="orders.php" class="ad-link">View all orders →</a>
@@ -384,7 +386,7 @@ function adStatusPill(string $status): string
     </div>
 
     <!-- Top products + low stock -->
-    <div class="ad-row">
+    <div class="ad-row" data-live="dash-products">
         <div class="ad-card">
             <div class="ad-card-head">
                 <div>
@@ -467,8 +469,7 @@ function adStatusPill(string $status): string
 <script src="../js/admin-sidebar.js"></script>
 <script>
 (function () {
-    const ctx = document.getElementById('revenueChart');
-    if (!ctx || typeof Chart === 'undefined') return;
+    if (typeof Chart === 'undefined') return;
 
     const FONT = "'Instrument Sans', Helvetica, Arial, sans-serif";
     const peso = (v) => '₱' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v));
@@ -499,67 +500,81 @@ function adStatusPill(string $status): string
         }
     };
 
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        plugins: [valueLabels],
-        data: {
-            labels: <?php echo $chart_labels; ?>,
-            datasets: [
-                {
-                    label: 'Revenue',
-                    data: <?php echo $chart_revenue; ?>,
-                    backgroundColor: barColor(),
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
-                    borderSkipped: false,
-                    barPercentage: 0.62,
-                    categoryPercentage: 0.7
-                },
-                {
-                    label: 'Orders',
-                    data: <?php echo $chart_orders; ?>,
-                    backgroundColor: '#d9884c',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
-                    borderSkipped: false,
-                    barPercentage: 0.62,
-                    categoryPercentage: 0.7,
-                    yAxisID: 'y1'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: { top: 22 } },
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },   // rendered as HTML in the card head
-                tooltip: {
-                    backgroundColor: '#17181b',
-                    padding: 11,
-                    cornerRadius: 9,
-                    titleFont: { family: FONT, size: 12 },
-                    bodyFont: { family: FONT, size: 12 },
-                    callbacks: {
-                        label: (c) => c.dataset.label === 'Revenue'
-                            ? '₱' + c.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })
-                            : c.parsed.y + ' orders'
+    // The card is a live region: when new orders change it, the canvas is a new
+    // element and gets a fresh chart (no animation, so the swap is invisible).
+    let chart = null;
+    function draw(animate) {
+        const ctx = document.getElementById('revenueChart');
+        if (ctx && Chart.getChart(ctx)) return;
+        if (chart) { chart.destroy(); chart = null; }
+        if (!ctx) return;
+        const data = JSON.parse(ctx.dataset.chart);
+        chart = new Chart(ctx, {
+            type: 'bar',
+            plugins: [valueLabels],
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: 'Revenue',
+                        data: data.revenue,
+                        backgroundColor: barColor(),
+                        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
+                        borderSkipped: false,
+                        barPercentage: 0.62,
+                        categoryPercentage: 0.7
+                    },
+                    {
+                        label: 'Orders',
+                        data: data.orders,
+                        backgroundColor: '#d9884c',
+                        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
+                        borderSkipped: false,
+                        barPercentage: 0.62,
+                        categoryPercentage: 0.7,
+                        yAxisID: 'y1'
                     }
-                }
+                ]
             },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    border: { display: false },
-                    ticks: { font: { family: FONT, size: 12 }, color: labelColor() }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                ...(animate ? {} : { animation: false }),
+                layout: { padding: { top: 22 } },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },   // rendered as HTML in the card head
+                    tooltip: {
+                        backgroundColor: '#17181b',
+                        padding: 11,
+                        cornerRadius: 9,
+                        titleFont: { family: FONT, size: 12 },
+                        bodyFont: { family: FONT, size: 12 },
+                        callbacks: {
+                            label: (c) => c.dataset.label === 'Revenue'
+                                ? '₱' + c.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })
+                                : c.parsed.y + ' orders'
+                        }
+                    }
                 },
-                y:  { display: false, beginAtZero: true },
-                y1: { display: false, beginAtZero: true }
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { font: { family: FONT, size: 12 }, color: labelColor() }
+                    },
+                    y:  { display: false, beginAtZero: true },
+                    y1: { display: false, beginAtZero: true }
+                }
             }
-        }
-    });
+        });
+    }
+    draw(true);
+    document.addEventListener('live:updated', () => draw(false));
 
     // Recolour in place when the theme toggle flips html.dark-mode.
     new MutationObserver(() => {
+        if (!chart) return;
         chart.data.datasets[0].backgroundColor = barColor();
         chart.options.scales.x.ticks.color = labelColor();
         chart.update('none');

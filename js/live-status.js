@@ -10,8 +10,31 @@
 //  - <form data-ajax>: submitted with fetch. The PHP handler sees
 //    X-Requested-With: fetch and answers {ok, message} (ajaxFormReply()),
 //    then the live parts are refreshed (admin side).
+//  - data-live-poll on an admin page: re-fetches every few seconds so new
+//    orders, payments, messages... show up on their own. A region the admin is
+//    typing in or has a dropdown open in is left alone until they are done.
 (function () {
-    async function refreshLiveRegions() {
+    // Server HTML each region was last rendered from. Compared against the
+    // fresh copy (not the live DOM, which scripts may have touched) so an
+    // unchanged region is never swapped.
+    const served = new WeakMap();
+    document.querySelectorAll('[data-live]').forEach(function (el) { served.set(el, el.outerHTML); });
+
+    // True while swapping el would throw away something the admin is doing.
+    function inUse(el) {
+        const a = document.activeElement;
+        if (a && el.contains(a) && a.matches('input, select, textarea, [contenteditable]')) return true;
+        if (el.querySelector('[aria-expanded="true"]')) return true;   // open dropdown / collapse
+        const sel = window.getSelection && window.getSelection();
+        if (sel && !sel.isCollapsed && el.contains(sel.anchorNode)) return true;   // copying text
+        return Array.prototype.some.call(el.querySelectorAll('input, select, textarea'), function (f) {
+            if (f.type === 'checkbox' || f.type === 'radio') return f.checked !== f.defaultChecked;
+            if (f.tagName === 'SELECT') return Array.prototype.some.call(f.options, function (o) { return o.selected !== o.defaultSelected; });
+            return f.value !== f.defaultValue;
+        });
+    }
+
+    async function refreshLiveRegions(polling) {
         const r = await fetch(location.href, { cache: 'no-store', credentials: 'same-origin' });
         // A redirect means the session ended (login page); leave the page alone.
         if (!r.ok || r.redirected) throw new Error('page unavailable');
@@ -19,13 +42,22 @@
         // Same page title = same page (a filtered list may legitimately come
         // back with no rows at all, so the regions themselves can't tell us).
         if (doc.title !== document.title) throw new Error('not the same page');
+        let changed = false;
         document.querySelectorAll('[data-live]').forEach(function (el) {
             const fresh = doc.querySelector('[data-live="' + el.dataset.live + '"]');
+            const html = fresh ? fresh.outerHTML : null;
+            if (html === served.get(el)) return;
+            if (polling && (inUse(el) || document.querySelector('.modal.show'))) return;
+            changed = true;
             // Gone from the fresh page = no longer belongs here, e.g. an order
             // whose new status no longer matches the list's status filter.
-            if (fresh) el.replaceWith(document.importNode(fresh, true));
-            else el.remove();
+            if (!fresh) { el.remove(); return; }
+            const node = document.importNode(fresh, true);
+            served.set(node, html);
+            el.replaceWith(node);
         });
+        // Lets page scripts (charts) re-read data that lives inside a region.
+        if (changed) document.dispatchEvent(new Event('live:updated'));
     }
 
     function toast(message, type) {
@@ -63,6 +95,20 @@
         tick();
         setInterval(tick, 8000);
         document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
+    }
+
+    // ---- Admin: lists that fill in on their own ---------------------------
+    if (document.querySelector('[data-live-poll]')) {
+        let polling = false;
+        const poll = async function () {
+            if (polling || document.hidden) return;
+            polling = true;
+            try { await refreshLiveRegions(true); }
+            catch (e) { /* offline or logged out: try next tick */ }
+            finally { polling = false; }
+        };
+        setInterval(poll, 8000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
     }
 
     // ---- Admin: forms that save without a reload --------------------------

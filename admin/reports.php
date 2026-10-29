@@ -285,7 +285,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
     }
 </style>
 
-<div class="admin-container">
+<div class="admin-container" data-live-poll>
     <div class="rp-print-head mb-3">
         <h2 style="margin:0;">Thread &amp; Press — Sales Report</h2>
         <div><?php echo $rangeLabel; ?> · Generated <?php echo date('M d, Y H:i'); ?></div>
@@ -324,7 +324,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4" data-live="rp-stats">
         <div class="col-6 col-md-3"><div class="admin-card text-center rp-stat">
             <h5><?php echo $peso($sum['sales']); ?></h5><p class="mb-0 text-muted small">Total order value</p>
         </div></div>
@@ -352,16 +352,19 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
         </div></div>
     </div>
 
-    <div class="admin-card mb-4">
+    <div class="admin-card mb-4" data-live="rp-chart">
         <h5 class="mb-3"><i class="fas fa-chart-bar"></i> Daily sales</h5>
         <?php if ($sum['orders'] === 0): ?>
             <p class="text-muted text-center py-4 mb-0">No sales in this period.</p>
         <?php else: ?>
-            <div style="position: relative; height: 280px;"><canvas id="rpChart"></canvas></div>
+            <div style="position: relative; height: 280px;"><canvas id="rpChart" data-chart="<?php echo htmlspecialchars(json_encode([
+                'labels' => array_map(fn($d) => date('M j', strtotime($d)), array_keys($byDay)),
+                'sales'  => array_map(fn($v) => round($v['sales'], 2), array_values($byDay)),
+            ]), ENT_QUOTES); ?>"></canvas></div>
         <?php endif; ?>
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4" data-live="rp-tables">
         <div class="col-lg-7">
             <div class="admin-card h-100">
                 <h5 class="mb-3"><i class="fas fa-trophy"></i> Top products</h5>
@@ -408,7 +411,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
         </div>
     </div>
 
-    <div class="admin-card">
+    <div class="admin-card" data-live="rp-orders">
         <h5 class="mb-3"><i class="fas fa-list"></i> Orders (<?php echo count($rows); ?>)</h5>
         <div class="table-responsive">
             <table class="table table-sm align-middle">
@@ -451,35 +454,45 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
 </div><!-- /admin-layout -->
 <script src="../js/admin-sidebar.js"></script>
 
-<?php if ($sum['orders'] > 0): ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-    const el = document.getElementById('rpChart');
-    if (!el || typeof Chart === 'undefined') return;
-    new Chart(el, {
-        type: 'bar',
-        data: {
-            labels: <?php echo json_encode(array_map(fn($d) => date('M j', strtotime($d)), array_keys($byDay))); ?>,
-            datasets: [{
-                label: 'Sales (₱)',
-                data: <?php echo json_encode(array_map(fn($v) => round($v['sales'], 2), array_values($byDay))); ?>,
-                backgroundColor: '#d9884c',
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { callbacks: { label: c => '₱' + c.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 }) } }
+    if (typeof Chart === 'undefined') return;
+    // The chart card is a live region: a new sale swaps in a new canvas, which
+    // gets a fresh chart (no animation, so the swap is invisible).
+    let chart = null;
+    function draw(animate) {
+        const el = document.getElementById('rpChart');
+        if (el && Chart.getChart(el)) return;
+        if (chart) { chart.destroy(); chart = null; }
+        if (!el) return;
+        const data = JSON.parse(el.dataset.chart);
+        chart = new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Sales (₱)',
+                    data: data.sales,
+                    backgroundColor: '#d9884c',
+                    borderRadius: 4
+                }]
             },
-            scales: { y: { beginAtZero: true, ticks: { callback: v => '₱' + v.toLocaleString() } } }
-        }
-    });
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                ...(animate ? {} : { animation: false }),
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: c => '₱' + c.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 }) } }
+                },
+                scales: { y: { beginAtZero: true, ticks: { callback: v => '₱' + v.toLocaleString() } } }
+            }
+        });
+    }
+    draw(true);
+    document.addEventListener('live:updated', () => draw(false));
 })();
 </script>
-<?php endif; ?>
 
 <?php include '../includes/footer/footer.php'; ?>

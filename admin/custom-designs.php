@@ -286,7 +286,7 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
 
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-container">
+<div class="admin-container" data-live-poll>
     <div class="mb-4">
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-palette"></i> Custom Design Requests
@@ -302,7 +302,7 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
     <?php endif; ?>
 
     <!-- Stats -->
-    <div class="design-stats-row">
+    <div class="design-stats-row" data-live="cd-stats">
         <div class="design-stat-card">
             <div class="stat-number"><?php echo $totalDesigns; ?></div>
             <div class="stat-text">Total Designs</div>
@@ -328,6 +328,7 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
     </div>
 
     <!-- Design Requests List -->
+    <div data-live="cd-list">
     <?php if ($designs && $designs->num_rows > 0): ?>
         <?php while ($design = $designs->fetch_assoc()): ?>
             <div class="design-request-card">
@@ -474,6 +475,28 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
             <p class="text-muted">Customer design submissions will appear here.</p>
         </div>
     <?php endif; ?>
+    <?php
+    // Preview modal data. Inside the live region so designs that arrive
+    // after the page loaded can be previewed too.
+    $designsData = [];
+    if ($designs) {
+        $designs->data_seek(0);
+        while ($d = $designs->fetch_assoc()) {
+            $designsData[(int)$d['id']] = [
+                'image'     => '../' . htmlspecialchars($d['design_image']),
+                'imageBack' => htmlspecialchars($d['design_image_back'] ?? ''),
+                'type'      => htmlspecialchars($d['product_type']),
+                'customer'  => htmlspecialchars($d['fullname']),
+                'email'     => htmlspecialchars($d['email']),
+                'notes'     => htmlspecialchars($d['notes'] ?? ''),
+                'status'    => htmlspecialchars($d['status']),
+                'date'      => date('M d, Y h:i A', strtotime($d['created_at'])),
+            ];
+        }
+    }
+    ?>
+    <script type="application/json" id="designsJson"><?php echo json_encode($designsData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE); ?></script>
+    </div>
 </div>
 
 <!-- Design Preview Modal -->
@@ -495,26 +518,8 @@ $approvedDesigns = $conn->query("SELECT COUNT(*) as c FROM custom_designs WHERE 
 </div>
 
 <script>
-// Store design data for modal
-const designsData = {};
-<?php 
-$designs->data_seek(0);
-while ($d = $designs->fetch_assoc()): 
-?>
-designsData[<?php echo (int)$d['id']; ?>] = {
-    image: '../<?php echo addslashes(htmlspecialchars($d['design_image'])); ?>',
-    imageBack: '<?php echo addslashes(htmlspecialchars($d['design_image_back'] ?? '')); ?>',
-    type: '<?php echo addslashes(htmlspecialchars($d['product_type'])); ?>',
-    customer: '<?php echo addslashes(htmlspecialchars($d['fullname'])); ?>',
-    email: '<?php echo addslashes(htmlspecialchars($d['email'])); ?>',
-    notes: '<?php echo addslashes(htmlspecialchars($d['notes'] ?? '')); ?>',
-    status: '<?php echo addslashes(htmlspecialchars($d['status'])); ?>',
-    date: '<?php echo date('M d, Y h:i A', strtotime($d['created_at'])); ?>'
-};
-<?php endwhile; ?>
-
 function showDesignModal(id) {
-    const d = designsData[id];
+    const d = JSON.parse(document.getElementById('designsJson').textContent)[id];
     if (!d) return;
     
     document.getElementById('modalDesignImg').src = d.image;

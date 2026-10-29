@@ -130,7 +130,7 @@ $categories = getContactCategories();
     .stat-number { font-size: 2rem; font-weight: 700; color: var(--primary); }
 </style>
 
-<div class="admin-container">
+<div class="admin-container" data-live-poll>
     <div class="mb-4">
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-envelope"></i> Contact Management
@@ -149,7 +149,7 @@ $categories = getContactCategories();
     <?php if ($view_mode === 'list'): ?>
     
     <!-- Stats -->
-    <div class="row mb-4">
+    <div class="row mb-4" data-live="contact-stats">
         <div class="col-md-3">
             <div class="admin-card text-center">
                 <div class="stat-number"><?php echo $stats['total']; ?></div>
@@ -212,7 +212,7 @@ $categories = getContactCategories();
     </div>
     
     <!-- Messages List -->
-    <div class="admin-card">
+    <div class="admin-card" data-live="contact-list">
         <h5 class="mb-3"><i class="fas fa-list"></i> Messages (<?php echo count($messages); ?>)</h5>
         
         <?php if (count($messages) > 0): ?>
@@ -265,7 +265,7 @@ $categories = getContactCategories();
         <i class="fas fa-arrow-left"></i> Back to Messages
     </a>
     
-    <div class="admin-card">
+    <div class="admin-card" data-live="contact-view">
         <div class="row mb-3">
             <div class="col-md-8">
                 <h5><?php echo htmlspecialchars($message['subject']); ?></h5>

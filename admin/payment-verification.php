@@ -210,7 +210,7 @@ function pendingDuplicateIds(mysqli $conn, string $reference, int $orderId): arr
 include __DIR__ . '/../includes/header/header.php';
 include __DIR__ . '/../includes/admin-sidebar.php';
 ?>
-<div class="admin-container">
+<div class="admin-container" data-live-poll>
   <div class="mb-4">
     <h1 class="text-coffee-dark mb-2" style="font-size:2rem; font-weight:800;">
       <i class="fas fa-money-check-dollar"></i> Payments
@@ -242,7 +242,7 @@ include __DIR__ . '/../includes/admin-sidebar.php';
       );
   }
   ?>
-  <div class="admin-card mb-4">
+  <div class="admin-card mb-4" data-live="pv-gateway">
     <h2 class="h5 mb-3">
       PayMongo payments
       <?php if (paymongoIsConfigured() && paymongoIsTestMode()): ?>
@@ -313,7 +313,7 @@ include __DIR__ . '/../includes/admin-sidebar.php';
     <?php endif; ?>
   </div>
 
-  <div class="admin-card">
+  <div class="admin-card" data-live="pv-pending">
     <h2 class="h5 mb-3">Manual proofs awaiting verification
       <span class="badge bg-warning text-dark"><?php echo $pending ? (int)$pending->num_rows : 0; ?></span>
     </h2>
@@ -417,7 +417,7 @@ include __DIR__ . '/../includes/admin-sidebar.php';
   </div>
 
   <!-- Recently reviewed (lightweight audit view) -->
-  <div class="admin-card mt-4">
+  <div class="admin-card mt-4" data-live="pv-recent">
     <h2 class="h5 mb-3">Recently reviewed</h2>
     <?php if (!$recent || $recent->num_rows === 0): ?>
       <p class="text-muted mb-0">Nothing reviewed yet.</p>

@@ -135,7 +135,7 @@ $users = $conn->query("SELECT $selectCols FROM users WHERE user_type != 'admin' 
 <?php include '../includes/header/header.php'; ?>
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-container">
+<div class="admin-container" data-live-poll>
     <div class="mb-4">
         <h1 class="text-coffee-dark mb-2" style="font-size: 2rem; font-weight: 800;">
             <i class="fas fa-users"></i> Manage Users
@@ -155,7 +155,7 @@ $users = $conn->query("SELECT $selectCols FROM users WHERE user_type != 'admin' 
         </div>
     <?php endif; ?>
 
-    <div class="admin-card">
+    <div class="admin-card" data-live="users-list">
         <h5 class="text-coffee-dark mb-4" style="font-weight: 700;">
             <i class="fas fa-list"></i> Customer Accounts
         </h5>

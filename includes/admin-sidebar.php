@@ -114,7 +114,7 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
             <button class="ad-side-close d-lg-none" id="sidebarClose" type="button" aria-label="Close menu"><?php echo adminIcon('close'); ?></button>
         </div>
 
-        <nav class="ad-side-nav">
+        <nav class="ad-side-nav" data-live="side-nav">
             <?php adminNavLink('dashboard.php', 'dashboard', 'Dashboard', 'dashboard.php', $currentPage); ?>
 
             <div class="ad-side-label">Management</div>
@@ -208,7 +208,8 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
         side.addEventListener('focusin', onTarget);
         side.addEventListener('mouseleave', hide);
         side.addEventListener('focusout', hide);
-        side.querySelector('.ad-side-nav').addEventListener('scroll', hide);
+        // Capture: scroll does not bubble, and the nav itself is swapped by live updates.
+        side.addEventListener('scroll', hide, true);
         // Let width-aware widgets (charts, tables) re-measure once the slide ends.
         side.addEventListener('transitionend', function (e) {
             if (e.target === side && e.propertyName === 'width') window.dispatchEvent(new Event('resize'));
