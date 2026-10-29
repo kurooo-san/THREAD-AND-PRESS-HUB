@@ -297,6 +297,7 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
             }
 
             function poll() {
+                if (document.hidden) return;   // background tab: skip, it catches up on return
                 fetch('../includes/admin-notifications.php?since=' + getSince(), { credentials: 'same-origin' })
                     .then(r => r.json())
                     .then(render)
@@ -317,7 +318,8 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
             });
 
             poll();
-            setInterval(poll, 30000); // every 30s
+            setInterval(poll, 8000); // same pace as the live page regions (js/live-status.js)
+            document.addEventListener('visibilitychange', poll);
         })();
         </script>
 
