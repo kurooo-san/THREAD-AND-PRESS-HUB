@@ -220,7 +220,7 @@ $categories = getContactCategories();
             <div class="message-card" onclick="window.location.href='contact-management.php?action=view&id=<?php echo $msg['id']; ?>'">
                 <div class="row align-items-center">
                     <div class="col-md-1">
-                        <i class="fas fa-envelope fa-2x" style="color: #667eea;"></i>
+                        <i class="fas fa-envelope fa-2x" style="color: var(--accent, #c8a96e);"></i>
                     </div>
                     <div class="col-md-7">
                         <h6 class="mb-1">
@@ -295,7 +295,7 @@ $categories = getContactCategories();
         
         <div class="mb-4">
             <h6>Customer Message:</h6>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent, #c8a96e);">
                 <?php echo nl2br(htmlspecialchars($message['message'])); ?>
             </div>
         </div>

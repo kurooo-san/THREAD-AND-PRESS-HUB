@@ -23,7 +23,7 @@ $totalMessages = count($chatMessages);
 <style>
     .chat-history-page { max-width: 900px; margin: 30px auto; }
     .chat-history-page .chat-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--primary, #1a1a1a);
         color: #fff; padding: 25px; border-radius: 12px 12px 0 0;
     }
     .chat-history-page .chat-header h2 { margin: 0; display: flex; align-items: center; gap: 10px; }
@@ -32,11 +32,11 @@ $totalMessages = count($chatMessages);
     .chat-history-page .chat-content { background: #fff; border: 1px solid #e9ecef; border-radius: 0 0 12px 12px; padding: 20px; min-height: 400px; }
     .chat-history-page .message-item { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e9ecef; }
     .chat-history-page .message-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-    .chat-history-page .user-message { background: #e7f3ff; border-left: 4px solid #667eea; padding: 15px; border-radius: 8px; margin-bottom: 12px; }
-    .chat-history-page .bot-message  { background: #f0f0f0; border-left: 4px solid #764ba2; padding: 15px; border-radius: 8px; }
+    .chat-history-page .user-message { background: #faf6ee; border-left: 4px solid var(--accent, #c8a96e); padding: 15px; border-radius: 8px; margin-bottom: 12px; }
+    .chat-history-page .bot-message  { background: #f0f0f0; border-left: 4px solid var(--primary, #1a1a1a); padding: 15px; border-radius: 8px; }
     .chat-history-page .user-label, .chat-history-page .bot-label { font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; }
-    .chat-history-page .user-label { color: #667eea; }
-    .chat-history-page .bot-label  { color: #764ba2; }
+    .chat-history-page .user-label { color: var(--accent-hover, #b89555); }
+    .chat-history-page .bot-label  { color: var(--primary, #1a1a1a); }
     .chat-history-page .message-timestamp { font-size: 12px; color: #6c757d; margin-top: 10px; }
     .chat-history-page .message-content { word-wrap: break-word; line-height: 1.6; color: #212529; }
     .chat-history-page .user-message .message-content,
