@@ -1237,13 +1237,16 @@ function toggleDeliveryAddress() {
         form.dataset.sending = '1';
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:0.5rem;"></i> Placing order…';
+        // Slow network: let the customer retry after 15s; the server's duplicate check still guards it.
+        setTimeout(unlock, 15000);
     });
-    // Back button restores the page from cache: make the button usable again.
-    window.addEventListener('pageshow', function () {
+    function unlock() {
         delete form.dataset.sending;
         btn.disabled = false;
         btn.innerHTML = label;
-    });
+    }
+    // Back button restores the page from cache: make the button usable again.
+    window.addEventListener('pageshow', unlock);
 })();
 </script>
 

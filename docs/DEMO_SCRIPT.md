@@ -145,7 +145,7 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 
 **D. Place order**
 - Piliin ang **Cash on Delivery** → **Place Order** (pinakamabilis at walang aasahang internet)
-- Ituro na naging **"Placing order…"** ang button at hindi na mapipindot ulit
+- Ituro na naging **"Placing order…"** ang button at hindi na mapipindot ulit; kung mabagal ang net, babalik ito pagkalipas ng **15 seconds** para makapag-retry
   > "Naka-lock po ang button pagka-click, kaya kahit ma-double click, isang order lang ang mabubuo."
   > "May **Pay Online** din po through PayMongo — GCash, Maya, GrabPay o card. Sa secure page po ng PayMongo nagbabayad, kaya wala kaming hinahawakang card details, at awtomatikong nakukumpirma ang bayad."
 - Sa Order Confirmation, ituro ang **Voucher (DEMO20)** line → *"Naka-record din po ito sa invoice at sa confirmation email."*
@@ -247,7 +247,7 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 | **"Real-time ba talaga? Paano?"** | Opo. Kada ~8 segundo, kumukuha ang admin page ng bagong data sa server at ang mga bahaging nagbago lang ang pinapalitan — walang buong reload, walang kurap. Ganoon din kadalas ang notification bell. Humihinto ito kapag nakatago ang tab para hindi nagsasayang ng request |
 | **"Bakit hindi WebSocket / push?"** | Para sa laki ng tindahan namin, sapat at mas simple ang polling kada 8 segundo: gumagana sa kahit anong hosting (Railway, XAMPP) at walang hiwalay na server na kailangang patakbuhin. Kapag lumaki ang traffic, iyon ang susunod na hakbang |
 | **"Paano kung may ine-edit si admin habang may pumasok na bagong data?"** | Hindi po ginagalaw ang bahaging may tina-type, may binagong dropdown, o may bukas na modal. Naghihintay ito hanggang ma-save o ma-clear, saka mag-a-update |
-| **"Paano kung ma-double click ang Place Order?"** | Naka-lock po ang button pagka-click ("Placing order…"), kaya isang request lang ang napapadala. Pangalawang layer ang duplicate-order check para sa pangalawang tab o pag-order ulit |
+| **"Paano kung ma-double click ang Place Order?"** | Naka-lock po ang button pagka-click ("Placing order…"), kaya isang request lang ang napapadala. Kung mabagal ang internet, pwede ulit pindutin pagkalipas ng 15 seconds para hindi ma-stuck ang customer. Pangalawang layer ang duplicate-order check para sa pangalawang tab o pag-order ulit |
 | **"Responsive ba sa phone at tablet?"** | Opo — pareho ang features sa phone, tablet at desktop, kasama ang Design Studio at ang buong admin panel |
 | **"Paano niyo nalalaman na duplicate ang order?"** | Parehong customer, parehong items (product, kulay, size, dami — kahit iba ang pagkakasunod), at may order na hindi cancelled sa loob ng huling 10 minuto. Babala lang, hindi block — kailangang i-confirm ng customer, at may tala sa order para makita ni admin |
 | **"Paano kung mali talaga ang na-order na duplicate?"** | I-cancel ni admin → babalik ang stock at voucher → saka pwedeng i-delete |
