@@ -179,9 +179,11 @@ const SupportWidget = {
             panelAI.classList.remove('active');
             panelSupport.classList.add('active');
             headerAvatar.innerHTML = '<i class="fas fa-headset"></i>';
-            headerTitle.innerHTML = 'Thread &amp; Press Team';
+            // Store name from admin Branding (window.BRAND, set in header.php).
+            const brand = window.BRAND || { name: 'Thread & Press Hub', short_name: 'Thread & Press' };
+            headerTitle.textContent = brand.short_name + ' Team';
             headerSubtitle.textContent = "You're chatting with a person";
-            footerNote.textContent = 'Thread & Press Hub Support';
+            footerNote.textContent = brand.name + ' Support';
             return this.loadConversations();
         }
     },

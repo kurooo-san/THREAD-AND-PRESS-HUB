@@ -123,7 +123,7 @@ function logAuditAction($conn, $userId, $action, $entityType, $entityId, $detail
 <div class="container my-5">
     <div class="form-container">
         <div class="form-brand">
-            <span class="brand-logo">TP</span>
+            <?php echo brandLogoImgs('brand-logo', '', brand('name') . ' logo'); ?>
         </div>
         <h2 class="form-title">Forgot Password</h2>
         <p class="form-subtitle">Enter your email address and we'll send you a link to reset your password.</p>

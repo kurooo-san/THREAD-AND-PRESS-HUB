@@ -125,7 +125,7 @@ if ($kind === 'custom') {
     }
 
     $amountDue   = (float) $order['total'];
-    $description = 'Order #' . $orderId . ' — Thread & Press Hub';
+    $description = 'Order #' . $orderId . ' — ' . brand('name');
     $reference   = 'TPH-' . $orderId;
 
     $totalCentavos = paymongoCentavos($amountDue);
@@ -186,7 +186,7 @@ if ($kind === 'custom') {
             'name'        => 'Order #' . $orderId,
             'amount'      => $totalCentavos,
             'quantity'    => 1,
-            'description' => 'Thread & Press Hub order total',
+            'description' => brand('name') . ' order total',
         ];
     }
 }

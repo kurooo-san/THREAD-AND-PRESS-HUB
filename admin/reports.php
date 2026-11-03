@@ -157,7 +157,7 @@ if (($_GET['export'] ?? '') === 'xlsx') {
 
     // Summary
     $summary = [
-        [['v' => 'Thread & Press Hub — Sales Report', 's' => 'title']],
+        [['v' => brand('name') . ' — Sales Report', 's' => 'title']],
         [['v' => $period, 's' => 'muted']],
         [['v' => $made, 's' => 'muted']],
         [],
@@ -287,7 +287,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
 
 <div class="admin-container" data-live-poll>
     <div class="rp-print-head mb-3">
-        <h2 style="margin:0;">Thread &amp; Press — Sales Report</h2>
+        <h2 style="margin:0;"><?php echo brandHtml('name'); ?> — Sales Report</h2>
         <div><?php echo $rangeLabel; ?> · Generated <?php echo date('M d, Y H:i'); ?></div>
     </div>
 

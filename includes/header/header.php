@@ -9,16 +9,17 @@ $assetBase   = $isAdminPage ? '../' : '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title><?php echo isset($pageTitle) ? htmlspecialchars($pageTitle) . ' - Thread & Press Hub' : 'Thread & Press Hub'; ?></title>
-    <link rel="icon" type="image/png" href="<?php echo $assetBase; ?>images/logo/logo_sm.png">
-    <!-- Installable app (PWA): manifest.json + sw.js. -->
-    <link rel="manifest" href="<?php echo $assetBase; ?>manifest.json">
+    <title><?php echo isset($pageTitle) ? htmlspecialchars($pageTitle) . ' - ' . brandHtml('name') : brandHtml('name'); ?></title>
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo $assetBase . htmlspecialchars(brandIconUrl('32'), ENT_QUOTES); ?>">
+    <!-- Installable app (PWA): manifest.php (brand from admin Branding) + sw.js. -->
+    <link rel="manifest" href="<?php echo $assetBase; ?>manifest.php">
     <meta name="theme-color" content="#131313">
-    <link rel="apple-touch-icon" href="<?php echo $assetBase; ?>images/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="<?php echo $assetBase . htmlspecialchars(brandIconUrl('180'), ENT_QUOTES); ?>">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="Thread &amp; Press">
+    <meta name="apple-mobile-web-app-title" content="<?php echo brandHtml('short_name'); ?>">
+    <script>window.BRAND = <?php echo json_encode(['name' => brand('name'), 'short_name' => brand('short_name')], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -87,11 +88,10 @@ if ($navFirstName === false || $navFirstName === '') {
     <nav class="navbar navbar-expand-lg cafe-navbar tp-nav sticky-top">
         <div class="container tp-nav-shell">
             <a class="navbar-brand" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../index.php' : 'index.php'; ?>">
-                <img class="brand-logo logo-light" src="<?php echo $assetBase; ?>images/logo/logo_sm.png" alt="Thread &amp; Press Hub logo">
-                <img class="brand-logo logo-dark" src="<?php echo $assetBase; ?>images/logo/logo_white_sm.png" alt="Thread &amp; Press Hub logo">
+                <?php echo brandLogoImgs('brand-logo', $assetBase, brand('name') . ' logo', true); ?>
                 <span class="brand-text">
-                    <span class="brand-name">Thread &amp; Press</span>
-                    <span class="brand-sub">HUB</span>
+                    <span class="brand-name"><?php echo brandHtml('short_name'); ?></span>
+                    <?php if (brand('tagline') !== ''): ?><span class="brand-sub"><?php echo brandHtml('tagline'); ?></span><?php endif; ?>
                 </span>
             </a>
             <?php if (!$isAdminPage): ?>

@@ -32,7 +32,7 @@ $titles = [
         </ol>
     </nav>
     <h1 style="font-weight:800; font-size:2rem; margin-bottom:0.5rem;">My Vouchers</h1>
-    <p class="text-muted mb-4">Vouchers from the Thread &amp; Press team. At checkout we automatically pick the one that saves you the most, and you can use one discount and one shipping voucher on the same order.</p>
+    <p class="text-muted mb-4">Vouchers from the <?php echo brandHtml('short_name'); ?> team. At checkout we automatically pick the one that saves you the most, and you can use one discount and one shipping voucher on the same order.</p>
 
     <?php if (!array_filter($shelves)): ?>
         <div class="text-center text-muted py-5">

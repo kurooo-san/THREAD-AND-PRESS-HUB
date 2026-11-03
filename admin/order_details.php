@@ -7,6 +7,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
     exit();
 }
 
+require_once '../includes/couriers.php';
+orderShipmentReady();   // before SELECT o.*, so the courier columns are there
+
 $pageTitle = 'Order Details';
 
 $order_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -204,6 +207,57 @@ $items_result = $items_stmt->get_result();
                 <?php endif; ?>
             </div>
 
+            <?php if (orderNeedsCourier($order)):
+                $ship   = orderShipment($order);
+                $shipC  = (string) ($order['courier'] ?? '');
+                $locked = in_array($order['status'], ['completed', 'cancelled'], true);
+            ?>
+            <!-- Courier & Tracking -->
+            <div class="admin-card mb-4" id="shipment">
+                <h5 class="text-coffee-dark mb-3" style="font-weight: 700;"><i class="fas fa-truck"></i> Courier &amp; Tracking</h5>
+                <?php if ($locked): ?>
+                    <p class="mb-0"><?php echo $ship ? htmlspecialchars(orderShipmentText($order)) : '<span class="text-muted">No courier was recorded.</span>'; ?></p>
+                <?php else: ?>
+                <form method="POST" action="orders.php" data-ajax data-ajax-keep>
+                    <?php echo csrfTokenField(); ?>
+                    <input type="hidden" name="action" value="save_shipment">
+                    <input type="hidden" name="order_id" value="<?php echo (int) $order['id']; ?>">
+                    <label class="form-label small mb-1" for="shipCourier">Courier</label>
+                    <select name="courier" id="shipCourier" class="form-control mb-2" required>
+                        <option value="" <?php echo $shipC === '' ? 'selected' : ''; ?> disabled>Choose a courier</option>
+                        <?php foreach (COURIERS as $ck => $c): ?>
+                            <option value="<?php echo $ck; ?>" <?php echo $shipC === $ck ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['label']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="ship-rider" <?php echo $shipC === 'rider' ? '' : 'hidden'; ?>>
+                        <label class="form-label small mb-1" for="shipRiderName">Rider's name</label>
+                        <input type="text" name="rider_name" id="shipRiderName" class="form-control mb-2" maxlength="80"
+                               value="<?php echo htmlspecialchars((string) ($order['rider_name'] ?? '')); ?>">
+                        <label class="form-label small mb-1" for="shipRiderPhone">Rider's mobile number</label>
+                        <input type="tel" name="rider_phone" id="shipRiderPhone" class="form-control mb-2" maxlength="20" placeholder="09171234567"
+                               value="<?php echo htmlspecialchars((string) ($order['rider_phone'] ?? '')); ?>">
+                    </div>
+                    <label class="form-label small mb-1" for="shipTracking">
+                        Tracking number or link <span class="ship-optional text-muted" <?php echo $shipC === 'rider' ? '' : 'hidden'; ?>>(optional)</span>
+                    </label>
+                    <input type="text" name="tracking_number" id="shipTracking" class="form-control mb-1" maxlength="300"
+                           value="<?php echo htmlspecialchars((string) ($order['tracking_number'] ?? '')); ?>">
+                    <small class="text-muted d-block mb-3">The waybill number from the courier. For Lalamove or Grab, paste the tracking link they give you.</small>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <?php if ($order['status'] === 'out_for_delivery'): ?>
+                            <i class="fas fa-save"></i> Update courier details
+                        <?php else: ?>
+                            <i class="fas fa-truck-fast"></i> Save &amp; mark Out for Delivery
+                        <?php endif; ?>
+                    </button>
+                    <?php if ($order['status'] !== 'out_for_delivery'): ?>
+                        <small class="text-muted d-block mt-2">The customer is emailed the courier and tracking number.</small>
+                    <?php endif; ?>
+                </form>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
             <!-- Order Status -->
             <div class="admin-card">
                 <h5 class="text-coffee-dark mb-3" style="font-weight: 700;">Order Status</h5>
@@ -248,5 +302,19 @@ $items_result = $items_stmt->get_result();
     </div><!-- /admin-main-content -->
 </div><!-- /admin-layout -->
 <script src="../js/admin-sidebar.js"></script>
+<script>
+// Own Rider needs a name and number instead of a waybill. Delegated, because
+// the live refresh after a save replaces the form.
+function syncShipForm(form) {
+    const sel = form && form.querySelector('#shipCourier');
+    if (!sel) return;
+    const rider = sel.value === 'rider';
+    form.querySelector('.ship-rider').hidden = !rider;
+    form.querySelector('.ship-optional').hidden = !rider;
+}
+document.addEventListener('change', function (e) {
+    if (e.target.id === 'shipCourier') syncShipForm(e.target.form);
+});
+</script>
 
 <?php include '../includes/footer/footer.php'; ?>

@@ -1,7 +1,7 @@
 /**
  * App shell for phones and tablets (css/app-shell.css): bottom sheets, the
  * tab bar's cart badge, the header that hides while scrolling down, the
- * product page's sticky buy bar, and the installable app (manifest.json,
+ * product page's sticky buy bar, and the installable app (manifest.php,
  * sw.js). Loaded on storefront pages only (includes/footer/footer.php).
  */
 (function () {

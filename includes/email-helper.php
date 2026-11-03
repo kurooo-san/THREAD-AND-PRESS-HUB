@@ -1,6 +1,7 @@
 <?php
 /**
- * Email Notification System for Thread & Press Hub
+ * Email Notification System. The store name and logo come from admin
+ * Branding (includes/brand.php).
  * Supports PHP mail() and PHPMailer when available.
  * 
  * Configure SMTP in .env:
@@ -9,14 +10,17 @@
  *   SMTP_USER=your@email.com
  *   SMTP_PASS=your_app_password
  *   MAIL_FROM=noreply@threadandpress.com
- *   MAIL_FROM_NAME=Thread & Press Hub
+ * The sender name is the store name from admin Branding (MAIL_FROM_NAME is no
+ * longer read, so a rebrand also changes who emails appear to come from).
  */
 
 // paymentMethodLabel() - so emails name the channel the same way the site does.
 require_once __DIR__ . '/payment-config.php';
+require_once __DIR__ . '/brand.php';
+require_once __DIR__ . '/couriers.php';   // courier + tracking in the Out for Delivery email
 
 if (!defined('MAIL_FROM')) define('MAIL_FROM', getenv('MAIL_FROM') ?: 'noreply@threadandpress.com');
-if (!defined('MAIL_FROM_NAME')) define('MAIL_FROM_NAME', getenv('MAIL_FROM_NAME') ?: 'Thread & Press Hub');
+if (!defined('MAIL_FROM_NAME')) define('MAIL_FROM_NAME', brand('name'));
 if (!defined('SMTP_HOST')) define('SMTP_HOST', getenv('SMTP_HOST') ?: '');
 if (!defined('SMTP_PORT')) define('SMTP_PORT', getenv('SMTP_PORT') ?: '587');
 if (!defined('SMTP_USER')) define('SMTP_USER', getenv('SMTP_USER') ?: '');
@@ -139,9 +143,7 @@ function emailTemplate($title, $content) {
 <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
     <tr>
         <td style="background:#1a1a1a;padding:24px 30px;text-align:center;">
-            <span style="font-size:24px;font-weight:800;color:#ffffff;letter-spacing:1px;">
-                <span style="color:#f0c040;">TP</span> Thread &amp; Press Hub
-            </span>
+            ' . emailBrandHeader() . '
         </td>
     </tr>
     <tr>
@@ -153,7 +155,7 @@ function emailTemplate($title, $content) {
     <tr>
         <td style="background:#f9f9f9;padding:20px 30px;text-align:center;border-top:1px solid #eee;">
             <p style="margin:0;font-size:12px;color:#999;">
-                &copy; ' . date('Y') . ' Thread &amp; Press Hub. All rights reserved.
+                &copy; ' . date('Y') . ' ' . htmlspecialchars(rtrim(brand('name'), '.'), ENT_QUOTES) . '. All rights reserved.
             </p>
         </td>
     </tr>
@@ -233,7 +235,7 @@ function sendOrderConfirmationEmail($conn, $orderId) {
     <p style="color:#555;line-height:1.6;margin-top:20px;">We\'ll notify you when your order status changes. You can track your order anytime from your account.</p>';
 
     $html = emailTemplate('Order Confirmation', $content);
-    return sendEmail($order['email'], "Order #{$orderId} Confirmed - Thread & Press Hub", $html);
+    return sendEmail($order['email'], "Order #{$orderId} Confirmed - " . brand('name'), $html);
 }
 
 /**
@@ -273,13 +275,42 @@ function sendOrderStatusEmail($conn, $orderId, $newStatus) {
         <p style="margin:5px 0;font-size:13px;color:#666;">Total: ₱' . number_format($order['total'], 2) . '</p>
         <p style="margin:5px 0;font-size:13px;color:#555;">' . $statusInfo[2] . '</p>
     </div>
-
+' . orderShipmentEmailBlock($order, $newStatus) . '
     <p style="color:#555;line-height:1.6;margin-bottom:5px;">Track your order here:</p>
-    <p style="text-align:center;margin:0 0 20px;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars(getBaseUrl() . '/order_details.php?id=' . (int)$orderId) . '</p>';
+    <p style="text-align:center;margin:0 0 20px;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars(preg_replace('#/(admin|includes)$#', '', getBaseUrl()) . '/order_details.php?id=' . (int)$orderId) . '</p>';
     // Bare URL, no <a href>: see sendPasswordResetEmail (Brevo click tracker).
 
     $html = emailTemplate('Order Status Update', $content);
-    return sendEmail($order['email'], "Order #{$orderId} - " . $statusInfo[0] . " - Thread & Press Hub", $html);
+    return sendEmail($order['email'], "Order #{$orderId} - " . $statusInfo[0] . " - " . brand('name'), $html);
+}
+
+/**
+ * Courier box for the Out for Delivery email; empty for other statuses or
+ * when no courier was recorded. Plain text (no links): see the Brevo note above.
+ */
+function orderShipmentEmailBlock(array $order, string $status): string
+{
+    $s = $status === 'out_for_delivery' ? orderShipment($order) : null;
+    if ($s === null) return '';
+    $rows = '<p style="margin:5px 0;font-size:14px;"><strong>Courier:</strong> ' . htmlspecialchars($s['courier']) . '</p>';
+    if ($s['rider'])  $rows .= '<p style="margin:5px 0;font-size:14px;"><strong>Rider:</strong> ' . htmlspecialchars($s['rider'] . ($s['phone'] ? ' · ' . $s['phone'] : '')) . '</p>';
+    if ($s['number']) $rows .= '<p style="margin:5px 0;font-size:14px;"><strong>Tracking number:</strong> ' . htmlspecialchars($s['number']) . '</p>';
+    if ($s['url'])    $rows .= '<p style="margin:5px 0;font-size:13px;word-break:break-all;"><strong>Track it here:</strong> ' . htmlspecialchars($s['url']) . '</p>';
+    return '<div style="background:#f4f0fa;border-left:4px solid #9b59b6;border-radius:8px;padding:12px 15px;margin:15px 0;">' . $rows . '</div>';
+}
+
+/**
+ * Email header: the store logo (on a white chip, so any logo colour reads on
+ * the dark bar) and the store name, both from admin Branding.
+ */
+function emailBrandHeader(): string
+{
+    // Emails are also sent from admin/ and includes/ endpoints; the logo URL is from the web root.
+    $logo = preg_replace('#/(admin|includes)$#', '', getBaseUrl()) . '/' . brandLogoUrl(false);
+    return '<img src="' . htmlspecialchars($logo, ENT_QUOTES) . '" alt="" height="44"'
+        . ' style="height:44px;width:auto;max-width:160px;vertical-align:middle;background:#ffffff;border-radius:8px;padding:4px;margin-right:10px;border:0;">'
+        . '<span style="font-size:24px;font-weight:800;color:#ffffff;letter-spacing:1px;vertical-align:middle;">'
+        . brandHtml('name') . '</span>';
 }
 
 /**
@@ -310,7 +341,7 @@ function sendWelcomeEmail($email, $fullname) {
     $baseUrl = getBaseUrl();
     $content = '
     <p style="color:#555;line-height:1.6;">Hi ' . htmlspecialchars($fullname) . ',</p>
-    <p style="color:#555;line-height:1.6;">Welcome to Thread &amp; Press Hub! Your account has been created successfully.</p>
+    <p style="color:#555;line-height:1.6;">Welcome to ' . brandHtml('name') . '! Your account has been created successfully.</p>
 
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:15px;margin:15px 0;">
         <p style="margin:5px 0;font-size:14px;color:#166534;"><strong>What you can do now:</strong></p>
@@ -326,8 +357,8 @@ function sendWelcomeEmail($email, $fullname) {
     <p style="text-align:center;margin:20px 0;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars($baseUrl . '/shop.php') . '</p>';
     // Bare URL, no <a href>: see sendPasswordResetEmail (Brevo click tracker).
 
-    $html = emailTemplate('Welcome to Thread & Press Hub!', $content);
-    return sendEmail($email, "Welcome to Thread & Press Hub!", $html);
+    $html = emailTemplate('Welcome to ' . brand('name') . '!', $content);
+    return sendEmail($email, 'Welcome to ' . brand('name') . '!', $html);
 }
 
 /**
@@ -338,7 +369,7 @@ function sendVoucherGiftEmail($email, $fullname, array $coupon, $note) {
     $walletUrl = preg_replace('#/admin$#', '', getBaseUrl()) . '/vouchers.php';
     $content = '
     <p style="color:#555;line-height:1.6;">Hi ' . htmlspecialchars($fullname) . ',</p>
-    <p style="color:#555;line-height:1.6;">You just got a voucher from the Thread &amp; Press team!</p>
+    <p style="color:#555;line-height:1.6;">You just got a voucher from the ' . brandHtml('short_name') . ' team!</p>
 
     <div style="text-align:center;margin:20px 0;">
         <div style="display:inline-block;background:#1a1a1a;color:#fff;padding:14px 28px;border-radius:10px;font-weight:800;font-size:20px;">' . htmlspecialchars(voucherLabel($coupon)) . '</div>
@@ -357,7 +388,7 @@ function sendVoucherGiftEmail($email, $fullname, array $coupon, $note) {
     // Bare URL, no <a href>: see sendPasswordResetEmail (Brevo click tracker).
 
     $html = emailTemplate('You got a voucher!', $content);
-    return sendEmail($email, "You got a voucher: " . voucherLabel($coupon) . " - Thread & Press Hub", $html);
+    return sendEmail($email, "You got a voucher: " . voucherLabel($coupon) . " - " . brand('name'), $html);
 }
 
 /**
@@ -366,7 +397,7 @@ function sendVoucherGiftEmail($email, $fullname, array $coupon, $note) {
 function sendPasswordResetEmail($email, $fullname, $resetLink) {
     $content = '
     <p style="color:#555;line-height:1.6;">Hi ' . htmlspecialchars($fullname) . ',</p>
-    <p style="color:#555;line-height:1.6;">You requested a password reset for your Thread &amp; Press Hub account.</p>
+    <p style="color:#555;line-height:1.6;">You requested a password reset for your ' . brandHtml('name') . ' account.</p>
 
     <p style="color:#555;line-height:1.6;">Tap or copy this link to reset your password:</p>
     <p style="text-align:center;margin:20px 0;font-size:15px;font-weight:bold;word-break:break-all;color:#3498db;">' . htmlspecialchars($resetLink) . '</p>
@@ -378,7 +409,7 @@ function sendPasswordResetEmail($email, $fullname, $resetLink) {
     // (sendibt*.com), which some networks/devices can't reach. Mail apps auto-link the bare URL.
 
     $html = emailTemplate('Password Reset Request', $content);
-    return sendEmail($email, "Password Reset - Thread & Press Hub", $html);
+    return sendEmail($email, "Password Reset - " . brand('name'), $html);
 }
 
 
@@ -412,7 +443,7 @@ function sendCustomOrderStatusEmail($conn, $customOrderId, $newStatus) {
 
     $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
     $typeName  = $typeNames[$order['product_type']] ?? ucfirst((string)$order['product_type']);
-    $trackUrl  = getBaseUrl() . '/custom-order-tracking.php?order_id=' . (int)$customOrderId;
+    $trackUrl  = preg_replace('#/(admin|includes)$#', '', getBaseUrl()) . '/custom-order-tracking.php?order_id=' . (int)$customOrderId;
 
     $content = '
     <p style="color:#555;line-height:1.6;">Hi ' . htmlspecialchars($order['fullname']) . ',</p>
@@ -436,7 +467,7 @@ function sendCustomOrderStatusEmail($conn, $customOrderId, $newStatus) {
     // Bare URL, no <a href>: see sendPasswordResetEmail (Brevo click tracker).
 
     $html = emailTemplate('Custom Order Update', $content);
-    return sendEmail($order['email'], "Custom Order #{$customOrderId} - " . $statusInfo[0] . " - Thread & Press Hub", $html);
+    return sendEmail($order['email'], "Custom Order #{$customOrderId} - " . $statusInfo[0] . " - " . brand('name'), $html);
 }
 
 function sendCustomOrderConfirmationEmail($conn, $customOrderId) {
@@ -477,5 +508,5 @@ function sendCustomOrderConfirmationEmail($conn, $customOrderId) {
     <p style="color:#555;line-height:1.6;margin-top:20px;">We will review your design and payment, then begin printing. You can track the status of your custom order anytime from <em>My Custom Orders</em>.</p>';
 
     $html = emailTemplate('Custom Order Confirmation', $content);
-    return sendEmail($order['email'], "Custom Order #{$customOrderId} Confirmed - Thread & Press Hub", $html);
+    return sendEmail($order['email'], "Custom Order #{$customOrderId} Confirmed - " . brand('name'), $html);
 }

@@ -207,6 +207,10 @@ $csrfToken = generateCsrfToken();
                     <button id="btnAddCart" class="tryon-btn tryon-btn-primary tryon-card-cart" type="button">
                         <i class="fas fa-cart-plus" aria-hidden="true"></i> Add to Cart
                     </button>
+                    <!-- Design mode (?design=1) only: shown by js/try-on.js under "Order this design" -->
+                    <a id="designBack" class="tryon-btn tryon-btn-ghost tryon-card-cart" href="custom-design.php" style="display:none; text-decoration:none;">
+                        <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Design Studio
+                    </a>
                     <!-- Colour and size, asked before adding (the shop needs both) -->
                     <div class="tryon-pick" id="tryonPick" hidden>
                         <div class="pick-group" id="pickColorGroup">

@@ -9,7 +9,7 @@
                         <div class="feature-icon"><i class="fas fa-truck"></i></div>
                         <div>
                             <h6>Nationwide Delivery</h6>
-                            <p>Shipping fee by area, from ₱50</p>
+                            <p><?php require_once __DIR__ . '/../delivery-zones.php'; echo htmlspecialchars(deliveryFeeFromText()); ?></p>
                         </div>
                     </div>
                 </div>
@@ -51,7 +51,7 @@
                 <!-- Brand Column -->
                 <div class="col-lg-3 col-md-6 mb-4">
                     <div class="footer-brand">
-                        <img class="brand-logo logo-light" src="<?php echo $assetBase ?? ''; ?>images/logo/logo_sm.png" alt=""><img class="brand-logo logo-dark" src="<?php echo $assetBase ?? ''; ?>images/logo/logo_white_sm.png" alt=""> Thread &amp; Press Hub
+                        <?php echo brandLogoImgs('brand-logo', $assetBase ?? ''); ?> <?php echo brandHtml('name'); ?>
                     </div>
                     <p>Ready-to-wear clothing and custom-printed apparel, shipped anywhere in the Philippines or picked up at the store.</p>
 
@@ -118,7 +118,7 @@
                 </div>
             </div>
             <div class="d-flex justify-content-center align-items-center mt-3 pt-3" style="border-top: 1px solid var(--border-light);">
-                <small style="color: var(--text-light);">&copy; <?php echo date('Y'); ?> Thread &amp; Press Hub. All rights reserved.</small>
+                <small style="color: var(--text-light);">&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars(rtrim(brand('name'), '.'), ENT_QUOTES); ?>. All rights reserved.</small>
             </div>
         </div>
     </footer>

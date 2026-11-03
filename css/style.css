@@ -2698,6 +2698,13 @@ body.admin-page .cafe-navbar { position: relative; }
 /* Real logo image replaces the old TP badge. */
 img.brand-logo, img.ad-logo { object-fit: cover; background: #000 !important; }
 .form-brand .brand-logo { width: 56px; height: 56px; }
+/* A logo uploaded in admin Branding can be any shape: show it whole, no tile. */
+img.brand-logo.brand-custom, img.ad-logo.brand-custom {
+    object-fit: contain; background: transparent !important; box-shadow: none; border-radius: 0;
+}
+/* Wide logos keep their height and grow sideways; the admin sidebar stays square (it collapses). */
+img.brand-logo.brand-custom { width: auto; max-width: 160px; }
+@media (max-width: 400px) { img.brand-logo.brand-custom { max-width: 110px; } }
 
 
 /* =========================================================

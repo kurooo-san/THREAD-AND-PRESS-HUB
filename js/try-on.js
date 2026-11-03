@@ -8,6 +8,7 @@
  *
  * Config is injected by try-on.php via window.TRYON_CONFIG:
  *   { products: [{id,name,price,image,gender,sizes,colors}], csrfToken, endpoints: {tryOn, save, suggest} }
+ * With ?design=1 it tries on the customer's Design Studio design instead (see readDesignItem).
  */
 (function () {
     'use strict';
@@ -17,6 +18,43 @@
     let products = allProducts.slice();   // current view (after gender filter)
     const endpoints = cfg.endpoints || {};
     const CSRF = cfg.csrfToken || '';
+
+    // Design mode (?design=1): try on the customer's own Design Studio design
+    // instead of a catalog product. custom-design.php puts it in sessionStorage
+    // (see tryOnDesign / tryOnSavedDesign there), so nothing is saved to the DB.
+    const designItem = readDesignItem();
+    let designDataUrl = designItem ? designItem.image : null;   // sent as designImage
+
+    function readDesignItem() {
+        if (new URLSearchParams(window.location.search).get('design') !== '1') return null;
+        let d = null;
+        try { d = JSON.parse(sessionStorage.getItem('tp-tryon-design') || 'null'); } catch (e) { d = null; }
+        if (!d || typeof d.type !== 'string' || !/^[a-z_]+$/.test(d.type)) return null;
+        // Only what the studio produces: its own PNG/JPEG mockup, or a saved design file.
+        const image = typeof d.image === 'string' && /^data:image\/(png|jpeg);base64,/.test(d.image) ? d.image : null;
+        const src = typeof d.src === 'string' && /^uploads\/designs\/[\w.-]+\.(png|jpe?g|webp)$/.test(d.src) ? d.src : null;
+        if (!image && !src) return null;
+        // Links stay on this site's own pages (no javascript: or other sites).
+        const order = typeof d.order === 'string' && d.order.indexOf('custom-order-summary.php?') === 0 ? d.order : '';
+        const back = d.back === 'custom-design.php?from=tryon' ? d.back : 'custom-design.php';
+        const label = String(d.label || 'design').slice(0, 60);
+        return { type: d.type, label: label, image: image, src: src, order: order, back: back };
+    }
+
+    // A saved design is a file URL; the endpoint wants the image itself.
+    async function designImageData() {
+        if (designDataUrl) return designDataUrl;
+        const res = await fetch(designItem.src, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Design image is missing.');
+        const blob = await res.blob();
+        designDataUrl = await new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(String(r.result));
+            r.onerror = reject;
+            r.readAsDataURL(blob);
+        });
+        return designDataUrl;
+    }
 
     // Largest dimension we send to the API — keeps payloads small and fast.
     const MAX_CAPTURE_DIM = 768;
@@ -239,6 +277,16 @@
     // -------------------------------------------------------------------
     function renderCatalog() {
         closePicker();
+        if (designItem) {
+            // One item, the customer's design: no price (set on the order page), no paging.
+            catImg.src = designItem.image || designItem.src;
+            catImg.alt = 'Your ' + designItem.label + ' design';
+            catName.textContent = 'Your ' + designItem.label;
+            catPrice.textContent = 'Custom design · front';
+            catCounter.textContent = '1/1';
+            btnPrev.disabled = btnNext.disabled = true;
+            return;
+        }
         if (products.length === 0) {
             catName.textContent = 'No items for this filter';
             catPrice.textContent = '';
@@ -257,16 +305,16 @@
     }
 
     function cycle(delta) {
-        if (products.length === 0) return;
+        if (designItem || products.length === 0) return;
         currentIndex = (currentIndex + delta + products.length) % products.length;
         renderCatalog();
     }
 
     // Enable Try On / AI Stylist only when there's a usable source and products.
     function updateActionButtons() {
-        const ready = (cameraReady || !!uploadedImage) && products.length > 0;
+        const ready = (cameraReady || !!uploadedImage) && (!!designItem || products.length > 0);
         btnTryOn.disabled = !ready;
-        btnStylist.disabled = !ready;
+        btnStylist.disabled = !ready || !!designItem;   // the Stylist picks catalog products
     }
 
     // Filter the catalog (and the AI Stylist) by gender: all | mens | womens | kids.
@@ -376,7 +424,7 @@
 
     // `retryFrame` (a data URL) re-sends a photo already taken, with no countdown.
     async function doTryOn(retryFrame) {
-        if (busy || products.length === 0) return;
+        if (busy || (!designItem && products.length === 0)) return;
 
         busy = true;
         btnTryOn.disabled = true;
@@ -403,10 +451,21 @@
         showOverlay(loadingOverlay);
 
         try {
+            let payload;
+            if (designItem) {
+                let designImage;
+                try { designImage = await designImageData(); } catch (e) {
+                    showFailure('Could not load your design. Go back to the Design Studio and try again.');
+                    return;
+                }
+                payload = { personImage: frame, designImage: designImage, designType: designItem.type };
+            } else {
+                payload = { personImage: frame, productId: products[currentIndex].id };
+            }
             const res = await fetch(endpoints.tryOn, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
-                body: JSON.stringify({ personImage: frame, productId: products[currentIndex].id }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json().catch(() => ({ success: false, error: 'Unexpected server response.' }));
             if (sessionEnded) return;   // END was pressed while the AI was working
@@ -450,7 +509,7 @@
     // ---- Control visibility (live/photo mode vs result mode) ----
     function setLiveControls() {
         btnTryOn.style.display = 'inline-flex';
-        btnStylist.style.display = 'inline-flex';
+        btnStylist.style.display = designItem ? 'none' : 'inline-flex';
         btnUpload.style.display = 'inline-flex';
         btnCamera.style.display = uploadedImage ? 'none' : 'inline-flex';
         btnSwitchCam.style.display = uploadedImage ? 'none' : 'inline-flex';
@@ -508,7 +567,7 @@
                 setStageTag('PHOTO', 'var(--tryon-live)');
                 updateActionButtons();
                 setLiveControls();
-                showToast('Photo loaded. Pick a product, then Try On.');
+                showToast(designItem ? 'Photo loaded. Tap Try On to see your design on you.' : 'Photo loaded. Pick a product, then Try On.');
             };
             img.onerror = () => showToast('Could not read that image.', true);
             img.src = reader.result;
@@ -822,7 +881,7 @@
         a.remove();
     }
 
-    // Downloads the generated try-on image with a "Thread & Press Hub" watermark
+    // Downloads the generated try-on image with the store name (admin Branding) as a watermark
     // baked into the bottom-right corner (free marketing when shared).
     function downloadResult() {
         if (!resultImg.src) return;
@@ -845,7 +904,7 @@
                 ctx.font = '700 ' + fontSize + 'px Arial, Helvetica, sans-serif';
                 ctx.textBaseline = 'bottom';
                 ctx.textAlign = 'right';
-                const text = 'Thread & Press Hub';
+                const text = (window.BRAND && window.BRAND.name) || 'Thread & Press Hub';
                 const x = canvas.width - pad;
                 const y = canvas.height - pad;
 
@@ -1084,10 +1143,31 @@
     function init() {
         // "Try On" on a shop card links here with ?product=ID: start on that item.
         const wanted = parseInt(new URLSearchParams(window.location.search).get('product'), 10);
-        const wantedIndex = wanted > 0 ? products.findIndex((p) => p.id === wanted) : -1;
+        const wantedIndex = !designItem && wanted > 0 ? products.findIndex((p) => p.id === wanted) : -1;
         if (wantedIndex >= 0) currentIndex = wantedIndex;
+        if (designItem) {
+            // The card shows the customer's design; its button orders it, or
+            // (not saved yet / not orderable) goes back to the Design Studio.
+            const cardTitle = document.querySelector('.tryon-side .tryon-card h3');
+            if (cardTitle) cardTitle.textContent = 'Your Design';
+            el('tryonGender').style.display = 'none';
+            document.querySelector('.catalog-nav').style.display = 'none';   // one item: no paging
+            btnStylist.style.display = 'none';
+            btnAddCart.innerHTML = designItem.order
+                ? '<i class="fas fa-shopping-cart" aria-hidden="true"></i> Order this design'
+                : '<i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Design Studio';
+            const back = el('designBack');
+            if (designItem.order) {
+                back.href = designItem.back;
+                back.style.display = '';
+            }
+        }
         renderCatalog();
-        if (wantedIndex >= 0) {
+        if (designItem) {
+            showToast('Ready to try on your design. Turn the camera on or upload a photo.');
+        } else if (new URLSearchParams(window.location.search).get('design') === '1') {
+            showToast('Your design could not be loaded here. Open it again from the Design Studio.', true);
+        } else if (wantedIndex >= 0) {
             showToast('Ready to try on: ' + products[wantedIndex].name + '. Turn the camera on or upload a photo.');
         }
         updateBadge();
@@ -1101,7 +1181,9 @@
         btnLive.addEventListener('click', backToLive);
         btnSave.addEventListener('click', saveLook);
         btnDownload.addEventListener('click', downloadResult);
-        btnAddCart.addEventListener('click', openPicker);
+        btnAddCart.addEventListener('click', designItem
+            ? () => { window.location.href = designItem.order || designItem.back; }
+            : openPicker);
         pickCancel.addEventListener('click', closePicker);
         sizeFindToggle.addEventListener('click', () => {
             sizeFind.hidden = !sizeFind.hidden;

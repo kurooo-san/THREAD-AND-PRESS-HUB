@@ -436,7 +436,7 @@ if ($action === 'insights') {
         }
     }
 
-    $system = "You are 'AI Insights', the analytics assistant inside the ADMIN panel of Thread & Press Hub, a Philippine apparel shop with a custom-print Design Studio.
+    $system = "You are 'AI Insights', the analytics assistant inside the ADMIN panel of " . brand('name') . ", a Philippine apparel shop with a custom-print Design Studio.
 
 RULES:
 - Answer ONLY from the STORE DATA SNAPSHOT below. Never invent or estimate a number that is not in it. If the answer is not in the snapshot, say so plainly and name the admin page where they can check it (Dashboard, Products, Orders, Users, Payments, Custom Designs, Custom Orders, Coupons, Sales Report, Contact Messages, Support Chat, Audit Log).
@@ -525,7 +525,7 @@ if ($action === 'suggest_reply') {
     // Store facts from the same config the checkout and the customer chatbot use.
     $zones = [];
     foreach (DELIVERY_ZONES as $z) {
-        $zones[] = $z['label'] . ' ' . aia_peso((float) $z['fee']);
+        $zones[] = $z['label'] . ' ' . aia_peso((float) $z['fee']) . ' (' . (int) $z['days'][0] . '-' . (int) $z['days'][1] . ' business days)';
     }
     $methodLabels = ['gcash' => 'GCash', 'paymaya' => 'Maya', 'grab_pay' => 'GrabPay', 'card' => 'credit/debit card'];
     $online = (paymongoIsConfigured() && paymongoTableExists())
@@ -541,7 +541,7 @@ if ($action === 'suggest_reply') {
         : 'This customer has no usable vouchers right now; do not promise one.';
     $facts = "STORE FACTS:
 - Contact: " . SUPPORT_EMAIL . " or the Live Support chat. No phone number or street address is published; never invent one.
-- Delivery: Rizal and Metro Manila 1-2 business days; Bulacan, Cavite, Laguna, Batangas, Quezon and Pampanga 2-3 business days; rest of Luzon, Visayas and Mindanao 3-5 business days. Fees by area: " . implode('; ', $zones) . ". Store Pickup is free. No automatic free shipping; only a shipping voucher lowers the delivery fee.
+- Delivery fees and times by area:" . implode('; ', $zones) . ". Store Pickup is free. No automatic free shipping; only a shipping voucher lowers the delivery fee.
 - Payment: " . $online . "; or cash (Cash on Delivery / Cash on Pickup). Store Pickup is cash only. No manual QR / screenshot uploads anymore.
 - 12% VAT is added at checkout. PWD / Senior Citizen: 20% off with a verified ID.
 - Vouchers: given by the shop, shown in My Vouchers; no codes to type. At checkout the best one is picked automatically (one discount voucher off the items, one shipping voucher off the delivery fee); PWD/Senior accounts get both. A voucher used on a cancelled order goes back to the wallet. " . $promoLine . "
@@ -557,7 +557,7 @@ if ($action === 'suggest_reply') {
         }
     }
 
-    $system = "You draft replies for the customer-support staff of Thread & Press Hub, a Philippine apparel shop. The admin will read, edit and send your draft themselves.
+    $system = "You draft replies for the customer-support staff of " . brand('name') . ", a Philippine apparel shop. The admin will read, edit and send your draft themselves.
 
 WRITE the next reply FROM THE SHOP to the customer in the conversation below.
 - Answer what the customer last asked or said. If the shop already replied and the customer has not written since, write a short, polite follow-up instead.

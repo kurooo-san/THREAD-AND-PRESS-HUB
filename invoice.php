@@ -63,7 +63,7 @@ $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #' . $o
 
 $html .= '<div class="header">
     <div>
-        <h1>THREAD &amp; PRESS HUB</h1>
+        <h1>' . htmlspecialchars(mb_strtoupper(brand('name')), ENT_QUOTES) . '</h1>
         <div style="font-size:11px;">Premium Apparel &amp; Custom Designs</div>
     </div>
     <div class="meta">
@@ -133,7 +133,7 @@ if (!empty($order['payment_reference'])) {
 $html .= '</div>';
 
 $html .= '<div class="footer">
-    Thank you for shopping with Thread &amp; Press Hub!<br>
+    Thank you for shopping with ' . brandHtml('name') . '!<br>
     For inquiries, contact us at ' . SUPPORT_EMAIL . '
 </div></body></html>';
 

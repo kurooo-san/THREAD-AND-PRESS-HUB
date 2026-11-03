@@ -91,7 +91,7 @@ $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Custom Invoice 
 
 $html .= '<div class="header">
     <div>
-        <h1>THREAD &amp; PRESS HUB</h1>
+        <h1>' . htmlspecialchars(mb_strtoupper(brand('name')), ENT_QUOTES) . '</h1>
         <div style="font-size:11px;">Premium Apparel &amp; Custom Designs</div>
     </div>
     <div class="meta">
@@ -172,7 +172,7 @@ if ($payment) {
 }
 
 $html .= '<div class="footer">
-    Thank you for choosing Thread &amp; Press Hub for your custom design!<br>
+    Thank you for choosing ' . brandHtml('name') . ' for your custom design!<br>
     For inquiries, contact us at ' . SUPPORT_EMAIL . '
 </div></body></html>';
 

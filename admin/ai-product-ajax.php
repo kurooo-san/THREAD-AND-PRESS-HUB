@@ -149,7 +149,7 @@ if ($action === 'generate') {
     }
 
     // --- 1) Product details (cheap text call, strict JSON) ---
-    $detailsPrompt = 'You are the merchandiser for "Thread & Press Hub", a Philippine online apparel store. '
+    $detailsPrompt = 'You are the merchandiser for "' . brand('name') . '", a Philippine online apparel store. '
         . 'Create ONE new product based on this idea: "' . $prompt . '".'
         . "\n\nRules:\n"
         . '- category must be one of: ' . implode(', ', AIP_CATEGORIES) . "\n"

@@ -65,6 +65,8 @@ function adminIcon(string $name): string
         'reports'   => '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
         'reviews'   => '<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.2 2 9.3l6.9-1z"/>',
         'audit'     =>'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>',
+        'shipping'  => '<path d="M1 4h14v12H1z"/><path d="M15 9h4l3 3v4h-7"/><circle cx="5.5" cy="18" r="2"/><circle cx="18.5" cy="18" r="2"/>',
+        'brand'     => '<path d="M12 2a10 10 0 1 0 0 20 2 2 0 0 0 1.4-3.4 2 2 0 0 1 1.4-3.4H17a5 5 0 0 0 5-5C22 5.8 17.5 2 12 2z"/><circle cx="7.5" cy="10.5" r="1.2"/><circle cx="12" cy="7" r="1.2"/><circle cx="16.5" cy="10.5" r="1.2"/>',
         'store'     => '<path d="M3 9 5 3h14l2 6"/><path d="M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 21v-6h6v6"/>',
         'signout'   => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
         'bell'      => '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
@@ -105,10 +107,9 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="adminSidebar">
         <div class="ad-side-head">
-            <img class="ad-logo logo-light" src="../images/logo/logo_sm.png" alt="Thread &amp; Press logo">
-            <img class="ad-logo logo-dark" src="../images/logo/logo_white_sm.png" alt="Thread &amp; Press logo">
+            <?php echo brandLogoImgs('ad-logo', '../', brand('short_name') . ' logo', true); ?>
             <span class="ad-wordmark">
-                <b>Thread &amp; Press</b>
+                <b><?php echo brandHtml('short_name'); ?></b>
                 <span>Admin</span>
             </span>
             <button class="ad-side-close d-lg-none" id="sidebarClose" type="button" aria-label="Close menu"><?php echo adminIcon('close'); ?></button>
@@ -132,6 +133,8 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
             adminNavLink('custom-orders.php', 'custom', 'Custom Orders', 'custom-orders.php', $currentPage, (int)$pending_custom_orders);
             adminNavLink('coupons.php', 'coupons', 'Coupons', 'coupons.php', $currentPage);
             adminNavLink('reports.php', 'reports', 'Sales Report', 'reports.php', $currentPage);
+            adminNavLink('shipping-rates.php', 'shipping', 'Shipping Rates', 'shipping-rates.php', $currentPage);
+            adminNavLink('branding.php', 'brand', 'Branding', 'branding.php', $currentPage);
             ?>
 
             <div class="ad-side-label">Communication</div>
@@ -226,9 +229,8 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
         <!-- Phones/tablets: a top bar holds the menu button and the bell, so
              they no longer sit on top of each page's heading. -->
         <div class="ad-mobilebar d-lg-none">
-            <img class="ad-logo logo-light" src="../images/logo/logo_sm.png" alt="">
-            <img class="ad-logo logo-dark" src="../images/logo/logo_white_sm.png" alt="">
-            <span class="ad-mobilebar-title">Thread &amp; Press <span>Admin</span></span>
+            <?php echo brandLogoImgs('ad-logo', '../'); ?>
+            <span class="ad-mobilebar-title"><?php echo brandHtml('short_name'); ?> <span>Admin</span></span>
         </div>
 
         <!-- Mobile sidebar toggle -->

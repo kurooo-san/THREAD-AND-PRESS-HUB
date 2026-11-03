@@ -9,8 +9,8 @@ $pageTitle = 'About';
     <div class="row align-items-center g-5">
         <div class="col-md-6">
             <span class="hero-badge" style="background: var(--bg-light); color: var(--text-dark); border-color: var(--border-light);">Our Story</span>
-            <h1 style="font-weight:800; font-size:2.5rem; line-height:1.15; margin-top:0.75rem;">About Thread &amp; Press Hub</h1>
-            <p class="lead" style="color:var(--text-medium); font-size:1rem; line-height:1.7; margin-top:1rem;">Thread &amp; Press Hub is an apparel shop based in Rizal that does two things: it sells ready-to-wear clothing for men, women and kids, and it prints your own designs on shirts, hoodies and polos.</p>
+            <h1 style="font-weight:800; font-size:2.5rem; line-height:1.15; margin-top:0.75rem;">About <?php echo brandHtml('name'); ?></h1>
+            <p class="lead" style="color:var(--text-medium); font-size:1rem; line-height:1.7; margin-top:1rem;"><?php echo brandHtml('name'); ?> is an apparel shop based in Rizal that does two things: it sells ready-to-wear clothing for men, women and kids, and it prints your own designs on shirts, hoodies and polos.</p>
             <p style="color:var(--text-light);">Orders ship anywhere in the Philippines, or you can pick them up at the store for free. PWD and Senior Citizen customers get their 20% discount applied at checkout.</p>
         </div>
         <div class="col-md-6 text-center">

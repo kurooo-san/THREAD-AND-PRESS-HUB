@@ -137,7 +137,9 @@
                 ? await r.json()
                 : { ok: false, message: 'Your session expired. Refresh the page and try again.' };
             toast(res.message || (res.ok ? 'Saved.' : 'Could not save.'), res.ok ? 'success' : 'error');
-            if (!res.ok) { form.reset(); return; }   // put a changed dropdown back to what is really saved
+            // Put a changed dropdown back to what is really saved. A form the admin
+            // types into (data-ajax-keep) keeps its input so they can fix it.
+            if (!res.ok) { if (!form.hasAttribute('data-ajax-keep')) form.reset(); return; }
             try {
                 await refreshLiveRegions();
             } catch (refreshErr) {
@@ -145,7 +147,7 @@
             }
         } catch (err) {
             toast('Could not reach the server. Check your connection and try again.', 'error');
-            form.reset();
+            if (!form.hasAttribute('data-ajax-keep')) form.reset();
         } finally {
             buttons.forEach(function (b) { b.disabled = false; });
         }

@@ -6,17 +6,19 @@
  * The store ships from Cainta, Rizal, so Rizal is the base rate and every
  * other zone is priced by distance from it.
  *
- * TO CHANGE A PRICE, EDIT ONLY THE 'fee' VALUES BELOW. Nothing else in the
- * codebase hardcodes a delivery amount — checkout.php reads the fee from
- * here on the server, and hands the same table to the browser so the order
- * summary and the recorded total can never disagree.
+ * Fees and delivery days are set by the admin in Admin > Shipping Rates
+ * (saved to DELIVERY_RATES_FILE); the values below are the defaults used
+ * until then. Nothing else in the codebase hardcodes a delivery amount —
+ * checkout.php reads the fee from DELIVERY_ZONES on the server, and hands
+ * the same table to the browser so the order summary and the recorded total
+ * can never disagree.
  *
  * Requires includes/config.php first (for sanitizeInput()).
  */
 
 if (!defined('DELIVERY_ZONES')) {
 
-    define('DELIVERY_ZONES', [
+    define('DELIVERY_ZONE_DEFAULTS', [
         // 'days' = [min, max] working days (Sundays skipped) for the delivery estimate.
         'rizal'     => ['label' => 'Rizal (Cainta, Taytay, Antipolo, nearby)', 'fee' => 50.00,  'days' => [1, 2]],
         'ncr'       => ['label' => 'Metro Manila / NCR',                        'fee' => 100.00, 'days' => [1, 2]],
@@ -25,6 +27,62 @@ if (!defined('DELIVERY_ZONES')) {
         'visayas'   => ['label' => 'Visayas',                                   'fee' => 250.00, 'days' => [3, 5]],
         'mindanao'  => ['label' => 'Mindanao',                                  'fee' => 300.00, 'days' => [3, 5]],
     ]);
+
+    /** Admin-set fees and days. storage/payment-config/ is on the Railway volume and blocked from the web. */
+    define('DELIVERY_RATES_FILE', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR
+        . 'payment-config' . DIRECTORY_SEPARATOR . 'shipping-rates.json');
+    define('DELIVERY_FEE_MAX', 10000.00);
+    define('DELIVERY_DAYS_MAX', 30);
+
+    /** Error message for a bad fee / day range, or NULL when it is fine. */
+    function deliveryRateError($fee, $minDays, $maxDays): ?string
+    {
+        if (!is_numeric($fee) || (float) $fee < 0 || (float) $fee > DELIVERY_FEE_MAX) {
+            return 'Fees must be between ₱0 and ₱' . number_format(DELIVERY_FEE_MAX) . '.';
+        }
+        if (filter_var($minDays, FILTER_VALIDATE_INT) === false || filter_var($maxDays, FILTER_VALIDATE_INT) === false
+            || (int) $minDays < 1 || (int) $maxDays > DELIVERY_DAYS_MAX || (int) $minDays > (int) $maxDays) {
+            return 'Delivery days must be whole numbers from 1 to ' . DELIVERY_DAYS_MAX . ', and "from" cannot be more than "to".';
+        }
+        return null;
+    }
+
+    /**
+     * The zone table: defaults with the admin's saved fee/days on top. A
+     * missing, unreadable or tampered file (or one bad zone in it) falls back
+     * to the defaults for that zone, so checkout can never be priced off junk.
+     */
+    function deliveryZonesLoad(): array
+    {
+        $zones = DELIVERY_ZONE_DEFAULTS;
+        $raw   = is_file(DELIVERY_RATES_FILE) ? @file_get_contents(DELIVERY_RATES_FILE) : false;
+        $saved = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($saved)) {
+            return $zones;
+        }
+        foreach ($zones as $key => $zone) {
+            $r = $saved[$key] ?? null;
+            if (is_array($r) && isset($r['fee'], $r['days'][0], $r['days'][1])
+                && deliveryRateError($r['fee'], $r['days'][0], $r['days'][1]) === null) {
+                $zones[$key]['fee']  = round((float) $r['fee'], 2);
+                $zones[$key]['days'] = [(int) $r['days'][0], (int) $r['days'][1]];
+            }
+        }
+        return $zones;
+    }
+
+    /** Save [zone => ['fee' => float, 'days' => [min, max]]]; the caller validates first. */
+    function deliveryRatesSave(array $rates): bool
+    {
+        $dir = dirname(DELIVERY_RATES_FILE);
+        if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+            return false;
+        }
+        $json = json_encode($rates, JSON_PRETTY_PRINT);
+        return $json !== false && file_put_contents(DELIVERY_RATES_FILE, $json, LOCK_EX) !== false;
+    }
+
+    define('DELIVERY_ZONES', deliveryZonesLoad());
 
     /** Working days until a store-pickup order is ready. */
     define('PICKUP_READY_DAYS', 1);
@@ -193,10 +251,22 @@ if (!defined('DELIVERY_ZONES')) {
      */
     function deliveryZoneOfOrder(float $fullFee, ?string $address): ?string
     {
+        $matches = [];
         foreach (DELIVERY_ZONES as $key => $z) {
-            if (abs((float) $z['fee'] - $fullFee) < 0.01) return $key;
+            if (abs((float) $z['fee'] - $fullFee) < 0.01) $matches[] = $key;
         }
-        return detectDeliveryZone($address);
+        // The admin can give two areas the same fee; the address then picks between them.
+        $fromAddress = detectDeliveryZone($address);
+        if (count($matches) > 1 && in_array($fromAddress, $matches, true)) return $fromAddress;
+        return $matches[0] ?? $fromAddress;
+    }
+
+    /** "Shipping fee by area, from ₱50" for the home page and footer, from the lowest fee. */
+    function deliveryFeeFromText(): string
+    {
+        $min = (float) min(array_column(DELIVERY_ZONES, 'fee'));
+        if ($min <= 0) return 'Shipping fee by area';
+        return 'Shipping fee by area, from ₱' . number_format($min, floor($min) == $min ? 0 : 2);
     }
 
     /**

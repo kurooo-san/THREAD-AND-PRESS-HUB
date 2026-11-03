@@ -10,11 +10,17 @@ declare(strict_types=1);
  * the person wearing that exact garment. Returns the generated image as a
  * data URL.
  *
+ * Design mode: instead of a product id, the customer's own Design Studio
+ * design (the front mockup the studio renders, as a data URL) + its apparel
+ * type. The image is checked like the camera frame; it is the customer's own
+ * artwork and only goes to Gemini with their own photo.
+ *
  * Security: login-gated, POST-only, CSRF-checked. The API key never leaves
  * the server — all AI calls are proxied here.
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/apparel-config.php';   // design mode: valid apparel types + labels
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -28,6 +34,7 @@ header('Content-Type: application/json');
 const TRYON_MODEL          = 'gemini-2.5-flash-image';
 const TRYON_TIMEOUT_SECS   = 60;
 const TRYON_MAX_IMAGE_BYTES = 6 * 1024 * 1024; // ~6MB decoded person image cap
+const TRYON_MAX_DESIGN_BYTES = 3 * 1024 * 1024; // design mockup cap (the studio makes ~0.1-0.5MB)
 const PRODUCT_IMAGE_DIR    = __DIR__ . '/../images/products/';
 
 /** Emit a JSON error and stop. */
@@ -68,8 +75,11 @@ if (!is_array($input)) {
 
 $productId   = filter_var($input['productId'] ?? null, FILTER_VALIDATE_INT);
 $personImage = (string) ($input['personImage'] ?? '');
+$designImage = (string) ($input['designImage'] ?? '');
+$designType  = (string) ($input['designType'] ?? '');
+$isDesign    = $designImage !== '';
 
-if (!$productId) {
+if (!$isDesign && !$productId) {
     tryon_fail('A valid product must be selected.');
 }
 
@@ -82,6 +92,31 @@ if (strlen($personBytes) > TRYON_MAX_IMAGE_BYTES) {
     tryon_fail('Camera frame is too large. Please try again.');
 }
 
+if ($isDesign) {
+    // --- Design mode: the customer's own design mockup --------------------
+    $apparel = getApparelConfig()[$designType] ?? null;
+    // Couple sets are two garments side by side in one image: not wearable by one person.
+    if (!is_array($apparel) || !empty($apparel['couple'])) {
+        tryon_fail('This design type cannot be tried on.');
+    }
+    $garmentBytes = decode_data_image($designImage, $garmentMime);
+    if ($garmentBytes === null) {
+        tryon_fail('Could not read your design. Please go back to the Design Studio and try again.');
+    }
+    if (strlen($garmentBytes) > TRYON_MAX_DESIGN_BYTES) {
+        tryon_fail('Your design image is too large to try on.');
+    }
+    $product = ['name' => 'Your custom ' . $apparel['label']];
+    $prompt = 'You are a virtual try-on engine. The FIRST image is a real photo of a '
+        . 'person (the customer). The SECOND image is a flat product mockup of a custom-printed '
+        . strtolower((string) $apparel['label']) . ' the customer designed, shown from the front on a plain grey background. '
+        . 'Generate a single photorealistic image of the SAME person wearing this exact garment. '
+        . 'Preserve the person\'s face, hair, skin tone, body pose, lighting and background exactly. '
+        . 'Fit the garment naturally to their torso with realistic folds, shadows and proportions. '
+        . 'Reproduce the garment colour and every printed graphic, text and logo exactly as in the mockup, '
+        . 'in the same position and size on the chest; do not add, remove or change any artwork. '
+        . 'Ignore the mockup\'s grey background. Output only the final image.';
+} else {
 // --- Load the garment image from the catalog (prepared statement) -------
 $stmt = $conn->prepare("SELECT name, image FROM products WHERE id = ? AND status = 'active' LIMIT 1");
 if (!$stmt) {
@@ -116,6 +151,7 @@ $prompt = 'You are a virtual try-on engine. The FIRST image is a real photo of a
     . 'background exactly. Fit the garment naturally to their torso with realistic '
     . 'folds, shadows and proportions. Keep the garment\'s colour, pattern, print and '
     . 'design faithful to the second image. Output only the final image.';
+}
 
 $requestData = [
     'contents' => [[

@@ -9,7 +9,7 @@ $pageTitle = 'Pages';
 <div class="container my-5">
     <div class="mb-5">
         <h1 class="display-5" style="font-weight: 800; margin-bottom: 1rem;">Information Pages</h1>
-        <p class="lead text-muted">Everything you need to know about Thread and Press Hub</p>
+        <p class="lead text-muted">Everything you need to know about <?php echo brandHtml('name'); ?></p>
     </div>
 
     <div class="row g-4">
@@ -21,7 +21,7 @@ $pageTitle = 'Pages';
                         <i class="fas fa-store" style="color: var(--accent-green);"></i>
                     </div>
                     <h5 class="card-title" style="font-weight: 700;">About Us</h5>
-                    <p class="card-text text-muted">Learn about our mission, values, and what makes Thread and Press Hub the go-to fashion destination for quality apparel and exceptional customer service.</p>
+                    <p class="card-text text-muted">Learn about our mission, values, and what makes <?php echo brandHtml('name'); ?> the go-to fashion destination for quality apparel and exceptional customer service.</p>
                     <a href="#about" class="btn btn-sm btn-outline-primary">Read More</a>
                 </div>
             </div>
@@ -91,7 +91,7 @@ $pageTitle = 'Pages';
                         <i class="fas fa-file-contract" style="color: var(--accent-green);"></i>
                     </div>
                     <h5 class="card-title" style="font-weight: 700;">Terms of Service</h5>
-                    <p class="card-text text-muted">Understand the terms and conditions that govern your use of Thread and Press Hub. Your rights and responsibilities as a customer.</p>
+                    <p class="card-text text-muted">Understand the terms and conditions that govern your use of <?php echo brandHtml('name'); ?>. Your rights and responsibilities as a customer.</p>
                     <a href="#terms" class="btn btn-sm btn-outline-primary">Read More</a>
                 </div>
             </div>
@@ -102,8 +102,8 @@ $pageTitle = 'Pages';
     <hr class="my-5">
 
     <div id="about" class="mb-5">
-        <h3 style="font-weight: 700; margin-bottom: 1.5rem;">About Thread and Press Hub</h3>
-        <p>Thread and Press Hub is an apparel shop based in Rizal. It sells ready-to-wear clothing for men, women and kids, and prints customers' own designs on shirts, hoodies and polos.</p>
+        <h3 style="font-weight: 700; margin-bottom: 1.5rem;">About <?php echo brandHtml('name'); ?></h3>
+        <p><?php echo brandHtml('name'); ?> is an apparel shop based in Rizal. It sells ready-to-wear clothing for men, women and kids, and prints customers' own designs on shirts, hoodies and polos.</p>
         <h5 style="font-weight: 700; margin-top: 2rem; margin-bottom: 1rem;">What You Can Do Here</h5>
         <ul>
             <li><strong>Shop ready-to-wear:</strong> dresses, tees, hoodies, pants and accessories, with the colors and sizes in stock on each product</li>
@@ -186,14 +186,14 @@ $pageTitle = 'Pages';
 
     <div id="privacy" class="mb-5">
         <h3 style="font-weight: 700; margin-bottom: 1.5rem;">Privacy Policy</h3>
-        <p>Thread and Press Hub is committed to protecting your privacy. We collect personal information only when necessary to process your orders and improve our services.</p>
+        <p><?php echo brandHtml('name'); ?> is committed to protecting your privacy. We collect personal information only when necessary to process your orders and improve our services.</p>
         <p><strong>Information We Collect:</strong> Your name, email, phone number, shipping address, and payment information are collected only when you place an order.</p>
         <p><strong>How We Use Information:</strong> We use your information to process orders, send shipment updates, and respond to your inquiries. We do not sell or share your information with third parties without your consent.</p>
     </div>
 
     <div id="terms" class="mb-5">
         <h3 style="font-weight: 700; margin-bottom: 1.5rem;">Terms of Service</h3>
-        <p>By using Thread and Press Hub, you agree to these terms and conditions. Please read them carefully.</p>
+        <p>By using <?php echo brandHtml('name'); ?>, you agree to these terms and conditions. Please read them carefully.</p>
         <ul>
             <li>You must be at least 18 years old to make purchases</li>
             <li>All prices are subject to change without notice</li>

@@ -39,7 +39,7 @@ include 'includes/header/header.php';
                             <div class="feature-icon"><i class="fas fa-truck"></i></div>
                             <div>
                                 <h6>Nationwide Delivery</h6>
-                                <p>Shipping fee by area, from ₱50</p>
+                                <p><?php require_once __DIR__ . '/includes/delivery-zones.php'; echo htmlspecialchars(deliveryFeeFromText()); ?></p>
                             </div>
                         </div>
                     </div>
@@ -334,7 +334,7 @@ include 'includes/header/header.php';
     <section class="home-section">
         <div class="container">
             <div class="promo-banner">
-                <img src="images/hero/promo-banner.jpg" alt="Thread & Press Hub Collection">
+                <img src="images/hero/promo-banner.jpg" alt="<?php echo brandHtml('name'); ?> collection">
                 <div class="promo-content container text-center">
                     <span class="hero-badge" style="background:rgba(255,255,255,0.2); color:#fff; border-color:rgba(255,255,255,0.3);">New Arrivals</span>
                     <h2>Discover Our Premium Collection</h2>

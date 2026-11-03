@@ -565,6 +565,7 @@ html.dark-mode .theme-toggle .theme-label-light { display: inline; }
 html:not(.dark-mode) .logo-dark,
 html.dark-mode .logo-light { display: none !important; }
 html.dark-mode img.logo-dark { background: #fff !important; }
+html.dark-mode img.logo-dark.brand-custom { background: transparent !important; }
 
 body.admin-page .ad-side-link.theme-toggle { width: 100%; text-align: left; }
 body.admin-page .ad-side-link.theme-toggle i { width: 16px; text-align: center; font-size: 14px; }

@@ -453,6 +453,29 @@ if ($tableCheck->num_rows === 0) {
     box-shadow: none;
 }
 
+/* "Try it on with AI": secondary to Submit, same width */
+.btn-tryon-design {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.65rem 1.5rem;
+    border: 1.5px solid var(--accent-green, #2d6a4f);
+    background: transparent;
+    color: var(--accent-green, #2d6a4f);
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-tryon-design:hover { background: var(--accent-green, #2d6a4f); color: #fff; }
+.btn-tryon-design:disabled { opacity: 0.6; cursor: not-allowed; }
+html.dark-mode .btn-tryon-design { border-color: #52b788; color: #52b788; }
+html.dark-mode .btn-tryon-design:hover { background: #52b788; color: #0f1a14; }
+
 /* Apparel Color Selector */
 .apparel-color-grid {
     display: flex;
@@ -1088,6 +1111,9 @@ if ($tableCheck->num_rows === 0) {
 .design-edit-btn { border: 1px solid #d9d9d9; background: #fff; color: #333; font-weight: 600; }
 .design-edit-btn:hover { border-color: var(--design-gold); color: #8a6d3b; }
 html.dark-mode .design-edit-btn { background: #2a2a31; border-color: #3a3a44; color: #ddd; }
+.design-tryon-btn { border: 1px solid var(--accent-green, #2d6a4f); background: #fff; color: var(--accent-green, #2d6a4f); font-weight: 600; }
+.design-tryon-btn:hover { background: var(--accent-green, #2d6a4f); color: #fff; }
+html.dark-mode .design-tryon-btn { background: #2a2a31; border-color: #52b788; color: #52b788; }
 .design-delete-btn { border: 1px solid #f1c4c4; background: #fff; color: #b42318; font-weight: 600; }
 .design-delete-btn:hover { background: #fdecec; color: #8f1c13; }
 html.dark-mode .design-delete-btn { background: #2a2a31; border-color: #5a2a2a; color: #f19999; }
@@ -1867,6 +1893,10 @@ html.dark-mode .sleeve-tabs button.active { background: rgba(200,169,110,0.18); 
                 <textarea id="designNotes" placeholder="Any special instructions, preferred fabric, sizing notes..."></textarea>
                 <button class="btn-submit-design" id="submitDesignBtn" onclick="submitDesign()">
                     <i class="fas fa-paper-plane"></i> Submit & Proceed to Order
+                </button>
+                <!-- AI Virtual Try-On with this design (front). Hidden for couple sets. -->
+                <button type="button" class="btn-tryon-design" id="tryOnDesignBtn" onclick="tryOnDesign()">
+                    <i class="fas fa-camera"></i> Try it on with AI
                 </button>
             </div>
         </div>
@@ -3144,6 +3174,8 @@ function refreshSleeveUI() {
     document.getElementById('sleeveCountLeft').textContent = mine.left.length || '';
     document.getElementById('sleeveCountRight').textContent = mine.right.length || '';
     document.getElementById('logoToolSection').style.display = hasLogo() ? '' : 'none';
+    // Couple sets render two garments in one image, which one person cannot wear.
+    document.getElementById('tryOnDesignBtn').style.display = isCouple(state.apparelType) ? 'none' : '';
     document.getElementById('logoCount').textContent = state.logo.length || '';
     updateLogoZoneGuide();
 
@@ -4400,6 +4432,67 @@ function submitDesign() {
     });
 }
 
+// ===== Try the design on (AI Virtual Try-On, front only) =====
+// The front mockup goes to try-on.php through sessionStorage, so nothing is
+// saved: a saved design shows up for the admin as a pending design.
+const TRYON_DESIGN_KEY = 'tp-tryon-design';
+
+function openTryOn(item) {
+    try {
+        sessionStorage.setItem(TRYON_DESIGN_KEY, JSON.stringify(item));
+    } catch (e) {
+        showToast('Could not open Try-On: this browser blocked or filled its storage.', 'error');
+        return false;
+    }
+    window.location.href = 'try-on.php?design=1';
+    return true;
+}
+
+function tryOnDesign() {
+    if (isCouple(state.apparelType)) {
+        showToast('Couple sets cannot be tried on, as there are two shirts in one picture.', 'error');
+        return;
+    }
+    saveCurrentSideData();
+    if (!hasDesignWork()) {
+        showToast('Add some artwork or text to your design first.', 'error');
+        return;
+    }
+    const btn = document.getElementById('tryOnDesignBtn');
+    btn.disabled = true;
+    // Keep the design as a draft so "Back to Design Studio" brings it back.
+    // (Not while an older draft is still waiting on Restore / Start fresh.)
+    let drafted = false;
+    if (draftReady) {
+        clearTimeout(draftTimer);
+        draftTimer = 0;
+        saveDraft();
+        drafted = !!readDraft();
+    }
+    generateSideImage('front', function (img) {
+        try { sessionStorage.setItem('tp-tryon-draft', drafted ? '1' : '0'); } catch (e) {}
+        const ok = openTryOn({
+            image: img,
+            type: state.apparelType,
+            label: configOf(state.apparelType).label,
+            back: 'custom-design.php?from=tryon'
+        });
+        if (!ok) btn.disabled = false;
+    });
+}
+
+// "Try it on" on a My Designs card: the saved front mockup (a file URL).
+function tryOnSavedDesign(btn) {
+    const type = btn.dataset.type;
+    openTryOn({
+        src: btn.dataset.src,
+        type: type,
+        label: configOf(type).label,
+        order: btn.dataset.order || '',
+        back: 'custom-design.php'
+    });
+}
+
 function generateSideImage(side, callback) {
     // Couple Wear: export both partners side by side into one image.
     if (isCouple(state.apparelType)) {
@@ -4752,6 +4845,13 @@ function renderDesignCard(d) {
                     : `<div class="design-blocked mt-2">${st === 'cancelled'
                             ? 'This design was cancelled and can no longer be ordered.'
                             : 'Waiting for changes before this can be ordered.'}</div>`}
+                ${!d.image_missing && APPAREL_CONFIG[d.product_type] && !isCouple(d.product_type)
+                    ? `<button type="button" class="btn btn-sm w-100 mt-2 design-tryon-btn" onclick="tryOnSavedDesign(this)"
+                          data-src="${escapeHtml(d.design_image)}" data-type="${escapeHtml(d.product_type)}"
+                          data-order="${orderable ? escapeHtml(orderUrl) : ''}">
+                           <i class="fas fa-camera"></i> Try it on with AI
+                       </button>`
+                    : ''}
                 ${d.editable
                     ? `<a href="custom-design.php?edit=${encodeURIComponent(d.id)}" class="btn btn-sm w-100 mt-2 design-edit-btn"
                           onclick="return confirmReplaceDesign()">
@@ -4787,7 +4887,8 @@ function deleteDesign(id, btn) {
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
+    // innerHTML leaves quotes alone, and this is also used inside attributes.
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ===== 3D Preview Rotation =====
@@ -6177,6 +6278,16 @@ function confirmReplaceDesign() {
 
 // On load: open a saved design (?edit=ID from My Designs), or offer the draft.
 function startDraftsAndEditing() {
+    // Back from Try-On ("Back to Design Studio"): bring the design straight back.
+    if (new URLSearchParams(location.search).get('from') === 'tryon') {
+        history.replaceState(null, '', location.pathname);
+        let drafted = false;
+        try {
+            drafted = sessionStorage.getItem('tp-tryon-draft') === '1';
+            sessionStorage.removeItem('tp-tryon-draft');
+        } catch (e) {}
+        if (drafted && readDraft()) { restoreDraft(); return; }
+    }
     const editId = parseInt(new URLSearchParams(location.search).get('edit'), 10);
     if (editId > 0) {
         fetch('includes/custom-design-ajax.php?action=editor&id=' + editId)

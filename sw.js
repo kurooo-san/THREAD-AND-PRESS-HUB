@@ -1,5 +1,5 @@
 /*
- * Service worker for the installable app (manifest.json).
+ * Service worker for the installable app (manifest.php).
  *
  * Deliberately minimal: pages are NEVER cached, so prices, stock, the cart
  * and orders are always live. The only thing it adds is a friendly offline

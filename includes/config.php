@@ -695,6 +695,9 @@ function verifyRecaptcha($response, $remoteIp = null) {
 // screens, invoices and emails all print the same channel names.
 require_once __DIR__ . '/payment-config.php';
 
+// Store name, logos and app icons (admin/branding.php).
+require_once __DIR__ . '/brand.php';
+
 /**
  * URL of a 600px-wide JPEG copy of a product image, for grids and cards.
  * Built on first request into images/products/thumbs/ (so new uploads and

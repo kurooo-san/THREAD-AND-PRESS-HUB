@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $validToken) {
 <div class="container my-5">
     <div class="form-container">
         <div class="form-brand">
-            <span class="brand-logo">TP</span>
+            <?php echo brandLogoImgs('brand-logo', '', brand('name') . ' logo'); ?>
         </div>
         <h2 class="form-title">Reset Password</h2>
         <p class="form-subtitle">Enter your new password below.</p>

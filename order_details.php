@@ -2,7 +2,9 @@
 require 'includes/config.php';
 require_once 'includes/payment-config.php';   // paymentMethodLabel()
 require_once 'includes/delivery-zones.php';   // orderDeliveryEstimate()
+require_once 'includes/couriers.php';         // orderShipment()
 redirectToLogin();
+orderShipmentReady();   // before SELECT *, so the courier columns are there
 
 $pageTitle = 'Order Details';
 
@@ -115,6 +117,42 @@ $items_result = $items_stmt->get_result();
                                 <p class="mb-0"><i class="fas fa-truck me-1"></i> <?php echo htmlspecialchars($eta); ?></p>
                             <?php endif; ?>
                         </div>
+                    </div>
+
+                    <!-- Courier & tracking, once the parcel is on its way -->
+                    <div data-live="shipment">
+                    <?php if (in_array($order['status'], ['out_for_delivery', 'completed'], true) && ($ship = orderShipment($order))): ?>
+                    <div class="order-shipment mb-4 pb-4 border-bottom">
+                        <h6 class="mb-3" style="font-weight: 700;"><i class="fas fa-truck me-1"></i> Courier &amp; Tracking</h6>
+                        <p class="mb-2">Shipped via <strong><?php echo htmlspecialchars($ship['courier']); ?></strong></p>
+                        <?php if ($ship['rider']): ?>
+                            <p class="mb-2">Rider: <strong><?php echo htmlspecialchars($ship['rider']); ?></strong>
+                            <?php if ($ship['phone']): ?>
+                                · <a href="tel:<?php echo htmlspecialchars($ship['phone']); ?>"><?php echo htmlspecialchars($ship['phone']); ?></a>
+                            <?php endif; ?></p>
+                        <?php endif; ?>
+                        <?php if ($ship['number']): ?>
+                            <p class="mb-2">Tracking number: <strong class="ship-number"><?php echo htmlspecialchars($ship['number']); ?></strong></p>
+                        <?php endif; ?>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <?php if ($ship['number']): ?>
+                                <button type="button" class="btn btn-outline-dark btn-sm" data-copy="<?php echo htmlspecialchars($ship['number']); ?>">
+                                    <i class="fas fa-copy me-1"></i> Copy tracking number
+                                </button>
+                            <?php endif; ?>
+                            <?php if ($ship['url']): ?>
+                                <a class="btn btn-dark btn-sm" href="<?php echo htmlspecialchars($ship['url']); ?>" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-location-dot me-1"></i> Track parcel
+                                </a>
+                            <?php endif; ?>
+                            <?php if ($ship['phone']): ?>
+                                <a class="btn btn-dark btn-sm" href="tel:<?php echo htmlspecialchars($ship['phone']); ?>">
+                                    <i class="fas fa-phone me-1"></i> Call rider
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     </div>
 
                     <!-- Order Items -->
@@ -281,4 +319,19 @@ $items_result = $items_stmt->get_result();
     </div>
 </div>
 
+<script>
+// Delegated: the shipment card is replaced when the order updates live.
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    const done = function () {
+        if (typeof showToast === 'function') showToast('Tracking number copied.', 'success');
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(btn.dataset.copy).then(done, function () { window.prompt('Copy the tracking number:', btn.dataset.copy); });
+    } else {
+        window.prompt('Copy the tracking number:', btn.dataset.copy);
+    }
+});
+</script>
 <?php include 'includes/footer/footer.php'; ?>

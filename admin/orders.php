@@ -1,6 +1,7 @@
 <?php
 require '../includes/config.php';
 require_once '../includes/payment-config.php';   // paymentMethodLabel()
+require_once '../includes/couriers.php';         // courier + tracking
 
 // Check if user is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
@@ -50,6 +51,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Failed to update payment.';
             }
             $stmt->close();
+        } elseif ($action === 'save_shipment') {
+            // Courier + tracking from the order page. An order not yet shipped
+            // goes Out for Delivery with it; one already out just gets corrected.
+            $o = $conn->prepare("SELECT status, delivery_address FROM orders WHERE id = ?");
+            $o->bind_param("i", $order_id);
+            $o->execute();
+            $ord = $o->get_result()->fetch_assoc();
+            $o->close();
+            [$ship, $why] = shipmentFromInput($_POST);
+            if (!$ord) {
+                $error = 'Order not found.';
+            } elseif (!orderNeedsCourier($ord)) {
+                $error = 'This is a Store Pickup order, so it has no courier.';
+            } elseif (in_array($ord['status'], ['completed', 'cancelled'], true)) {
+                $error = 'This order is already ' . $ord['status'] . '.';
+            } elseif ($why !== null) {
+                $error = $why;
+            } elseif (!orderShipmentReady()) {
+                $error = 'Could not save the courier details. Please try again.';
+            } else {
+                $shipNow = $ord['status'] !== 'out_for_delivery';
+                // The status is re-checked in the UPDATE, in case it changed meanwhile.
+                $stmt = $conn->prepare("UPDATE orders SET courier = ?, tracking_number = ?, rider_name = ?, rider_phone = ?,
+                                               status = 'out_for_delivery'
+                                        WHERE id = ? AND status = ?");
+                $stmt->bind_param("ssssis", $ship['courier'], $ship['tracking_number'], $ship['rider_name'], $ship['rider_phone'],
+                                  $order_id, $ord['status']);
+                $saved = $stmt->execute();
+                $changed = $stmt->affected_rows;
+                $stmt->close();
+                if ($saved && $changed === 0) {
+                    // 0 rows: either the same details were saved again, or the status moved meanwhile.
+                    $c = $conn->prepare("SELECT status FROM orders WHERE id = ?");
+                    $c->bind_param("i", $order_id);
+                    $c->execute();
+                    $saved = (($c->get_result()->fetch_row() ?: [null])[0]) === $ord['status'];
+                    $c->close();
+                    if ($saved && !$shipNow) {
+                        $saved = false;
+                        $success = 'No changes to save.';
+                    }
+                }
+                if (!$saved) {
+                    if ($success === '') $error = 'The order changed while you were editing. Refresh the page and try again.';
+                } else {
+                    $detail = orderShipmentText($ship) ?? COURIERS[$ship['courier']]['label'];
+                    if ($shipNow) {
+                        require_once '../includes/email-helper.php';
+                        sendOrderStatusEmail($conn, $order_id, 'out_for_delivery');
+                        logAudit('order_status_updated', 'order', $order_id, 'Status changed to: out_for_delivery (' . $detail . ')');
+                        $success = 'Order marked Out for Delivery. The customer was emailed the courier details.';
+                    } else {
+                        logAudit('order_shipment_updated', 'order', $order_id, 'Courier details changed: ' . $detail);
+                        $success = 'Courier details updated.';
+                    }
+                }
+            }
         } elseif ($action === 'delete_order') {
             // Permanent delete, for cancelled orders only. Cancelling already
             // returned the stock and vouchers, so nothing is lost but the row.
@@ -145,10 +203,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!in_array($status, $allowed, true)) {
                 $error = 'Invalid status value.';
             } else {
-                $old = $conn->prepare("SELECT status FROM orders WHERE id = ?");
+                orderShipmentReady();
+                $old = $conn->prepare("SELECT * FROM orders WHERE id = ?");
                 $old->bind_param("i", $order_id);
                 $old->execute();
-                $oldStatus = ($old->get_result()->fetch_row() ?: [null])[0];
+                $oldRow = $old->get_result()->fetch_assoc() ?: [];
+                $oldStatus = $oldRow['status'] ?? null;
                 $old->close();
                 // Cancelling puts the stock back; un-cancelling takes back the
                 // stock and the vouchers the cancel returned. All or nothing.
@@ -156,7 +216,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $cancel   = $oldStatus !== 'cancelled' && $status === 'cancelled';
                 $tx       = $uncancel || $cancel;
                 $why      = '';
-                if ($tx) {
+                if ($status === 'out_for_delivery' && $oldStatus !== 'out_for_delivery'
+                    && $oldRow && orderNeedsCourier($oldRow) && orderShipment($oldRow) === null) {
+                    // The customer must be able to see who is bringing the parcel.
+                    $tx  = false;
+                    $why = 'Add the courier and tracking number first: open the order (View) and fill in "Courier & Tracking".';
+                }
+                if ($tx && $why === '') {
                     // Their ALTERs would commit the transaction early.
                     $stockOn = orderStockReady();
                     if ($uncancel) vouchersReady();
@@ -298,6 +364,10 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                                     <option value="cancelled" <?php echo $order['status'] === 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
                                 </select>
                             </form>
+                            <?php if (($ship = orderShipment($order)) && in_array($order['status'], ['out_for_delivery', 'completed'], true)): ?>
+                                <small class="text-muted d-block mt-1"><i class="fas fa-truck"></i>
+                                    <?php echo htmlspecialchars($ship['courier'] . ($ship['number'] ? ' · ' . $ship['number'] : ($ship['rider'] ? ' · ' . $ship['rider'] : ''))); ?></small>
+                            <?php endif; ?>
                         </td>
                         <td><?php echo date('M d, Y H:i', strtotime($order['created_at'])); ?></td>
                         <td>

@@ -81,11 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container my-5">
     <div class="form-container">
         <div class="form-brand">
-            <img class="brand-logo logo-light" src="images/logo/logo_sm.png" alt="Thread &amp; Press Hub logo">
-            <img class="brand-logo logo-dark" src="images/logo/logo_white_sm.png" alt="Thread &amp; Press Hub logo">
+            <?php echo brandLogoImgs('brand-logo', '', brand('name') . ' logo'); ?>
         </div>
         <h2 class="form-title">Create Account</h2>
-        <p class="form-subtitle">Join Thread &amp; Press Hub and start shopping</p>
+        <p class="form-subtitle">Join <?php echo brandHtml('name'); ?> and start shopping</p>
 
         <?php if ($error): ?>
             <div class="alert alert-danger" style="border-radius:12px; border:none; font-size:0.9rem;"><?php echo htmlspecialchars($error); ?></div>

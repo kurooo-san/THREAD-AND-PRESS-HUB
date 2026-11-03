@@ -10,6 +10,7 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/couriers.php';   // courier + tracking line
 
 header('Content-Type: application/json');
 
@@ -52,6 +53,7 @@ try {
     
     // If we found an order ID
     if ($orderId) {
+        orderShipmentReady();   // courier columns, read through o.*
         // The order must belong to the logged-in customer.
         $sql = "SELECT o.*,
                     COUNT(oi.id) as item_count,
@@ -91,6 +93,10 @@ try {
             $response .= "Payment: {$payIcon} " . paymentMethodLabel($order['payment_method']) . "\n";
             $response .= "Order Date: " . date('F d, Y g:i A', strtotime($order['created_at'])) . "\n";
             
+            if (in_array($order['status'], ['out_for_delivery', 'completed'], true) && ($ship = orderShipmentText($order))) {
+                $response .= "🚚 Courier: " . $ship . "\n";
+            }
+
             if ($order['status'] === 'out_for_delivery') {
                 $response .= "\n⏩ **Next Steps:** Your order is on its way! Once it arrives, open it in My Orders and tap **Order Received**.";
             } elseif ($order['status'] !== 'completed' && $order['status'] !== 'cancelled') {

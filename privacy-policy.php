@@ -11,7 +11,7 @@ include 'includes/header/header.php';
                 <h1 style="font-weight:800; margin-bottom:0.25rem;">Privacy Policy</h1>
                 <p class="text-muted" style="font-size:0.9rem;">Last updated: <?php echo date('F j, Y'); ?></p>
 
-                <p>Thread &amp; Press Hub ("we", "us", "our") respects your privacy. This Privacy Policy
+                <p><?php echo brandHtml('name'); ?> ("we", "us", "our") respects your privacy. This Privacy Policy
                 explains how we collect, use, and protect your personal information when you use our website
                 and services.</p>
 
@@ -79,7 +79,7 @@ include 'includes/header/header.php';
                 <p>We may update this Privacy Policy from time to time. The "Last updated" date above will reflect changes.</p>
 
                 <h4 class="mt-4">11. Contact</h4>
-                <p>Thread &amp; Press Hub<br>
+                <p><?php echo brandHtml('name'); ?><br>
                 Email: <a href="mailto:<?php echo SUPPORT_EMAIL; ?>"><?php echo SUPPORT_EMAIL; ?></a></p>
             </div>
         </div>

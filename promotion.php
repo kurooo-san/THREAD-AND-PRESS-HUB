@@ -132,12 +132,12 @@ $gradients = [
             <div class="card border-0 bg-light p-4">
                 <h5 style="font-weight: 700; margin-bottom: 1rem;">Terms &amp; Conditions</h5>
                 <ul class="text-muted small">
-                    <li>Vouchers are given by the Thread &amp; Press team and appear in My Vouchers. There are no codes to type.</li>
+                    <li>Vouchers are given by the <?php echo brandHtml('short_name'); ?> team and appear in My Vouchers. There are no codes to type.</li>
                     <li>Each order can use one discount voucher (off the items) and one shipping voucher (off the delivery fee).</li>
                     <li>At checkout we automatically pick the voucher that saves you the most; you can switch or remove it.</li>
                     <li>PWD/Senior accounts get both the 20% discount and the voucher.</li>
                     <li>Some vouchers need a minimum order amount, expire, or are limited in number of uses. Each voucher can be used once.</li>
-                    <li>Thread &amp; Press Hub reserves the right to modify or cancel promotions at any time.</li>
+                    <li><?php echo brandHtml('name'); ?> reserves the right to modify or cancel promotions at any time.</li>
                 </ul>
             </div>
         </div>
