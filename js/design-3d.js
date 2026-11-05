@@ -92,6 +92,26 @@ if (container && renderer) {
     controls.maxPolarAngle = Math.PI * 0.75;
     controls.addEventListener('start', () => { setSpin(false); fly = null; });   // the user takes over
 
+    // Home page showcase (data-showcase): it sits in a scrolling page, so the wheel
+    // and an up/down swipe scroll the page, and it goes back to turning on its own.
+    if ('showcase' in container.dataset) {
+        // The default film-style look washes strong colours out; here the shirt
+        // sits right beside its colour swatches, so they should match.
+        renderer.toneMapping = THREE.NoToneMapping;
+        scene.environmentIntensity = 0.45;
+        key.intensity = 0.8;
+        back.intensity = 1.25;   // comes from higher up, so it needs more to match the front
+        controls.enableZoom = false;
+        renderer.domElement.style.touchAction = 'pan-y';   // OrbitControls had set 'none'
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            controls.autoRotate = false;
+        } else {
+            let spinBack = null;
+            controls.addEventListener('start', () => clearTimeout(spinBack));
+            controls.addEventListener('end', () => { spinBack = setTimeout(() => setSpin(true), 2500); });
+        }
+    }
+
     // Models are Draco-compressed (see images/models/web); the decoder is the
     // one from the same three.js release, served from js/lib/three so the 3D
     // view works without a CDN.
@@ -407,6 +427,7 @@ if (container && renderer) {
         controls.update();
         setStatus('');
         dirty = true;
+        window.dispatchEvent(new Event('design3d-built'));
     }
 
     // Camera distance that fits a model of size `dim` in the current viewport:

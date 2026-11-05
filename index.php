@@ -210,11 +210,18 @@ include 'includes/header/header.php';
                 <div class="ai-spotlight-glow ai-glow-1"></div>
                 <div class="container position-relative">
                     <div class="row align-items-center g-5">
-                        <!-- Shirt mock: turns gently, colour swatches recolour it -->
+                        <!-- Starts on the flat shirt. The Design Studio's real 3D model only
+                             downloads when 3D is tapped; the flat shirt stays if 3D cannot run. -->
                         <div class="col-lg-6 order-2 order-lg-1 reveal">
-                            <div class="studio-stage" aria-hidden="true">
-                                <span class="studio-tag"><i class="fas fa-cube"></i> Live 3D</span>
-                                <div class="studio-turn">
+                            <div class="studio-stage">
+                                <div class="studio-view" role="group" aria-label="Preview type">
+                                    <button type="button" class="studio-view-btn active" id="studioView2d" aria-pressed="true">2D</button>
+                                    <button type="button" class="studio-view-btn" id="studioView3d" aria-pressed="false"><i class="fas fa-cube" aria-hidden="true"></i> 3D</button>
+                                </div>
+                                <div class="studio-3d" id="garment3d" data-showcase>
+                                    <div id="garment3dStatus" hidden></div>
+                                </div>
+                                <div class="studio-turn" aria-hidden="true">
                                     <svg class="studio-shirt" viewBox="0 0 400 470" xmlns="http://www.w3.org/2000/svg">
                                         <defs>
                                             <radialGradient id="studioFabric" cx="50%" cy="30%" r="80%">
@@ -235,11 +242,11 @@ include 'includes/header/header.php';
                                 </div>
                                 <div class="studio-chip studio-chip-1"><i class="fas fa-swatchbook"></i> 5 ready templates</div>
                                 <div class="studio-chip studio-chip-2"><i class="fas fa-wand-magic-sparkles"></i> AI artwork &amp; logos</div>
-                                <div class="studio-swatches">
-                                    <button type="button" class="studio-swatch active" style="background:#FF4136" data-color="#FF4136" data-ink="#FFFFFF" tabindex="-1"></button>
-                                    <button type="button" class="studio-swatch" style="background:#001F3F" data-color="#001F3F" data-ink="#FFDC00" tabindex="-1"></button>
-                                    <button type="button" class="studio-swatch" style="background:#FFFFFF" data-color="#FFFFFF" data-ink="#1a1a1a" tabindex="-1"></button>
-                                    <button type="button" class="studio-swatch" style="background:#2ECC40" data-color="#2ECC40" data-ink="#FFFFFF" tabindex="-1"></button>
+                                <div class="studio-swatches" role="group" aria-label="Shirt colour">
+                                    <button type="button" class="studio-swatch active" style="background:#FF4136" data-color="#FF4136" data-ink="#FFFFFF" aria-label="Red" aria-pressed="true"></button>
+                                    <button type="button" class="studio-swatch" style="background:#001F3F" data-color="#001F3F" data-ink="#FFDC00" aria-label="Navy" aria-pressed="false"></button>
+                                    <button type="button" class="studio-swatch" style="background:#FFFFFF" data-color="#FFFFFF" data-ink="#1a1a1a" aria-label="White" aria-pressed="false"></button>
+                                    <button type="button" class="studio-swatch" style="background:#2ECC40" data-color="#2ECC40" data-ink="#FFFFFF" aria-label="Green" aria-pressed="false"></button>
                                 </div>
                             </div>
                         </div>
@@ -375,17 +382,148 @@ include 'includes/header/header.php';
         </div>
     </section>
 
+    <?php
+    require_once 'includes/apparel-config.php';
+    $studioShirt = getApparelConfig()['tshirt'];
+    ?>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./js/lib/three/build/three.module.js",
+            "three/addons/": "./js/lib/three/examples/jsm/"
+        }
+    }
+    </script>
     <script>
-    // Design Studio mock: the swatches recolour the shirt (just a preview).
+    // Design Studio spotlight: the swatches recolour the shirt, flat or 3D.
     (function () {
         var fill = document.querySelector('.studio-shirt-fill');
-        if (!fill) return;
+        var stage = document.querySelector('.studio-stage');
+        if (!fill || !stage) return;
+
+        var MODEL = <?php echo json_encode($studioShirt['model3d']); ?>;
+        var ASPECT = <?php echo (float) ($studioShirt['area']['h'] / $studioShirt['area']['w']); ?>;
+        var color = '#FF4136', ink = '#FFFFFF';
+
+        // The same "TEAM 23" as the flat shirt, drawn for the print area.
+        function printArt() {
+            var cv = document.createElement('canvas');
+            cv.width = 700;
+            cv.height = Math.round(700 * ASPECT);
+            var c = cv.getContext('2d');
+            c.fillStyle = ink;
+            c.textAlign = 'center';
+            c.font = '800 130px Arial, Helvetica, sans-serif';
+            var word = 'TEAM', R = 620, cx = 350, cy = 230 + R;
+            var total = 0;
+            word.split('').forEach(function (ch) { total += c.measureText(ch).width + 8; });
+            var at = -total / 2;
+            word.split('').forEach(function (ch) {
+                var w = c.measureText(ch).width + 8;
+                c.save();
+                c.translate(cx, cy);
+                c.rotate((at + w / 2) / R);
+                c.fillText(ch, 0, -R);
+                c.restore();
+                at += w;
+            });
+            c.font = '900 440px Arial, Helvetica, sans-serif';
+            c.fillText('23', cx, 680);
+            return cv;
+        }
+
+        function sleeveArt() {
+            var cv = document.createElement('canvas');
+            cv.width = cv.height = 256;
+            var c = cv.getContext('2d');
+            c.font = '170px Arial, sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText('⭐', 128, 138);
+            return cv;
+        }
+
+        function paint3D() {
+            if (!window.Design3D) return;
+            Design3D.show(MODEL, color, 1, ASPECT);
+            var art = printArt();
+            Design3D.setArtwork(0, 'front', art);
+            Design3D.setArtwork(0, 'back', art);
+        }
+
         document.querySelectorAll('.studio-swatch').forEach(function (b) {
             b.addEventListener('click', function () {
-                document.querySelectorAll('.studio-swatch').forEach(function (x) { x.classList.toggle('active', x === b); });
-                fill.style.fill = b.dataset.color;
-                document.querySelectorAll('.studio-print').forEach(function (t) { t.style.fill = b.dataset.ink; });
+                document.querySelectorAll('.studio-swatch').forEach(function (x) {
+                    x.classList.toggle('active', x === b);
+                    x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+                });
+                color = b.dataset.color;
+                ink = b.dataset.ink;
+                fill.style.fill = color;
+                document.querySelectorAll('.studio-print').forEach(function (t) { t.style.fill = ink; });
+                paint3D();
             });
+        });
+
+        // ---- 2D / 3D ----
+        var btn2d = document.getElementById('studioView2d');
+        var btn3d = document.getElementById('studioView3d');
+        var label3d = btn3d.innerHTML;
+        var wants3D = false, loading = false, built = false;
+
+        function markButtons() {
+            btn2d.classList.toggle('active', !wants3D);
+            btn3d.classList.toggle('active', wants3D);
+            btn2d.setAttribute('aria-pressed', wants3D ? 'false' : 'true');
+            btn3d.setAttribute('aria-pressed', wants3D ? 'true' : 'false');
+        }
+
+        // The flat shirt only leaves once the model is really there.
+        function applyView() {
+            markButtons();
+            stage.classList.toggle('is-3d', wants3D && built);
+            stage.classList.toggle('is-loading-3d', loading);
+            btn3d.innerHTML = loading ? '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> 3D' : label3d;
+        }
+
+        function cannot3D() {
+            wants3D = false;
+            loading = false;
+            btn3d.disabled = true;
+            btn3d.title = '3D preview is not available on this device';
+            applyView();
+            if (typeof showToast === 'function') showToast('3D preview is not available on this device.', 'info');
+        }
+
+        window.addEventListener('design3d-built', function () {
+            built = true;
+            loading = false;
+            paint3D();
+            applyView();
+        });
+        // Also sent when the model fails to load.
+        window.addEventListener('design3d-ready', function () {
+            if (!built && loading && window.Design3D && !Design3D.canShow(MODEL.src)) cannot3D();
+        });
+
+        function load3D() {
+            loading = true;
+            applyView();
+            import('./js/design-3d.js?v=<?php echo @filemtime(__DIR__ . '/js/design-3d.js'); ?>').then(function () {
+                if (!window.Design3D) { cannot3D(); return; }   // no WebGL
+                Design3D.setArtwork(0, 'left', sleeveArt());
+                paint3D();
+            }).catch(cannot3D);
+        }
+
+        btn2d.addEventListener('click', function () {
+            wants3D = false;
+            applyView();
+        });
+        btn3d.addEventListener('click', function () {
+            wants3D = true;
+            if (!built && !loading) load3D();
+            else applyView();
         });
     })();
 
