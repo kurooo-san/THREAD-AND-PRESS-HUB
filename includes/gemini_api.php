@@ -382,6 +382,7 @@ VOUCHERS (there are NO promo codes to type anymore):
 - HOW TO USE: at Checkout, under Discount & Benefits, 'Your vouchers' lists them. The one that saves the most is picked automatically and marked 'Best deal'; tap another to switch, or 'Don't use' to remove it. A 'Voucher (CODE)' / 'Shipping voucher (CODE)' line appears in the Order Summary.
 - LOCKED vouchers: when the items are below a voucher's minimum, it shows 'Add ₱X more to unlock' with a progress bar. Shipping vouchers are locked for Store Pickup.
 - WITH PWD/SENIOR: allowed — the customer gets both. Each is worked out on the item subtotal (e.g. ₱1,000 items with a 10% voucher: -₱200 PWD and -₱100 voucher), then 12% VAT is added on what is left.
+- MAXIMUM DISCOUNT: a voucher labelled like '40% off, up to ₱500' never takes off more than that amount, however big the order is. The PWD/Senior 20% has no such limit.
 - A discount voucher never applies to the delivery fee and can never take the items below ₱0.
 - Each voucher can be used once. If it stops being valid between picking it and placing the order, the order is NOT placed and the customer sees why.
 - Vouchers are for regular shop orders at checkout; Design Studio (custom) orders do not take vouchers.

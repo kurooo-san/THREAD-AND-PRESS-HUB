@@ -91,11 +91,14 @@ function aia_peso(float $v): string
     return paymentFormatPeso($v);
 }
 
-/** "10% off" / "₱50.00 off", plus the minimum subtotal when there is one. */
+/** "10% off, no maximum" / "40% off, up to ₱500.00" / "₱50.00 off", plus the minimum subtotal when there is one. */
 function aia_coupon_off(array $c): string
 {
     $off = $c['discount_type'] === 'percent'
         ? rtrim(rtrim((string) $c['discount_value'], '0'), '.') . '% off'
+            . ((float) ($c['max_discount'] ?? 0) > 0
+                ? ', up to ' . aia_peso((float) $c['max_discount'])
+                : (voucherNeedsCap($c) ? ', no maximum' : ''))
         : aia_peso((float) $c['discount_value']) . ' off';
     return $off . ((float) $c['min_subtotal'] > 0 ? ', min. subtotal ' . aia_peso((float) $c['min_subtotal']) : '');
 }

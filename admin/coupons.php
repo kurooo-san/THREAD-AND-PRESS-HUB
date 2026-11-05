@@ -34,6 +34,10 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $kind        = ($_POST['kind'] ?? '') === 'shipping' ? 'shipping' : 'discount';
         $type        = ($_POST['discount_type'] ?? '') === 'fixed' ? 'fixed' : 'percent';
         $value       = (float)($_POST['discount_value'] ?? 0);
+        // Only a percent discount voucher has a peso limit; see voucherNeedsCap().
+        $capApplies  = $kind === 'discount' && $type === 'percent';
+        $rawCap      = $_POST['max_discount'] ?? '';
+        $maxDiscount = $capApplies && is_numeric($rawCap) ? round((float)$rawCap, 2) : null;
         $minSubtotal = max(0, (float)($_POST['min_subtotal'] ?? 0));
         $maxUses     = trim($_POST['max_uses'] ?? '') === '' ? null : (int)$_POST['max_uses'];
         $validFrom   = couponDateIn($_POST['valid_from'] ?? '');
@@ -57,6 +61,8 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $errorMsg = 'Code must be 3–50 characters: letters, numbers, dash or underscore.';
         } elseif ($value <= 0 || ($type === 'percent' && $value > 100)) {
             $errorMsg = $type === 'percent' ? 'Percent discount must be between 1 and 100.' : 'Fixed discount must be more than ₱0.';
+        } elseif ($capApplies && ($maxDiscount === null || $maxDiscount < 1 || $maxDiscount > 1000000)) {
+            $errorMsg = 'Percent vouchers need a maximum discount from ₱1 to ₱1,000,000, so a big order cannot take off too much.';
         } elseif ($maxUses !== null && $maxUses < 1) {
             $errorMsg = 'Max uses must be at least 1, or leave it blank for unlimited.';
         } elseif ($validFrom === false || $validUntil === false) {
@@ -66,14 +72,14 @@ if ($tableExists && $_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $description = $description === '' ? null : mb_substr($description, 0, 255);
             if ($editId) {
-                $stmt = $conn->prepare("UPDATE coupons SET description = ?, kind = ?, discount_type = ?, discount_value = ?, min_subtotal = ?,
+                $stmt = $conn->prepare("UPDATE coupons SET description = ?, kind = ?, discount_type = ?, discount_value = ?, max_discount = ?, min_subtotal = ?,
                                                max_uses = ?, valid_from = ?, valid_until = ?, is_active = ?
                                         WHERE id = ?");
-                $stmt->bind_param("sssddissii", $description, $kind, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive, $editId);
+                $stmt->bind_param("sssdddissii", $description, $kind, $type, $value, $maxDiscount, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive, $editId);
             } else {
-                $stmt = $conn->prepare("INSERT INTO coupons (code, description, kind, discount_type, discount_value, min_subtotal, max_uses, valid_from, valid_until, is_active)
-                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("ssssddissi", $code, $description, $kind, $type, $value, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive);
+                $stmt = $conn->prepare("INSERT INTO coupons (code, description, kind, discount_type, discount_value, max_discount, min_subtotal, max_uses, valid_from, valid_until, is_active)
+                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("ssssdddissi", $code, $description, $kind, $type, $value, $maxDiscount, $minSubtotal, $maxUses, $validFrom, $validUntil, $isActive);
             }
             // Works whether mysqli throws (PHP 8.1+ default) or just returns false.
             try {
@@ -234,6 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST
             }
             $keep['discount_value'] = rtrim(rtrim($c['discount_value'], '0'), '.');
             $keep['min_subtotal']   = rtrim(rtrim($c['min_subtotal'], '0'), '.');
+            $keep['max_discount']   = rtrim(rtrim((string)$c['max_discount'], '0'), '.');
         }
     }
 }
@@ -287,6 +294,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST
         <h5 class="mb-1"><i class="fas fa-gift"></i> Give <?php echo htmlspecialchars($giveCoupon['code']); ?>
             <span class="badge bg-dark ms-1"><?php echo htmlspecialchars(voucherLabel($giveCoupon)); ?></span></h5>
         <p class="text-muted small mb-3">It lands in each customer's My Vouchers and they get an email. Customers who already have it are skipped.</p>
+        <?php if (voucherNeedsCap($giveCoupon)): ?>
+        <div class="alert alert-warning small"><i class="fas fa-triangle-exclamation"></i> This voucher has no maximum discount, so a big order takes off the full percent. <a href="coupons.php?edit=<?php echo (int)$giveCoupon['id']; ?>#couponForm">Set one first</a>.</div>
+        <?php endif; ?>
         <form method="POST" action="coupons.php"><?php echo csrfTokenField(); ?>
             <input type="hidden" name="action" value="give">
             <input type="hidden" name="id" value="<?php echo (int)$giveCoupon['id']; ?>">
@@ -393,12 +403,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST
                     <input type="number" class="form-control" id="cpValue" name="discount_value" required min="0.01" step="0.01"
                            value="<?php echo htmlspecialchars($keep['discount_value'] ?? ''); ?>">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2" id="cpCapWrap">
+                    <label class="form-label small fw-bold" for="cpCap">Max discount (₱) *</label>
+                    <input type="number" class="form-control" id="cpCap" name="max_discount" required min="1" max="1000000" step="0.01"
+                           placeholder="e.g. 500" aria-describedby="cpCapHint"
+                           value="<?php echo htmlspecialchars($keep['max_discount'] ?? ''); ?>">
+                    <div id="cpCapHint" class="form-text">The most this voucher can take off.</div>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label small fw-bold" for="cpMin">Minimum subtotal (₱)</label>
                     <input type="number" class="form-control" id="cpMin" name="min_subtotal" min="0" step="0.01"
                            value="<?php echo htmlspecialchars($keep['min_subtotal'] ?? '0'); ?>">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label small fw-bold" for="cpMax">Max uses</label>
                     <input type="number" class="form-control" id="cpMax" name="max_uses" min="1" step="1" placeholder="Unlimited"
                            value="<?php echo htmlspecialchars($keep['max_uses'] ?? ''); ?>">
@@ -431,6 +448,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST
             </div>
         </form>
     </div>
+    <script>
+    // The maximum discount only applies to percent discount vouchers.
+    (function () {
+        const kind = document.getElementById('cpKind');
+        const type = document.getElementById('cpType');
+        const wrap = document.getElementById('cpCapWrap');
+        const cap  = document.getElementById('cpCap');
+        const sync = () => {
+            const on = kind.value === 'discount' && type.value === 'percent';
+            wrap.style.display = on ? '' : 'none';
+            cap.disabled = !on;
+        };
+        kind.addEventListener('change', sync);
+        type.addEventListener('change', sync);
+        sync();
+    })();
+    </script>
 
     <div class="admin-card">
         <h5 class="mb-3"><i class="fas fa-list"></i> All coupons</h5>
@@ -461,7 +495,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($errorMsg) && in_array($_POST
                                 <br><span class="text-muted small"><?php echo htmlspecialchars($c['description']); ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo htmlspecialchars(voucherLabel($c)); ?></td>
+                            <td>
+                                <?php echo htmlspecialchars(voucherLabel($c)); ?>
+                                <?php if (voucherNeedsCap($c)): ?><br><span class="badge bg-warning text-dark">No cap</span><?php endif; ?>
+                            </td>
                             <td><?php echo (float)$c['min_subtotal'] > 0 ? '₱' . number_format((float)$c['min_subtotal'], 2) : '—'; ?></td>
                             <td><?php echo (int)($heldBy[(int)$c['id']]['held'] ?? 0); ?></td>
                             <td><?php echo (int)$c['times_used']; ?> / <?php echo $c['max_uses'] === null ? '∞' : (int)$c['max_uses']; ?></td>

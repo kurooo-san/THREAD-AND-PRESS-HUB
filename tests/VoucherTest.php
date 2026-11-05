@@ -93,8 +93,52 @@ final class VoucherTest extends TestCase
         $this->assertSame(2, voucherBestPick($wallet, 'discount', 1000.0, 0.0));
     }
 
+    public function testPercentVoucherStopsAtItsMaximum(): void
+    {
+        $v = $this->voucher(['discount_value' => 40.0, 'max_discount' => 500.0]);
+        $this->assertSame(500.0, couponCheck($v, 10000.0)['discount']);   // 40% would be ₱4,000
+        $this->assertSame(500.0, couponCheck($v, 1250.0)['discount']);    // exactly at the cap
+        $this->assertSame(400.0, couponCheck($v, 1000.0)['discount']);    // below the cap
+    }
+
+    public function testVoucherWithNoMaximumStillWorks(): void
+    {
+        foreach ([null, 0.0, '0.00'] as $none) {
+            $this->assertSame(4000.0, couponCheck($this->voucher(['discount_value' => 40.0, 'max_discount' => $none]), 10000.0)['discount']);
+        }
+        // Rows read before the column exists have no such key at all.
+        $this->assertSame(1000.0, couponCheck($this->voucher(), 10000.0)['discount']);
+    }
+
+    public function testMaximumNeverTouchesShipping(): void
+    {
+        $v = $this->voucher(['kind' => 'shipping', 'discount_value' => 100.0, 'max_discount' => 10.0]);
+        $this->assertSame(120.0, couponCheck($v, 500.0, 120.0)['discount']);
+    }
+
+    public function testBestPickUsesTheCappedSaving(): void
+    {
+        $wallet = [
+            $this->voucher(['wallet_id' => 1, 'discount_value' => 40.0, 'max_discount' => 300.0]),               // ₱300, not ₱4,000
+            $this->voucher(['wallet_id' => 2, 'discount_type' => 'fixed', 'discount_value' => 350.0]),            // ₱350
+        ];
+        $this->assertSame(2, voucherBestPick($wallet, 'discount', 10000.0, 0.0));
+    }
+
+    public function testNeedsCapOnlyForPercentDiscountVouchers(): void
+    {
+        $this->assertTrue(voucherNeedsCap($this->voucher()));
+        $this->assertTrue(voucherNeedsCap($this->voucher(['max_discount' => null])));
+        $this->assertFalse(voucherNeedsCap($this->voucher(['max_discount' => 500.0])));
+        $this->assertFalse(voucherNeedsCap($this->voucher(['discount_type' => 'fixed'])));
+        $this->assertFalse(voucherNeedsCap($this->voucher(['kind' => 'shipping'])));
+    }
+
     public function testLabels(): void
     {
+        $this->assertSame('40% off, up to ₱500', voucherLabel($this->voucher(['discount_value' => 40.0, 'max_discount' => '500.00'])));
+        $this->assertSame('10% off, up to ₱1,250.5', voucherLabel($this->voucher(['max_discount' => 1250.5])));
+        $this->assertSame('₱50 off', voucherLabel($this->voucher(['discount_type' => 'fixed', 'discount_value' => 50.0, 'max_discount' => 10.0])));
         $this->assertSame('10% off', voucherLabel($this->voucher()));
         $this->assertSame('₱50 off', voucherLabel($this->voucher(['discount_type' => 'fixed', 'discount_value' => 50.0])));
         $this->assertSame('Free shipping', voucherLabel($this->voucher(['kind' => 'shipping', 'discount_value' => 100.0])));

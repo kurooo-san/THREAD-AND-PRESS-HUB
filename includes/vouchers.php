@@ -37,6 +37,12 @@ function couponCheck(array $coupon, float $subtotal, float $deliveryFee = 0.0, ?
         ? round($base * $value / 100, 2)
         : min($value, $base);
 
+    // "40% off, up to ₱500": a big order must not make a percent voucher limitless.
+    $cap = (float)($coupon['max_discount'] ?? 0);
+    if (!$isShipping && $cap > 0) {
+        $discount = min($discount, $cap);
+    }
+
     return ['ok' => true, 'message' => 'Voucher applied.', 'discount' => round($discount, 2), 'short' => 0.0];
 }
 
@@ -90,6 +96,9 @@ function vouchersReady(): bool {
 
         if ($conn->query("SHOW COLUMNS FROM coupons LIKE 'kind'")->num_rows === 0) {
             $conn->query("ALTER TABLE coupons ADD COLUMN `kind` ENUM('discount','shipping') NOT NULL DEFAULT 'discount' AFTER `description`");
+        }
+        if ($conn->query("SHOW COLUMNS FROM coupons LIKE 'max_discount'")->num_rows === 0) {
+            $conn->query("ALTER TABLE coupons ADD COLUMN `max_discount` DECIMAL(10,2) DEFAULT NULL AFTER `discount_value`");
         }
         if ($conn->query("SHOW COLUMNS FROM orders LIKE 'shipping_coupon_code'")->num_rows === 0) {
             $conn->query("ALTER TABLE orders
@@ -247,7 +256,16 @@ function voucherGive(int $couponId, ?array $userIds, string $note, int $adminId)
     return $given;
 }
 
-/** "10% off", "₱50 off", "Free shipping", "50% off shipping" — for cards and emails. */
+/**
+ * True for a percent discount voucher with no peso limit. Fixed vouchers are
+ * their own limit, and a shipping voucher can never exceed the delivery fee.
+ */
+function voucherNeedsCap(array $c): bool {
+    return ($c['kind'] ?? 'discount') === 'discount' && $c['discount_type'] === 'percent'
+        && (float)($c['max_discount'] ?? 0) <= 0;
+}
+
+/** "10% off", "40% off, up to ₱500", "₱50 off", "Free shipping", "50% off shipping" — for cards and emails. */
 function voucherLabel(array $c): string {
     $v = (float)$c['discount_value'];
     $amount = $c['discount_type'] === 'percent'
@@ -256,5 +274,8 @@ function voucherLabel(array $c): string {
     if (($c['kind'] ?? 'discount') === 'shipping') {
         return ($c['discount_type'] === 'percent' && $v >= 100) ? 'Free shipping' : $amount . ' off shipping';
     }
-    return $amount . ' off';
+    $cap = (float)($c['max_discount'] ?? 0);
+    return $amount . ' off' . ($c['discount_type'] === 'percent' && $cap > 0
+        ? ', up to ₱' . rtrim(rtrim(number_format($cap, 2), '0'), '.')
+        : '');
 }

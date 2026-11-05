@@ -136,6 +136,7 @@ $gradients = [
                     <li>Each order can use one discount voucher (off the items) and one shipping voucher (off the delivery fee).</li>
                     <li>At checkout we automatically pick the voucher that saves you the most; you can switch or remove it.</li>
                     <li>PWD/Senior accounts get both the 20% discount and the voucher.</li>
+                    <li>A voucher marked "up to" never takes off more than that amount, however big the order is.</li>
                     <li>Some vouchers need a minimum order amount, expire, or are limited in number of uses. Each voucher can be used once.</li>
                     <li><?php echo brandHtml('name'); ?> reserves the right to modify or cancel promotions at any time.</li>
                 </ul>

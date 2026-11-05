@@ -927,6 +927,7 @@ const VOUCHERS = <?php echo json_encode(array_column(array_map(fn($v) => [
     'code'           => $v['code'],
     'discount_type'  => $v['discount_type'],
     'discount_value' => (float) $v['discount_value'],
+    'max_discount'   => (float) ($v['max_discount'] ?? 0),
     'min_subtotal'   => (float) $v['min_subtotal'],
     'ends'           => $v['valid_until'] ? strtotime($v['valid_until']) : null,
 ], $my_vouchers), null, 'id'), JSON_FORCE_OBJECT); ?>;
@@ -938,9 +939,10 @@ function voucherCheck(v, subtotal, fee) {
     if (subtotal < v.min_subtotal) return { ok: false, save: 0, short: v.min_subtotal - subtotal };
     if (v.kind === 'shipping' && fee <= 0) return { ok: false, save: 0, short: 0, reason: 'For delivery orders only' };
     const base = v.kind === 'shipping' ? fee : subtotal;
-    const save = v.discount_type === 'percent'
+    let save = v.discount_type === 'percent'
         ? Math.round(base * v.discount_value) / 100
         : Math.min(v.discount_value, base);
+    if (v.kind !== 'shipping' && v.max_discount > 0) save = Math.min(save, v.max_discount);
     return { ok: save > 0, save: save, short: 0 };
 }
 
