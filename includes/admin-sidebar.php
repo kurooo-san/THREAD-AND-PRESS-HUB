@@ -65,6 +65,7 @@ function adminIcon(string $name): string
         'reports'   => '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
         'reviews'   => '<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.2 2 9.3l6.9-1z"/>',
         'audit'     =>'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>',
+        'exhibit'   => '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
         'prices'    => '<path d="M20.6 13.4 12 22l-9-9V4a1 1 0 0 1 1-1h9z"/><circle cx="8" cy="8" r="1.5"/>',
         'shipping'  => '<path d="M1 4h14v12H1z"/><path d="M15 9h4l3 3v4h-7"/><circle cx="5.5" cy="18" r="2"/><circle cx="18.5" cy="18" r="2"/>',
         'brand'     => '<path d="M12 2a10 10 0 1 0 0 20 2 2 0 0 0 1.4-3.4 2 2 0 0 1 1.4-3.4H17a5 5 0 0 0 5-5C22 5.8 17.5 2 12 2z"/><circle cx="7.5" cy="10.5" r="1.2"/><circle cx="12" cy="7" r="1.2"/><circle cx="16.5" cy="10.5" r="1.2"/>',
@@ -137,6 +138,7 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
             adminNavLink('custom-prices.php', 'prices', 'Custom Design Prices', 'custom-prices.php', $currentPage);
             adminNavLink('shipping-rates.php', 'shipping', 'Shipping Rates', 'shipping-rates.php', $currentPage);
             adminNavLink('branding.php', 'brand', 'Branding', 'branding.php', $currentPage);
+            adminNavLink('exhibit-mode.php', 'exhibit', 'Exhibit Mode', 'exhibit-mode.php', $currentPage);
             ?>
 
             <div class="ad-side-label">Communication</div>

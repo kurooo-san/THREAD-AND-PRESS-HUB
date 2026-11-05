@@ -9,7 +9,7 @@ include 'includes/header/header.php';
         <div class="col-lg-9">
             <div style="background:#fff; padding:2.5rem; border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,0.06);">
                 <h1 style="font-weight:800; margin-bottom:0.25rem;">Privacy Policy</h1>
-                <p class="text-muted" style="font-size:0.9rem;">Last updated: <?php echo date('F j, Y'); ?></p>
+                <p class="text-muted" style="font-size:0.9rem;">Last updated: November 5, 2026</p>
 
                 <p><?php echo brandHtml('name'); ?> ("we", "us", "our") respects your privacy. This Privacy Policy
                 explains how we collect, use, and protect your personal information when you use our website
@@ -20,6 +20,7 @@ include 'includes/header/header.php';
                     <li><strong>Account information:</strong> full name, email, phone, delivery address, and account type (regular, PWD, or senior).</li>
                     <li><strong>Order &amp; payment information:</strong> products ordered, billing details, and payment method (we do not store full card numbers).</li>
                     <li><strong>Custom design uploads:</strong> images and design specifications you submit.</li>
+                    <li><strong>Virtual Try-On photos:</strong> the camera frame or photo you choose to use. It is used only to create your try-on or style suggestions, and we keep it only if you tap "Save look". On a shared exhibit device, nothing is saved.</li>
                     <li><strong>Technical data:</strong> IP address, browser type, device, pages visited, and login attempts (for security).</li>
                     <li><strong>Cookies:</strong> session cookies, "remember me" tokens, and preference cookies. See section 5.</li>
                 </ul>
@@ -44,6 +45,7 @@ include 'includes/header/header.php';
                     <li>Payment processors (e.g., GCash, Maya) to complete transactions.</li>
                     <li>Delivery partners to fulfill your orders.</li>
                     <li>Email service providers to send transactional messages.</li>
+                    <li>Google (Gemini AI), which receives your Virtual Try-On photo to create the result, and handles it under its own terms.</li>
                     <li>Government authorities, when required by law.</li>
                 </ul>
 

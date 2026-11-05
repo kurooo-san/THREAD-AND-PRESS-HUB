@@ -43,6 +43,16 @@ $userDir = SAVE_DIR_BASE . $userId . '/';
 // Public URL prefix (relative to web root) for serving saved looks back.
 $publicPrefix = 'uploads/tryon/' . $userId . '/';
 
+// The booth's demo account is shared, so it keeps no looks: one visitor must
+// never see another's photo. Any looks it already had stay hidden too.
+if (isExhibitUser()) {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        echo json_encode(['success' => true, 'looks' => []]);
+        exit();
+    }
+    save_fail('Saved looks are turned off on this booth.', 403);
+}
+
 // --- GET: list saved looks ----------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $looks = [];

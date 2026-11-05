@@ -62,6 +62,11 @@ if (!is_array($input)) {
     suggest_fail('Malformed request.');
 }
 
+// The page asks first; no photo goes to the AI without that answer.
+if (empty($input['consent'])) {
+    suggest_fail('Please agree to the photo notice first. Refresh the page if you do not see it.');
+}
+
 $personImage = (string) ($input['personImage'] ?? '');
 
 // Optional gender filter (matches shop.php values). Empty = all genders.

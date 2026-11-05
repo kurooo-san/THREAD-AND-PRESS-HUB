@@ -286,6 +286,10 @@ function aiQuotaAllows(mysqli $db, string $feature, int $maxPerHour): bool
     if ($userId <= 0) {
         return false;
     }
+    // The booth's demo account is shared by many visitors.
+    if (isExhibitUser()) {
+        $maxPerHour = max($maxPerHour, exhibitSettings()['limit']);
+    }
 
     // Created on first use, like password_resets, so no manual migration step.
     $db->query("CREATE TABLE IF NOT EXISTS `ai_usage` (
@@ -458,6 +462,7 @@ function couponsTableExists() {
 
 // Customers pick from vouchers the admin gave them (no typed codes).
 require_once __DIR__ . '/vouchers.php';
+require_once __DIR__ . '/exhibit.php';
 
 // Claims one use. Returns false when the limit was already reached, so two
 // simultaneous checkouts cannot both take the last use.

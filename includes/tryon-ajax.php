@@ -73,6 +73,11 @@ if (!is_array($input)) {
     tryon_fail('Malformed request.');
 }
 
+// The page asks first; no photo goes to the AI without that answer.
+if (empty($input['consent'])) {
+    tryon_fail('Please agree to the photo notice first. Refresh the page if you do not see it.');
+}
+
 $productId   = filter_var($input['productId'] ?? null, FILTER_VALIDATE_INT);
 $personImage = (string) ($input['personImage'] ?? '');
 $designImage = (string) ($input['designImage'] ?? '');

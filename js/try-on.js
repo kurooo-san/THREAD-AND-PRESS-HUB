@@ -160,7 +160,42 @@
     let currentGender = 'all';    // catalog filter: all | mens | womens | kids
     let cameraReady = false;      // true once the camera (or an upload) is usable
     let cameraOn = false;         // whether the live camera is currently running
-    let sessionEnded = false;     // END was pressed: late AI answers are ignored
+
+    // Exhibit mode: a booth's demo account shared by visitors. See includes/exhibit.php.
+    const isExhibit = !!cfg.exhibit;
+    const ENDED_KEY = 'tp-tryon-ended';
+
+    // -------------------------------------------------------------------
+    // Photo notice: asked before the camera or an upload is used. A customer
+    // answers once on their device; each booth visitor answers for themselves.
+    // -------------------------------------------------------------------
+    const consentOverlay = el('tryonConsent');
+    let consented = false;
+    let afterConsent = null;
+    if (!isExhibit) {
+        try { consented = localStorage.getItem(cfg.consentKey) === 'yes'; } catch (e) { /* ask again */ }
+    }
+
+    function withConsent(action) {
+        return (...args) => {
+            if (consented) return action(...args);
+            afterConsent = () => action(...args);
+            showOverlay(consentOverlay);
+            el('consentAgree').focus();
+        };
+    }
+
+    function answerConsent(agreed) {
+        hideOverlay(consentOverlay);
+        const then = afterConsent;
+        afterConsent = null;
+        if (!agreed) return;
+        consented = true;
+        if (!isExhibit) {
+            try { localStorage.setItem(cfg.consentKey, 'yes'); } catch (e) { /* ask again next time */ }
+        }
+        if (then) then();
+    }
 
     // The stage tag (LIVE / PHOTO / TRY-ON). Setting textContent would delete
     // its coloured dot, so the dot is rebuilt with the label every time.
@@ -435,7 +470,6 @@
         // Uploaded photo: no need to pose, capture immediately.
         if (!reuse && !uploadedImage) {
             await runCountdown(COUNTDOWN_SECONDS);
-            if (sessionEnded) { busy = false; return; }
         }
 
         const frame = reuse || captureFrame();
@@ -458,9 +492,9 @@
                     showFailure('Could not load your design. Go back to the Design Studio and try again.');
                     return;
                 }
-                payload = { personImage: frame, designImage: designImage, designType: designItem.type };
+                payload = { personImage: frame, designImage: designImage, designType: designItem.type, consent: consented };
             } else {
-                payload = { personImage: frame, productId: products[currentIndex].id };
+                payload = { personImage: frame, productId: products[currentIndex].id, consent: consented };
             }
             const res = await fetch(endpoints.tryOn, {
                 method: 'POST',
@@ -468,7 +502,6 @@
                 body: JSON.stringify(payload),
             });
             const data = await res.json().catch(() => ({ success: false, error: 'Unexpected server response.' }));
-            if (sessionEnded) return;   // END was pressed while the AI was working
 
             if (!data.success) {
                 showFailure(data.error || 'Try-on failed. Please try again.');
@@ -483,7 +516,7 @@
             setStageTag('TRY-ON', 'var(--tryon-accent)');
             setResultControls();
         } catch (err) {
-            if (!sessionEnded) showFailure('Network error. Check your connection and try again.');
+            showFailure('Network error. Check your connection and try again.');
         } finally {
             stopSteps();
             hideOverlay(loadingOverlay);
@@ -530,8 +563,9 @@
         btnSwitchCam.style.display = 'none';
         btnUseCamera.style.display = 'none';
         btnLive.style.display = 'inline-flex';
-        btnSave.style.display = 'inline-flex';
-        btnDownload.style.display = 'inline-flex';
+        // A booth keeps nothing: no saved look, and no photo left in its Downloads folder.
+        btnSave.style.display = isExhibit ? 'none' : 'inline-flex';
+        btnDownload.style.display = isExhibit ? 'none' : 'inline-flex';
         btnCompare.style.display = 'inline-flex';
     }
 
@@ -651,10 +685,10 @@
                 body: JSON.stringify({
                     personImage: frame,
                     gender: currentGender === 'all' ? '' : currentGender,
+                    consent: consented,
                 }),
             });
             const data = await res.json().catch(() => ({ success: false, error: 'Unexpected server response.' }));
-            if (sessionEnded) return;
             if (!data.success) {
                 showToast(data.error || 'Could not get suggestions.', true);
                 return;
@@ -1113,28 +1147,52 @@
     }
 
     // -------------------------------------------------------------------
-    // END session
+    // END / NEW VISITOR
     // -------------------------------------------------------------------
+    // Reloads the page: the surest way to drop every photo held in memory, stop
+    // the camera, and make sure a late AI answer cannot reach the next person.
     function endSession() {
-        sessionEnded = true;
-        stopSteps();
-        hideOverlay(loadingOverlay);
         stopCamera();
-        showPermissionError('Session ended. Reload the page to start again.');
-        btnTryOn.style.display = 'none';
-        btnLive.style.display = 'none';
-        btnSave.style.display = 'none';
-        btnDownload.style.display = 'none';
-        btnStylist.style.display = 'none';
-        btnUpload.style.display = 'none';
-        btnCamera.style.display = 'none';
-        btnSwitchCam.style.display = 'none';
-        btnUseCamera.style.display = 'none';
-        btnCompare.style.display = 'none';
-        closeCompare();
-        hideOverlay(suggestOverlay);
-        hideOverlay(failOverlay);
-        closePicker();
+        try { sessionStorage.setItem(ENDED_KEY, '1'); } catch (e) { /* only the message is lost */ }
+        if (isExhibit) {
+            clearBoothTraces();
+            window.location.replace('try-on.php');   // not the last visitor's design link
+        } else {
+            window.location.reload();
+        }
+    }
+
+    // What one visitor leaves in the booth's browser. Includes their height and
+    // weight, their cart, and their unsaved Design Studio work.
+    function clearBoothTraces() {
+        try {
+            ['cart', 'cartSelection', 'subtotal', 'buyNow', 'buyNowSubtotal', SIZE_PROFILE_KEY]
+                .forEach((k) => localStorage.removeItem(k));
+            Object.keys(localStorage)
+                .filter((k) => k.indexOf('tp-design-draft-') === 0)
+                .forEach((k) => localStorage.removeItem(k));
+            sessionStorage.removeItem('tp-tryon-design');
+        } catch (e) { /* storage blocked: nothing was kept there either */ }
+    }
+
+    // -------------------------------------------------------------------
+    // Sample looks (booth only): already in the page and loaded with it, so they
+    // still show if the internet drops after the page has opened.
+    // -------------------------------------------------------------------
+    function setupSamples() {
+        const panel = el('tryonSamples');
+        if (!panel) return;
+        const open = () => {
+            hideOverlay(failOverlay);
+            panel.hidden = false;
+            panel.scrollTop = 0;
+            el('samplesClose').focus();
+        };
+        const close = () => { panel.hidden = true; };
+        el('btnSamples').addEventListener('click', open);
+        el('failSamples').addEventListener('click', open);
+        el('samplesClose').addEventListener('click', close);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) close(); });
     }
 
     // -------------------------------------------------------------------
@@ -1177,6 +1235,17 @@
         syncCameraBtn();
         updateActionButtons();
 
+        let justEnded = false;
+        try {
+            justEnded = sessionStorage.getItem(ENDED_KEY) === '1';
+            sessionStorage.removeItem(ENDED_KEY);
+        } catch (e) { /* no message */ }
+        if (justEnded && !isExhibit) showToast('Session ended. Your photo was cleared from this screen.');
+        // Every booth visitor sees the notice first.
+        if (isExhibit) withConsent(() => {})();
+
+        el('consentAgree').addEventListener('click', () => answerConsent(true));
+        el('consentNo').addEventListener('click', () => answerConsent(false));
         btnTryOn.addEventListener('click', doTryOn);
         btnLive.addEventListener('click', backToLive);
         btnSave.addEventListener('click', saveLook);
@@ -1209,15 +1278,16 @@
         failRetry.addEventListener('click', () => doTryOn(lastBefore || undefined));
         failLooks.addEventListener('click', () => { hideOverlay(failOverlay); openDrawer(); });
         failClose.addEventListener('click', () => hideOverlay(failOverlay));
+        setupSamples();
         btnStylist.addEventListener('click', runStylist);
         suggestClose.addEventListener('click', () => hideOverlay(suggestOverlay));
 
         // Upload photo / camera controls
-        btnUpload.addEventListener('click', () => uploadInput.click());
+        btnUpload.addEventListener('click', withConsent(() => uploadInput.click()));
         uploadInput.addEventListener('change', (e) => handleUpload(e.target.files && e.target.files[0]));
         btnUseCamera.addEventListener('click', useCamera);
-        btnSwitchCam.addEventListener('click', switchCamera);
-        btnCamera.addEventListener('click', toggleCamera);
+        btnSwitchCam.addEventListener('click', withConsent(switchCamera));
+        btnCamera.addEventListener('click', withConsent(toggleCamera));
 
         // Compare slider
         btnCompare.addEventListener('click', toggleCompare);

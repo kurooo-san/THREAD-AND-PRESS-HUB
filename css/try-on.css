@@ -258,6 +258,23 @@
 .tryon-overlay p { margin: 0; color: var(--tryon-muted); max-width: 320px; }
 .tryon-overlay .icon-lg { font-size: 2.2rem; color: var(--tryon-accent); }
 
+/* Photo notice: over the whole page (the cookie bar too), so it is read in full on a phone */
+.tryon-consent { position: fixed; z-index: 10000; background: rgba(8, 8, 10, 0.94); overflow-y: auto; justify-content: safe center; }
+.tryon-consent .suggest-title { color: #fff; }
+.tryon-consent p { max-width: 460px; font-size: 0.95rem; color: #f3f4f6; }
+.tryon-consent a { color: #d8b878; text-decoration: underline; }
+
+/* Sample looks: the booth's backup when the AI cannot run */
+.tryon-samples { position: fixed; inset: 0; z-index: 10000; overflow-y: auto; background: #0b0b0d; color: #f3f4f6; padding: 1.25rem; }
+.tryon-samples[hidden] { display: none; }
+.samples-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; max-width: 900px; margin: 0 auto 0.5rem; }
+.samples-head h3 { margin: 0; color: #fff; font-size: 1.3rem; font-weight: 700; }
+.tryon-samples > p { max-width: 900px; margin: 0 auto 1rem; color: #d1d5db; font-size: 0.9rem; }
+.samples-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; max-width: 900px; margin: 0 auto 1.25rem; }
+.samples-pair figure { margin: 0; }
+.samples-pair img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: #1c1c20; }
+.samples-pair figcaption { margin-top: 0.35rem; text-align: center; font-size: 0.85rem; font-weight: 600; color: #d8b878; }
+
 /* AI Stylist suggestions overlay */
 .tryon-suggest { gap: 1rem; padding: 1.5rem; z-index: 10; }
 .suggest-title {

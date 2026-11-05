@@ -54,6 +54,8 @@ if ($stmt = $conn->prepare($sql)) {
 }
 
 $csrfToken = generateCsrfToken();
+$isExhibit = isExhibitUser();   // the booth's shared demo account: see includes/exhibit.php
+$samples   = $isExhibit ? exhibitSamples() : [];
 ?>
 
 <?php include 'includes/header/header.php'; ?>
@@ -77,11 +79,16 @@ $csrfToken = generateCsrfToken();
                 <span>LiveLook Try-On</span>
             </div>
             <div class="tryon-topbar-actions">
-                <button id="btnCart" class="tryon-icon-btn" type="button" aria-label="Saved looks">
+                <?php if ($samples): ?>
+                <button id="btnSamples" class="tryon-btn tryon-btn-ghost" type="button">
+                    <i class="fas fa-images" aria-hidden="true"></i> Samples
+                </button>
+                <?php endif; ?>
+                <button id="btnCart" class="tryon-icon-btn" type="button" aria-label="Saved looks"<?php echo $isExhibit ? ' style="display:none;"' : ''; ?>>
                     <i class="fas fa-bookmark" aria-hidden="true"></i>
                     <span id="cartBadge" class="badge-count" style="display:none;">0</span>
                 </button>
-                <button id="btnEnd" class="tryon-end-btn" type="button">END</button>
+                <button id="btnEnd" class="tryon-end-btn" type="button"><?php echo $isExhibit ? 'NEW VISITOR' : 'END'; ?></button>
             </div>
         </div>
 
@@ -122,6 +129,11 @@ $csrfToken = generateCsrfToken();
                         <button id="failLooks" class="tryon-btn tryon-btn-ghost" type="button">
                             <i class="fas fa-bookmark" aria-hidden="true"></i> View saved looks
                         </button>
+                        <?php if ($samples): ?>
+                        <button id="failSamples" class="tryon-btn tryon-btn-ghost" type="button">
+                            <i class="fas fa-images" aria-hidden="true"></i> See sample looks
+                        </button>
+                        <?php endif; ?>
                         <button id="failClose" class="tryon-btn tryon-btn-ghost" type="button">Close</button>
                     </div>
                 </div>
@@ -266,7 +278,9 @@ $csrfToken = generateCsrfToken();
         </div>
         <p class="tryon-privacy">
             <i class="fas fa-lock" aria-hidden="true"></i>
-            Your photo is sent to our AI only to create the try-on. It is not stored unless you tap “Save look”.
+            <?php echo $isExhibit
+                ? 'Your photo is sent to Google’s Gemini AI only to create the try-on. It is not saved on this booth.'
+                : 'Your photo is sent to Google’s Gemini AI only to create the try-on. We do not keep it unless you tap “Save look”.'; ?>
         </p>
     </div>
 </div>
@@ -307,10 +321,54 @@ $csrfToken = generateCsrfToken();
 
 <div class="tryon-toast" id="tryonToast" role="status" aria-live="polite"></div>
 
+<?php if ($samples): ?>
+<!-- Booth backup: examples to show when the AI cannot run -->
+<div class="tryon-samples" id="tryonSamples" role="dialog" aria-modal="true" aria-labelledby="samplesTitle" hidden>
+    <div class="samples-head">
+        <h3 id="samplesTitle">Sample looks</h3>
+        <button id="samplesClose" class="tryon-btn tryon-btn-ghost" type="button">
+            <i class="fas fa-xmark" aria-hidden="true"></i> Close
+        </button>
+    </div>
+    <p>Examples made with our Virtual Try-On, shown with permission.</p>
+    <?php foreach ($samples as $i => $s): ?>
+    <div class="samples-pair">
+        <figure>
+            <img src="<?php echo htmlspecialchars($s['before'], ENT_QUOTES); ?>" alt="Sample <?php echo $i + 1; ?> before the try-on">
+            <figcaption>Before</figcaption>
+        </figure>
+        <figure>
+            <img src="<?php echo htmlspecialchars($s['after'], ENT_QUOTES); ?>" alt="Sample <?php echo $i + 1; ?> after the try-on">
+            <figcaption>After</figcaption>
+        </figure>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<!-- Asked before the camera or an upload is used; see withConsent() in js/try-on.js -->
+<div class="tryon-overlay tryon-consent" id="tryonConsent" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+    <h4 class="suggest-title" id="consentTitle"><i class="fas fa-shield-halved" aria-hidden="true"></i> Before we use your photo</h4>
+    <p>To make your try-on, your photo is sent to Google's Gemini AI, which handles it under its own terms.</p>
+    <p><?php echo $isExhibit
+        ? 'We do not save it on this booth, and it is cleared from the screen when you tap New Visitor.'
+        : 'We do not keep it unless you tap “Save look”.'; ?></p>
+    <p>Under 18? Please ask a parent or guardian first.
+        <a href="privacy-policy.php" target="_blank" rel="noopener">Privacy Policy</a></p>
+    <div class="fail-actions">
+        <button id="consentAgree" class="tryon-btn tryon-btn-primary" type="button">
+            <i class="fas fa-check" aria-hidden="true"></i> I agree
+        </button>
+        <button id="consentNo" class="tryon-btn tryon-btn-ghost" type="button">Not now</button>
+    </div>
+</div>
+
 <script>
     window.TRYON_CONFIG = {
         products: <?php echo json_encode($tryOnProducts, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
         csrfToken: <?php echo json_encode($csrfToken); ?>,
+        exhibit: <?php echo $isExhibit ? 'true' : 'false'; ?>,
+        consentKey: <?php echo json_encode('tp-tryon-consent-' . (int) $_SESSION['user_id']); ?>,
         endpoints: {
             tryOn: 'includes/tryon-ajax.php',
             save: 'includes/tryon-save.php',
