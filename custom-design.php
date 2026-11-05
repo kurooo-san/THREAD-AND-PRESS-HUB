@@ -210,10 +210,13 @@ if ($tableCheck->num_rows === 0) {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;   /* a second row on a narrow canvas, instead of squeezing the buttons */
+    gap: 0.4rem;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border-light, #eee);
     background: #fafafa;
 }
+.canvas-toolbar .canvas-action-btn { white-space: nowrap; }
 
 .canvas-toolbar-left,
 .canvas-toolbar-right {
@@ -640,6 +643,11 @@ html.dark-mode .btn-tryon-design:hover { background: #52b788; color: #0f1a14; }
 .draggable-element.selected .delete-handle {
     display: block;
 }
+
+/* Alignment lines shown while dragging; see snapAxis(). */
+.snap-guide { position: absolute; z-index: 6; background: #e6007e; pointer-events: none; }
+.snap-guide-v { top: 0; bottom: 0; width: 1.5px; margin-left: -0.75px; }
+.snap-guide-h { left: 0; right: 0; height: 1.5px; margin-top: -0.75px; }
 
 /* ===== 3D Preview ===== */
 .preview-3d-container {
@@ -1682,6 +1690,8 @@ html.dark-mode .sleeve-tabs button.active { background: rgba(200,169,110,0.18); 
                         <button class="canvas-action-btn active" data-view="2d" onclick="setMainView('2d')" title="Design on the flat mockup">2D</button>
                         <button class="canvas-action-btn" data-view="3d" onclick="setMainView('3d')" title="See and turn your design in 3D"><i class="fas fa-cube"></i> 3D</button>
                     </span>
+                    <button class="canvas-action-btn" onclick="downloadDesign()" title="Download your design as a picture" aria-label="Download design"><i class="fas fa-download"></i></button>
+                    <button class="canvas-action-btn" onclick="duplicateSelected()" title="Duplicate Selected (Ctrl+D)" aria-label="Duplicate selected"><i class="fas fa-clone"></i></button>
                     <button class="canvas-action-btn" onclick="deleteSelected()" title="Delete Selected"><i class="fas fa-trash"></i></button>
                     <button class="canvas-action-btn danger" onclick="clearCanvas()" title="Clear All"><i class="fas fa-times"></i> Clear</button>
                 </div>
@@ -1708,6 +1718,9 @@ html.dark-mode .sleeve-tabs button.active { background: rgba(200,169,110,0.18); 
                     <canvas id="designCanvas" width="200" height="240"></canvas>
                     <!-- Draggable elements layer -->
                     <div id="elementsLayer" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:5; pointer-events:none;"></div>
+                    <!-- Outside elementsLayer: its children are the design -->
+                    <div class="snap-guide snap-guide-v" id="snapGuideV" hidden></div>
+                    <div class="snap-guide snap-guide-h" id="snapGuideH" hidden></div>
                     <!-- Corporate logo placement guide (shown only for corporate wear) -->
                     <!-- Click inside (a tap, not a stroke) opens the Logo Designer; see stopDrawing() -->
                     <div id="logoZoneGuide" class="logo-zone-guide" style="display:none;">
@@ -3785,6 +3798,51 @@ function sleevePrintCanvas(which) {
 // ===== Drag & Resize =====
 // Pointer events, so it works with a finger too. Screen-pixel moves are divided
 // by the mockup's on-screen scale (fit to phone, zoom) to get mockup pixels.
+
+// What a dragged element can line up with, in screen px from the mockup's corner:
+// the print area and the other elements. Centres come first, so they win a tie.
+const SNAP_TOLERANCE = 5;   // screen px
+
+// An element's visible box in mockup px. getBoundingClientRect includes rotation;
+// the 4 is its border + padding, which never print.
+function snapBox(el, origin, scale) {
+    const r = el.getBoundingClientRect();
+    const l = (r.left - origin.left) / scale + 4, rt = (r.right - origin.left) / scale - 4;
+    const t = (r.top - origin.top) / scale + 4, b = (r.bottom - origin.top) / scale - 4;
+    return { x: [(l + rt) / 2, l, rt], y: [(t + b) / 2, t, b] };
+}
+
+function snapTargets(el, origin, scale) {
+    const a = areaOf(state.apparelType);
+    const xs = [a.x + a.w / 2, a.x, a.x + a.w], ys = [a.y + a.h / 2, a.y, a.y + a.h];
+    state.elements.forEach(other => {
+        if (other === el) return;
+        const b = snapBox(other, origin, scale);
+        xs.push(...b.x);
+        ys.push(...b.y);
+    });
+    return { x: xs, y: ys };
+}
+
+/**
+ * The closest anchor/target pair within `tol`: { delta: how far to move, at: where
+ * the guide goes }, or null. Pure, so it can be checked from the console.
+ */
+function snapAxis(anchors, targets, tol) {
+    let best = null;
+    anchors.forEach(a => targets.forEach(t => {
+        const d = t - a;
+        if (Math.abs(d) <= tol && (!best || Math.abs(d) < Math.abs(best.delta))) best = { delta: d, at: t };
+    }));
+    return best;
+}
+
+function showSnapGuide(id, prop, hit) {
+    const g = document.getElementById(id);
+    g.hidden = !hit;
+    if (hit) g.style[prop] = hit.at + 'px';
+}
+
 function setupDraggable(el) {
     let isDragging = false;
     let isResizing = false;
@@ -3792,6 +3850,7 @@ function setupDraggable(el) {
     let startX, startY, startLeft, startTop, startW, startH, startFont, scale;
     let changed = false;
     let cx, cy, startAngle, startRotation;
+    let snapFrom, snapTo;
     el.style.touchAction = 'none';   // a finger drags the element instead of scrolling
 
     el.addEventListener('pointerdown', function(e) {
@@ -3835,6 +3894,11 @@ function setupDraggable(el) {
             startTop = el.offsetTop;
         }
         scale = mockupScale();
+        if (isDragging) {
+            const origin = document.getElementById('mockupContainer').getBoundingClientRect();
+            snapFrom = snapBox(el, origin, scale);
+            snapTo = snapTargets(el, origin, scale);
+        }
         el.setPointerCapture(e.pointerId);
 
         e.stopPropagation();
@@ -3843,8 +3907,15 @@ function setupDraggable(el) {
     el.addEventListener('pointermove', function(e) {
         if (isDragging || isResizing || isRotating) changed = true;
         if (isDragging) {
-            el.style.left = (startLeft + (e.clientX - startX) / scale) + 'px';
-            el.style.top = (startTop + (e.clientY - startY) / scale) + 'px';
+            const dx = (e.clientX - startX) / scale;
+            const dy = (e.clientY - startY) / scale;
+            // Alt turns snapping off, for placing something just off the line.
+            const hitX = e.altKey ? null : snapAxis(snapFrom.x.map(v => v + dx), snapTo.x, SNAP_TOLERANCE / scale);
+            const hitY = e.altKey ? null : snapAxis(snapFrom.y.map(v => v + dy), snapTo.y, SNAP_TOLERANCE / scale);
+            el.style.left = (startLeft + dx + (hitX ? hitX.delta : 0)) + 'px';
+            el.style.top = (startTop + dy + (hitY ? hitY.delta : 0)) + 'px';
+            showSnapGuide('snapGuideV', 'left', hitX);
+            showSnapGuide('snapGuideH', 'top', hitY);
             updatePreview();
         }
         if (isResizing) {
@@ -3874,6 +3945,8 @@ function setupDraggable(el) {
         isDragging = false;
         isResizing = false;
         isRotating = false;
+        showSnapGuide('snapGuideV', 'left', null);
+        showSnapGuide('snapGuideH', 'top', null);
         if (changed) saveCanvasState();   // one undo step per move / resize / turn
         changed = false;
     };
@@ -3898,6 +3971,30 @@ function deleteSelected() {
         saveCanvasState();
         updatePreview();
     }
+}
+
+function duplicateSelected() {
+    const src = state.selectedElement;
+    if (!src) {
+        showToast('Select an element first, then duplicate it.', 'info');
+        return;
+    }
+    const d = serializeElement(src);
+    // Offset so both show; goes the other way when it would leave the 400x500 mockup.
+    const step = 14;
+    d.left += d.left + src.offsetWidth + step > 400 ? -step : step;
+    d.top += d.top + src.offsetHeight + step > 500 ? -step : step;
+    const el = elementFromData(d);
+    if (!el) {
+        showToast('This element could not be duplicated.', 'error');
+        return;
+    }
+    elementsLayer.appendChild(el);
+    state.elements.push(el);
+    updateElementCount();
+    selectLayer(state.elements.length - 1);
+    saveCanvasState();
+    updatePreview();
 }
 
 // ===== Undo / Redo =====
@@ -3975,6 +4072,7 @@ document.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     if (k === 'z' && !e.shiftKey) { e.preventDefault(); undoAction(); }
     else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redoAction(); }
+    else if (k === 'd' && !e.shiftKey && state.selectedElement) { e.preventDefault(); duplicateSelected(); }
 });
 
 function clearCanvas() {
@@ -4130,6 +4228,54 @@ function renderGarmentToContext(pCtx, ox, oy, w, h, bundle, side, bg, partner) {
         img.onerror = () => resolve();
         img.src = url;
     });
+}
+
+// Saves the design as one picture at twice the preview size: the front, then the
+// back when it has anything on it. Couple Wear shows both partners on each side.
+async function downloadDesign() {
+    if (!hasDesignWork()) {
+        showToast('Add something to your design first.', 'info');
+        return;
+    }
+    saveCurrentSideData();
+    const cur = snapshotBundle();
+    const people = isCouple(state.apparelType)
+        ? ['A', 'B'].map(p => [p, p === state.currentPartner ? cur : (state.partners[p] || {})])
+        : [[state.currentPartner, cur]];
+    const hasBack = people.some(([, b]) => (b.backElements || []).length || b.backInk);
+    const sides = hasBack ? ['front', 'back'] : ['front'];
+
+    const W = 800, H = 1000;
+    const cv = document.createElement('canvas');
+    cv.width = W * people.length * sides.length;
+    cv.height = H;
+    const c = cv.getContext('2d');
+    let x = 0;
+    for (const side of sides) {
+        for (const [partner, bundle] of people) {
+            await renderGarmentToContext(c, x, 0, W, H, bundle, side, undefined, partner);
+            // The shared renderer leaves out the corporate logo.
+            c.save();
+            c.translate(x, 0);
+            c.scale(W / 400, H / 500);
+            drawLogoOn(c, side);
+            c.restore();
+            x += W;
+        }
+    }
+    try {
+        cv.toBlob(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'my-design.png';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        }, 'image/png');
+    } catch (e) {
+        showToast('Could not create the picture. Please try again.', 'error');
+    }
 }
 
 // Backdrop for ON-SCREEN preview canvases only. Follows the site theme so the
@@ -4292,6 +4438,7 @@ function renderLayers() {
             +     '<button type="button" title="Send back" onclick="moveLayer(' + i + ', -1)"><i class="fas fa-chevron-down"></i></button>'
             +     (el.dataset.type === 'image' && !el.dataset.stamp && !el.dataset.label
                      ? '<button type="button" title="Remove white background" onclick="removeBgFromLayer(' + i + ')"><i class="fas fa-wand-magic-sparkles"></i></button>' : '')
+            +     '<button type="button" title="Duplicate" onclick="selectLayer(' + i + '); duplicateSelected()"><i class="fas fa-clone"></i></button>'
             +     '<button type="button" title="Delete" onclick="deleteLayer(' + i + ')"><i class="fas fa-trash"></i></button>'
             +   '</span>'
             + '</div>';
