@@ -111,6 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate cart is not empty
     if ($subtotal <= 0) {
         $error = 'Your cart is empty! Please add items before checking out.';
+    } elseif (!isset($_POST['delivery_method'])) {
+        // Just arrived from the cart or Buy Now: this page's own form always
+        // sends delivery_method, so no order was submitted yet and nothing is wrong.
     } elseif (empty($payment_method) || ($delivery_method === 'delivery' && empty($delivery_address))) {
         $error = 'Please fill in all required fields!';
     } elseif ($payment_method === 'paymongo' && !$gatewayReady) {

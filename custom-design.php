@@ -4346,35 +4346,61 @@ function drawPreviewSide(pCtx, side) {
 // Draws one design element (text or image) onto a canvas context, honoring its
 // position and rotation. Shared by the live-canvas and per-side exporters so the
 // submitted order matches exactly what the user sees.
+// Where the browser puts a text element's baseline, from the top of its content, and
+// the height of its line. Sits in a line box: the span's own line-height plus the
+// parent's line (the strut), which decides for text smaller than the parent's font.
+// Worked out, not measured, because elements of the side not on screen have no layout.
+function textLineMetrics(c, font, fs, text) {
+    const parts = (f, size) => {
+        c.font = f;
+        const m = c.measureText(text);
+        const a = m.fontBoundingBoxAscent, d = m.fontBoundingBoxDescent;
+        if (a === undefined) return null;   // old browser
+        const lh = lineRatio ? lineRatio * size : a + d;
+        const above = (lh - (a + d)) / 2 + a;
+        return { above, below: lh - above };
+    };
+    const cs = getComputedStyle(elementsLayer);
+    const lineRatio = parseFloat(cs.lineHeight) / parseFloat(cs.fontSize) || 0;   // 0 = "normal"
+    const strut = parts(`${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`, parseFloat(cs.fontSize));
+    const own = parts(font, fs);
+    if (!own || !strut) return { baseline: fs, height: fs };
+    const above = Math.max(own.above, strut.above);
+    return { baseline: above, height: above + Math.max(own.below, strut.below) };
+}
+
 function drawDesignElement(targetCtx, el) {
     // The content sits inside the element's 2px border + 2px padding.
-    const left = (parseInt(el.style.left) || 0) + 4;
-    const top = (parseInt(el.style.top) || 0) + 4;
+    const left = (parseFloat(el.style.left) || 0) + 4;
+    const top = (parseFloat(el.style.top) || 0) + 4;
     const rot = parseFloat(el.dataset.rotation) || 0;
 
     if (el.dataset.type === 'text') {
         const span = el.querySelector('span');
         if (!span) return;
-        const fs = parseInt(span.style.fontSize) || 24;
-        targetCtx.font = span.style.fontStyle + ' ' + span.style.fontWeight + ' ' + span.style.fontSize + ' ' + span.style.fontFamily;
+        const fs = parseFloat(span.style.fontSize) || 24;
+        const font = span.style.fontStyle + ' ' + span.style.fontWeight + ' ' + span.style.fontSize + ' ' + span.style.fontFamily;
+        const line = textLineMetrics(targetCtx, font, fs, span.textContent);
+        targetCtx.font = font;
         targetCtx.fillStyle = span.style.color;
         if (rot) {
+            // Turns around the middle of the element, as the editor does.
             const tw = targetCtx.measureText(span.textContent).width;
-            const ccx = left + tw / 2, ccy = top + fs / 2;
+            const ccx = left + tw / 2, ccy = top + line.height / 2;
             targetCtx.save();
             targetCtx.translate(ccx, ccy);
             targetCtx.rotate(rot * Math.PI / 180);
-            targetCtx.fillText(span.textContent, -tw / 2, fs / 2);
+            targetCtx.fillText(span.textContent, -tw / 2, line.baseline - line.height / 2);
             targetCtx.restore();
         } else {
-            targetCtx.fillText(span.textContent, left, top + fs);
+            targetCtx.fillText(span.textContent, left, top + line.baseline);
         }
     } else if (el.dataset.type === 'image') {
         const img = el.querySelector('img');
         if (!img) return;
         if (img.complete && img.naturalWidth > 0) {
-            const w = parseInt(img.style.width);
-            const h = parseInt(img.style.height);
+            const w = parseFloat(img.style.width);
+            const h = parseFloat(img.style.height);
             if (rot) {
                 const ccx = left + w / 2, ccy = top + h / 2;
                 targetCtx.save();

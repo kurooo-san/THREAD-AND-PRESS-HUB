@@ -296,21 +296,21 @@
 
     <?php if (strpos($_SERVER['PHP_SELF'], '/admin/') === false): ?>
     <!-- Cookie Consent Banner -->
+    <?php // A thin bar, so it never sits on top of a page's buttons (Place Order, for one). ?>
+    <style>html.tph-cookie-open .chatbot-toggle { margin-bottom: var(--tph-cookie-h, 0px); }</style>
     <div id="tph-cookie-banner" role="dialog" aria-live="polite" aria-label="Cookie consent"
-         style="display:none; position:fixed; left:1rem; right:1rem; bottom:1rem; z-index:9999;
-                max-width:560px; margin-left:auto; background:#1f2937; color:#f9fafb;
-                border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,0.25); padding:1.1rem 1.25rem;
-                font-size:0.9rem; line-height:1.45;">
-        <div style="display:flex; align-items:flex-start; gap:0.75rem;">
-            <i class="fas fa-cookie-bite" style="color:#fbbf24; font-size:1.4rem; margin-top:2px;"></i>
-            <div style="flex:1;">
-                <strong style="display:block; margin-bottom:0.25rem;">We value your privacy</strong>
-                We use cookies to keep you signed in, remember your cart, and improve your experience.
-                Read our <a href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../privacy-policy.php' : 'privacy-policy.php'; ?>"
-                    style="color:#fbbf24; text-decoration:underline;">Privacy Policy</a>.
-            </div>
+         style="display:none; position:fixed; left:0; right:0; bottom:0; z-index:9999;
+                background:#1f2937; color:#f9fafb; box-shadow:0 -4px 20px rgba(0,0,0,0.2);
+                padding:0.6rem 1.25rem; font-size:0.85rem; line-height:1.4;">
+      <div style="display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem 1rem; max-width:1200px; margin:0 auto;">
+        <div style="flex:1 1 280px;">
+            <i class="fas fa-cookie-bite" style="color:#fbbf24; margin-right:0.35rem;"></i>
+            <strong>We value your privacy.</strong>
+            We use cookies to keep you signed in, remember your cart, and improve your experience.
+            Read our <a href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../privacy-policy.php' : 'privacy-policy.php'; ?>"
+                style="color:#fbbf24; text-decoration:underline;">Privacy Policy</a>.
         </div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.85rem; justify-content:flex-end;">
+        <div style="display:flex; gap:0.5rem; margin-left:auto;">
             <button type="button" id="tph-cookie-decline"
                     style="background:transparent; color:#f9fafb; border:1px solid #4b5563; padding:0.45rem 1rem;
                            border-radius:8px; cursor:pointer; font-size:0.85rem;">
@@ -322,12 +322,29 @@
                 Accept all
             </button>
         </div>
+      </div>
     </div>
+    <div id="tph-cookie-spacer"></div>
     <script>
         (function () {
             var KEY = 'tph_cookie_consent';
             var banner = document.getElementById('tph-cookie-banner');
             if (!banner) return;
+            var spacer = document.getElementById('tph-cookie-spacer');
+            var root = document.documentElement;
+
+            // Keeps the end of the page and the chat button clear of the bar.
+            function fitBar() {
+                if (banner.style.display === 'none') return;
+                root.style.setProperty('--tph-cookie-h', banner.offsetHeight + 'px');
+                root.classList.add('tph-cookie-open');
+                spacer.style.height = banner.offsetHeight + 'px';
+            }
+            function showBar() {
+                banner.style.display = 'block';
+                fitBar();
+            }
+            window.addEventListener('resize', fitBar);
 
             function setConsent(value) {
                 try {
@@ -337,6 +354,8 @@
                     localStorage.setItem(KEY, value);
                 } catch (e) {}
                 banner.style.display = 'none';
+                root.classList.remove('tph-cookie-open');
+                spacer.style.height = '';
                 if (value === 'all' && typeof window.tphLoadAnalytics === 'function') {
                     window.tphLoadAnalytics();
                 }
@@ -352,11 +371,11 @@
             window.tphResetCookieConsent = function () {
                 document.cookie = KEY + '=; max-age=0; path=/';
                 try { localStorage.removeItem(KEY); } catch (e) {}
-                banner.style.display = 'block';
+                showBar();
             };
 
             if (!getConsent()) {
-                banner.style.display = 'block';
+                showBar();
             }
 
             document.getElementById('tph-cookie-accept').addEventListener('click', function () {

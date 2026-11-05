@@ -127,7 +127,7 @@ html.dark-mode {
         height: calc(var(--app-tabbar-h) + var(--app-safe-bottom));
     }
     body:not(.admin-page) .chatbot-toggle { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 16px); }
-    body:not(.admin-page) #tph-cookie-banner { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 12px) !important; }
+    body:not(.admin-page) #tph-cookie-banner { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom)) !important; }
     /* Toasts drop in from the top, like app notifications: at the bottom
        they covered the tab bar and the buttons of an open sheet. */
     body:not(.admin-page) .toast-container {
@@ -435,6 +435,8 @@ html.dark-mode .qa-size.is-selected { background: var(--app-accent); border-colo
     .app-buybar .app-btn { min-height: 44px; padding: 0 14px; font-size: 0.86rem; }
     /* The chat button would sit on the bar; lift it while the bar shows. */
     html.app-buybar-on body:not(.admin-page) .chatbot-toggle { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 96px); }
+    /* Same for the cookie bar, which would cover Add to Cart. 82px is the bar's height. */
+    html.app-buybar-on body:not(.admin-page) #tph-cookie-banner { bottom: calc(var(--app-tabbar-h) + var(--app-safe-bottom) + 82px) !important; }
 }
 
 /* Installed app (standalone): no browser chrome above the header. */

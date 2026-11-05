@@ -7,13 +7,20 @@ $coupons = [];
 if (couponsTableExists()) {
     $res = $conn->query("SELECT * FROM coupons
                          WHERE is_active = 1
-                           AND (valid_until IS NULL OR valid_until >= NOW())
-                         ORDER BY discount_value DESC");
+                           AND (valid_until IS NULL OR valid_until >= NOW())");
     if ($res) {
         while ($row = $res->fetch_assoc()) {
-            $coupons[] = $row;
+            // Not a voucher that has run out or has not started yet.
+            if (couponStatus($row)[0] === 'Active') {
+                $coupons[] = $row;
+            }
         }
     }
+    // Biggest deal first. Percent and pesos cannot be compared as plain numbers, so:
+    // item discounts before shipping, then percent before fixed, then the highest value.
+    usort($coupons, fn($a, $b) =>
+        [($a['kind'] ?? 'discount') === 'discount' ? 0 : 1, $a['discount_type'] === 'percent' ? 0 : 1, -(float) $a['discount_value']]
+        <=> [($b['kind'] ?? 'discount') === 'discount' ? 0 : 1, $b['discount_type'] === 'percent' ? 0 : 1, -(float) $b['discount_value']]);
 }
 
 // Coupons this customer already holds (unused), to mark them "In your wallet".
