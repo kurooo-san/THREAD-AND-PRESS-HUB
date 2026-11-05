@@ -357,7 +357,7 @@ function handleSave($conn, $userId) {
         $colors = max(1, min(10, (int) ($designFields['colorsUsed'] ?? 1)));
     }
     $designFields['colorsUsed'] = $colors;
-    $designFields['colorCost']  = ($colors - 1) * 25;
+    $designFields['colorCost']  = ($colors - 1) * getExtraPrintPrices()['color'];
 
     // The editor state, so the design can be reopened and edited later. A
     // private JSON file; its path is only ever read back by this script.

@@ -451,7 +451,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order']) && ve
                 </li>
                 <?php if ($colorCost > 0): ?>
                 <li>
-                    <span>Extra Colors (<?php echo $colorsUsed - 1; ?> × ₱25)</span>
+                    <span>Extra Colors (<?php echo $colorsUsed - 1; ?> × ₱<?php echo number_format($extraPrices['color']); ?>)</span>
                     <span>₱<?php echo number_format($colorCost, 2); ?></span>
                 </li>
                 <?php endif; ?>

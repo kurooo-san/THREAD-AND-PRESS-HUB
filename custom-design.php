@@ -4382,7 +4382,7 @@ function submitDesign() {
                 quantity: parseInt(document.getElementById('quantityInput')?.value) || 1,
                 discountType: document.getElementById('discountSelect')?.value || 'regular',
                 baseCost: pricing.base[state.apparelType] || 350,
-                printSizeCost: pricing.printSize[document.getElementById('printSizeSelect')?.value || 'medium'] || 100,
+                printSizeCost: pricing.printSize[document.getElementById('printSizeSelect')?.value || 'medium'] ?? pricing.printSize.medium,
                 colorCost: Math.max(0, ((state.colorsUsed || 1) - 1)) * pricing.colorCost,
                 extraPrintCost: extraPrints().cost
             };
@@ -5071,15 +5071,13 @@ window.addEventListener('design3d-ready', () => {
 });
 
 // ===== Price Auto Calculation =====
-// Base prices come from the data-driven apparel config so new types priced there
-// flow through automatically (couple sets ₱1,500; corporate ₱950/₱1,050/₱1,100).
-// Print-size and extra-print prices come from includes/apparel-config.php, the
-// same numbers the server charges with (customDesignPrice()).
+// Every price comes from includes/apparel-config.php (set in Admin > Custom Design
+// Prices), the same numbers the server charges with (customDesignPrice()).
 const pricing = {
     base: {},
     printSize: <?php echo json_encode(getPrintSizePrices()); ?>,
-    extra: <?php echo json_encode(getExtraPrintPrices()); ?>,   // { sleeve, logo }
-    colorCost: 25 // per color used
+    extra: <?php echo json_encode(getExtraPrintPrices()); ?>,   // { sleeve, logo, color }
+    colorCost: <?php echo (int) getExtraPrintPrices()['color']; ?> // per color after the first
 };
 Object.keys(APPAREL_CONFIG).forEach(t => { pricing.base[t] = APPAREL_CONFIG[t].base; });
 
@@ -5095,7 +5093,7 @@ function extraPrints() {
 function calculatePrice() {
     const baseCost = pricing.base[state.apparelType] || 350;
     const printSize = document.getElementById('printSizeSelect')?.value || 'medium';
-    const printSizeCost = pricing.printSize[printSize] || 100;
+    const printSizeCost = pricing.printSize[printSize] ?? pricing.printSize.medium;   // ₱0 is a valid price
     const colorsUsed = state.colorsUsed || 1;   // see scheduleColorCount()
     const colorCost = Math.max(0, (colorsUsed - 1)) * pricing.colorCost; // first color free
     const extras = extraPrints();

@@ -33,7 +33,8 @@
  *               images/models/web/.
  */
 
-function getApparelConfig()
+/** Apparel types with their default base prices. Use getApparelConfig() for the live prices. */
+function apparelConfigDefaults()
 {
     $m = [
         'tshirt' => ['src' => 'images/models/web/tshirt.glb', 'rotY' => 30, 'chestY' => 0.62, 'printW' => 0.30,
@@ -176,30 +177,129 @@ function getApparelConfig()
     ];
 }
 
+/** The apparel types, with the prices set in Admin > Custom Design Prices. */
+function getApparelConfig()
+{
+    $cfg = apparelConfigDefaults();
+    foreach (customPrices()['base'] as $type => $base) {
+        $cfg[$type]['base'] = $base;
+    }
+    return $cfg;
+}
+
+// Whole pesos, as the Design Studio shows them. The minimum base keeps the total
+// above PayMongo's ₱20 even after 20% off; the maximum keeps the largest possible
+// order within the DECIMAL(10,2) columns of custom_orders.
+const CUSTOM_BASE_PRICE_MIN = 50;
+const CUSTOM_PRICE_MAX = 50000;
+
+/** The default price list. */
+function customPriceDefaults()
+{
+    return [
+        'base'  => array_map(fn($t) => $t['base'], apparelConfigDefaults()),
+        'print' => ['small' => 50, 'medium' => 100, 'large' => 180, 'full' => 300],
+        // Each printed sleeve, the logo, and each colour after the first.
+        'extra' => ['sleeve' => 50, 'logo' => 80, 'color' => 25],
+    ];
+}
+
+/** Error message for a bad price, or NULL when it is fine. */
+function customPriceError($value, string $group)
+{
+    $min = $group === 'base' ? CUSTOM_BASE_PRICE_MIN : 0;
+    $n   = filter_var($value, FILTER_VALIDATE_INT);
+    if ($n === false || $n < $min || $n > CUSTOM_PRICE_MAX) {
+        return 'Enter a whole peso amount from ₱' . $min . ' to ₱' . number_format(CUSTOM_PRICE_MAX) . '.';
+    }
+    return null;
+}
+
+/** The defaults with valid saved prices on top; a missing or bad price keeps its default. */
+function customPricesMerge(array $saved)
+{
+    $prices = customPriceDefaults();
+    foreach ($prices as $group => $values) {
+        foreach ($values as $key => $default) {
+            $v = $saved[$group][$key] ?? null;
+            if (customPriceError($v, $group) === null) {
+                $prices[$group][$key] = (int) $v;
+            }
+        }
+    }
+    return $prices;
+}
+
+/** storage/payment-config/ is on the Railway volume and blocked from the web. */
+function customPricesFile()
+{
+    return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR
+        . 'payment-config' . DIRECTORY_SEPARATOR . 'custom-prices.json';
+}
+
+/** The live price list, read once per request. Passing a list replaces it for this request. */
+function customPrices(?array $set = null)
+{
+    static $prices = null;
+    if ($set !== null) {
+        $prices = $set;
+    } elseif ($prices === null) {
+        $file  = customPricesFile();
+        $raw   = is_file($file) ? @file_get_contents($file) : false;
+        $saved = is_string($raw) ? json_decode($raw, true) : null;
+        $prices = customPricesMerge(is_array($saved) ? $saved : []);
+    }
+    return $prices;
+}
+
+/** Save a validated price list. Written to a temp file first so a reader never sees half a file. */
+function customPricesSave(array $prices)
+{
+    $file = customPricesFile();
+    $dir  = dirname($file);
+    if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+        return false;
+    }
+    $tmp = $file . '.tmp';
+    if (@file_put_contents($tmp, json_encode($prices, JSON_PRETTY_PRINT), LOCK_EX) === false || !@rename($tmp, $file)) {
+        @unlink($tmp);
+        return false;
+    }
+    customPrices($prices);
+    return true;
+}
+
+/** Back to the default price list. */
+function customPricesReset()
+{
+    $file = customPricesFile();
+    if (is_file($file) && !@unlink($file)) {
+        return false;
+    }
+    customPrices(customPriceDefaults());
+    return true;
+}
+
 /** Returns the list of valid apparel type keys (used for server-side validation). */
 function getApparelTypeKeys()
 {
     return array_keys(getApparelConfig());
 }
 
-/**
- * Print-size surcharges, in PHP pesos.
- *
- * Kept beside the base prices so a price change means editing one file.
- */
+/** Print-size surcharges, in PHP pesos. */
 function getPrintSizePrices()
 {
-    return ['small' => 50, 'medium' => 100, 'large' => 180, 'full' => 300];
+    return customPrices()['print'];
 }
 
 /**
- * Extra print positions, in PHP pesos: each printed sleeve, and the corporate
- * logo. A sleeve is charged once per set even when both Couple Wear partners
- * have one (the set is priced as one item, like its base price).
+ * Extra charges, in PHP pesos: each printed sleeve, the corporate logo, and
+ * each colour after the first. A sleeve is charged once per set even when both
+ * Couple Wear partners have one (the set is priced as one item, like its base price).
  */
 function getExtraPrintPrices()
 {
-    return ['sleeve' => 50, 'logo' => 80];
+    return customPrices()['extra'];
 }
 
 /**
@@ -251,9 +351,9 @@ function customDesignPrice(string $apparelType, string $printSize, int $quantity
     $base  = isset($cfg[$apparelType]) ? (float) $cfg[$apparelType]['base'] : 0.0;
     $print = $prints[$printSize] ?? $prints['medium'];
 
-    // The first colour is included; each extra one costs P25.
+    // The first colour is included.
     $colorsUsed = max(1, $colorsUsed);
-    $color      = ($colorsUsed - 1) * 25;
+    $color      = ($colorsUsed - 1) * $extra['color'];
 
     // Sleeve and logo prints.
     $sleeves = max(0, min(2, $sleeves));

@@ -95,9 +95,9 @@ your config entry's `shape` at it.
   the "Elements" total. They're clean stylized silhouettes, not photoreal art.
 
 ### Pricing
-- Base prices come from the config. Print-size and per-color costs work as
-  before. Couple sets ₱1,500; Corporate Polo ₱950; Long Sleeve ₱1,050;
-  Vest ₱1,100.
+- The admin sets every price in Admin > Custom Design Prices (saved to
+  `storage/payment-config/custom-prices.json`). The amounts in
+  `includes/apparel-config.php` are the defaults until then.
 
 ---
 

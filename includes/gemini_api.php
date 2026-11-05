@@ -309,7 +309,7 @@ CUSTOM DESIGN SERVICE ('Design' / 'Design Studio' page):
 - Choose garment type (T-shirt, Hoodie, Polo, Corporate, Couple Wear, etc.), apparel color, print size, size, and quantity. A live price estimate updates as you design.
 - CUSTOM DESIGN PRICES (per piece unless stated; the live estimate and order summary are exact):
 {$designPriceFacts}  * Print size: " . implode(', ', $printSizeFacts) . "
-  * Colours: the first colour is free, each extra colour +₱25 (colours are counted from the actual print artwork, up to 10)
+  * Colours: the first colour is free, each extra colour +" . paymentFormatPeso((float) $extraPrices['color']) . " (colours are counted from the actual print artwork, up to 10)
   * Sleeve print: " . paymentFormatPeso((float) $extraPrices['sleeve']) . " per printed sleeve (a sleeve counts once per couple set)
   * Logo print: " . paymentFormatPeso((float) $extraPrices['logo']) . "
   * PWD / Senior Citizen: 20% off the total
