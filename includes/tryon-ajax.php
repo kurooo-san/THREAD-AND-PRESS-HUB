@@ -21,6 +21,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/apparel-config.php';   // design mode: valid apparel types + labels
+require_once __DIR__ . '/tryon-couple.php';      // couple sets and the output ratio
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -32,7 +33,7 @@ header('Content-Type: application/json');
 // Gemini image-generation/editing model ("Nano Banana"). Swappable here if
 // Google renames or you move to another image-capable model.
 const TRYON_MODEL          = 'gemini-2.5-flash-image';
-const TRYON_TIMEOUT_SECS   = 60;
+const TRYON_TIMEOUT_SECS   = 90;
 const TRYON_MAX_IMAGE_BYTES = 6 * 1024 * 1024; // ~6MB decoded person image cap
 const TRYON_MAX_DESIGN_BYTES = 3 * 1024 * 1024; // design mockup cap (the studio makes ~0.1-0.5MB)
 const PRODUCT_IMAGE_DIR    = __DIR__ . '/../images/products/';
@@ -83,6 +84,8 @@ $personImage = (string) ($input['personImage'] ?? '');
 $designImage = (string) ($input['designImage'] ?? '');
 $designType  = (string) ($input['designType'] ?? '');
 $isDesign    = $designImage !== '';
+$isCouple    = false;
+$extraGarmentBytes = null;   // couple sets: the garment for the person on the right
 
 if (!$isDesign && !$productId) {
     tryon_fail('A valid product must be selected.');
@@ -100,10 +103,10 @@ if (strlen($personBytes) > TRYON_MAX_IMAGE_BYTES) {
 if ($isDesign) {
     // --- Design mode: the customer's own design mockup --------------------
     $apparel = getApparelConfig()[$designType] ?? null;
-    // Couple sets are two garments side by side in one image: not wearable by one person.
-    if (!is_array($apparel) || !empty($apparel['couple'])) {
+    if (!is_array($apparel)) {
         tryon_fail('This design type cannot be tried on.');
     }
+    $isCouple = !empty($apparel['couple']);
     $garmentBytes = decode_data_image($designImage, $garmentMime);
     if ($garmentBytes === null) {
         tryon_fail('Could not read your design. Please go back to the Design Studio and try again.');
@@ -112,6 +115,17 @@ if ($isDesign) {
         tryon_fail('Your design image is too large to try on.');
     }
     $product = ['name' => 'Your custom ' . $apparel['label']];
+    if ($isCouple) {
+        $halves = coupleMockupHalves($garmentBytes);
+        if ($halves === null) {
+            tryon_fail('Could not read your couple design. Please go back to the Design Studio and try again.');
+        }
+        // swapSides: Partner A is on the right of the photo.
+        [$garmentBytes, $extraGarmentBytes] = empty($input['swapSides']) ? $halves : array_reverse($halves);
+        $garmentMime = 'image/png';
+        $prompt = couplePrintPrompt();
+        $recolorPrompt = coupleRecolorPrompt((string) $apparel['label'], coupleGarmentColor($garmentBytes), coupleGarmentColor($extraGarmentBytes));
+    } else {
     $prompt = 'You are a virtual try-on engine. The FIRST image is a real photo of a '
         . 'person (the customer). The SECOND image is a flat product mockup of a custom-printed '
         . strtolower((string) $apparel['label']) . ' the customer designed, shown from the front on a plain grey background. '
@@ -121,6 +135,7 @@ if ($isDesign) {
         . 'Reproduce the garment colour and every printed graphic, text and logo exactly as in the mockup, '
         . 'in the same position and size on the chest; do not add, remove or change any artwork. '
         . 'Ignore the mockup\'s grey background. Output only the final image.';
+    }
 } else {
 // --- Load the garment image from the catalog (prepared statement) -------
 $stmt = $conn->prepare("SELECT name, image FROM products WHERE id = ? AND status = 'active' LIMIT 1");
@@ -158,6 +173,22 @@ $prompt = 'You are a virtual try-on engine. The FIRST image is a real photo of a
     . 'design faithful to the second image. Output only the final image.';
 }
 
+$photoSize = getimagesizefromstring($personBytes);
+$imageConfig = ['temperature' => 0.4, 'imageConfig' => ['aspectRatio' => tryOnAspectRatio((int) $photoSize[0], (int) $photoSize[1])]];
+
+// Couple sets: the first of two AI calls, see includes/tryon-couple.php.
+if ($isCouple) {
+    set_time_limit(TRYON_TIMEOUT_SECS * 2 + 20);
+    [$recolored, $personMime] = tryon_generate($conn, $apiKey, [
+        'contents' => [['role' => 'user', 'parts' => [
+            ['text' => $recolorPrompt],
+            ['inlineData' => ['mimeType' => $personMime, 'data' => base64_encode($personBytes)]],
+        ]]],
+        'generationConfig' => $imageConfig,
+    ], 'The AI could not find two people in this photo. Make sure both of you are in the picture, facing the camera, and try again.');
+    $personBytes = base64_decode($recolored);
+}
+
 $requestData = [
     'contents' => [[
         'role'  => 'user',
@@ -167,73 +198,14 @@ $requestData = [
             ['inlineData' => ['mimeType' => $garmentMime, 'data' => base64_encode($garmentBytes)]],
         ],
     ]],
-    'generationConfig' => [
-        'temperature' => 0.4,
-    ],
+    'generationConfig' => $imageConfig,
 ];
 
-// Image generation is the priciest call, so it gets the tightest cap.
-if (!aiQuotaAllows($conn, 'tryon', 15)) {
-    tryon_fail(AI_QUOTA_MESSAGE, 429);
+if ($extraGarmentBytes !== null) {
+    $requestData['contents'][0]['parts'][] = ['inlineData' => ['mimeType' => 'image/png', 'data' => base64_encode($extraGarmentBytes)]];
 }
 
-$apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'
-    . TRYON_MODEL . ':generateContent?key=' . urlencode($apiKey);
-
-$ch = curl_init();
-curl_setopt_array($ch, [
-    CURLOPT_URL            => $apiUrl,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-    CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => json_encode($requestData),
-    CURLOPT_TIMEOUT        => TRYON_TIMEOUT_SECS,
-    CURLOPT_SSL_VERIFYPEER => true,
-]);
-
-$response  = curl_exec($ch);
-$httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlError = curl_error($ch);
-curl_close($ch);
-
-// --- Handle transport / API errors --------------------------------------
-if ($curlError) {
-    tryon_fail('Connection error: unable to reach the AI service. Please try again.');
-}
-
-if ($httpCode === 429) {
-    tryon_fail('The AI service is busy right now (rate limit). Please wait a moment and try again.');
-}
-
-if ($httpCode !== 200) {
-    $errorData = json_decode((string) $response, true);
-    $msg = $errorData['error']['message'] ?? ('The AI service returned an error (HTTP ' . $httpCode . ').');
-    error_log('Try-on API error (' . $httpCode . '): ' . $msg);
-    tryon_fail('Try-on failed: ' . $msg);
-}
-
-// --- Extract the generated image ----------------------------------------
-$apiResponse = json_decode((string) $response, true);
-$parts = $apiResponse['candidates'][0]['content']['parts'] ?? [];
-
-$resultData = null;
-$resultMime = 'image/png';
-foreach ($parts as $part) {
-    if (isset($part['inlineData']['data'])) {
-        $resultData = $part['inlineData']['data'];
-        $resultMime = $part['inlineData']['mimeType'] ?? 'image/png';
-        break;
-    }
-}
-
-if ($resultData === null) {
-    // The model sometimes refuses (safety) and returns only text.
-    $finish = $apiResponse['candidates'][0]['finishReason'] ?? '';
-    if ($finish === 'SAFETY' || $finish === 'PROHIBITED_CONTENT') {
-        tryon_fail('The AI could not process this frame. Try a clearer, well-lit photo facing the camera.');
-    }
-    tryon_fail('The AI did not return an image. Please try again with a different pose or lighting.');
-}
+[$resultData, $resultMime] = tryon_generate($conn, $apiKey, $requestData, 'The AI did not return an image. Please try again with a different pose or lighting.');
 
 echo json_encode([
     'success'     => true,
@@ -244,6 +216,70 @@ echo json_encode([
 // =======================================================================
 // Helpers
 // =======================================================================
+
+/**
+ * One image from the AI, counted against the customer's hourly cap. Stops the
+ * request with an error message if there is no image.
+ *
+ * @return array{0: string, 1: string} [base64 image, MIME type]
+ */
+function tryon_generate(mysqli $conn, string $apiKey, array $requestData, string $noImageMessage): array
+{
+    // Image generation is the priciest call, so it gets the tightest cap.
+    if (!aiQuotaAllows($conn, 'tryon', 15)) {
+        tryon_fail(AI_QUOTA_MESSAGE, 429);
+    }
+
+    $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'
+        . TRYON_MODEL . ':generateContent?key=' . urlencode($apiKey);
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $apiUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($requestData),
+        CURLOPT_TIMEOUT        => TRYON_TIMEOUT_SECS,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+
+    $response  = curl_exec($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    // --- Handle transport / API errors --------------------------------------
+    if ($curlError) {
+        tryon_fail('Connection error: unable to reach the AI service. Please try again.');
+    }
+
+    if ($httpCode === 429) {
+        tryon_fail('The AI service is busy right now (rate limit). Please wait a moment and try again.');
+    }
+
+    if ($httpCode !== 200) {
+        $errorData = json_decode((string) $response, true);
+        $msg = $errorData['error']['message'] ?? ('The AI service returned an error (HTTP ' . $httpCode . ').');
+        error_log('Try-on API error (' . $httpCode . '): ' . $msg);
+        tryon_fail('Try-on failed: ' . $msg);
+    }
+
+    // --- Extract the generated image ----------------------------------------
+    $apiResponse = json_decode((string) $response, true);
+    foreach ($apiResponse['candidates'][0]['content']['parts'] ?? [] as $part) {
+        if (isset($part['inlineData']['data'])) {
+            return [$part['inlineData']['data'], $part['inlineData']['mimeType'] ?? 'image/png'];
+        }
+    }
+
+    // The model sometimes refuses (safety) and returns only text.
+    $finish = $apiResponse['candidates'][0]['finishReason'] ?? '';
+    if ($finish === 'SAFETY' || $finish === 'PROHIBITED_CONTENT') {
+        tryon_fail('The AI could not process this frame. Try a clearer, well-lit photo facing the camera.');
+    }
+    tryon_fail($noImageMessage);
+}
 
 /**
  * Decode a data URL or bare base64 string into raw image bytes.

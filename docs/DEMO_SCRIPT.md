@@ -145,8 +145,10 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 5. Pindutin ang **Download** sa toolbar → `my-design.png`, kasama ang front at back kung may laman ang back
 6. Ipakita sa **Live 3D Preview** → pindutin ang **Front / Back** at **Spin**
 7. **⭐ Try it on with AI** → sa Try-On page, nasa catalog card na ang design → **Camera On** → **Try On**
-   > "Suggestion po ito ng panel: puwede nang isukat ng customer ang sarili niyang design. Harap pa lang po ng design ang naisusukat, at hindi ito kasama sa Couple Wear kasi dalawang damit iyon sa iisang larawan."
+   > "Suggestion po ito ng panel: puwede nang isukat ng customer ang sarili niyang design. Harap pa lang po ng design ang naisusukat."
    - Pindutin ang **Back to Design Studio** para ituloy ang order
+   - **⭐ Couple Wear:** gumawa ng couple set → **Try it on with AI** → pumayag ang **dalawang tao** sa photo notice → magkatabi sa camera, o mag-upload ng litrato nilang dalawa → **Try On**. Mas matagal ito nang kaunti, mga 30 segundo
+     > "Puwede na rin pong magsukat nang sabay ang magkapareha, at kanya-kanyang design ang suot nila. Kapag nagkapalit ang damit, may **Swap shirts** button. Kapag isang tao lang ang nasa litrato, tatanggi po ang AI sa halip na mag-imbento ng kasama."
 8. Ituro ang **Price Estimate** na live nag-a-update
 9. *Optional:* sa **My Designs**, ituro ang **Remove design** button
    > "Pwede pong burahin ng customer ang sariling design para hindi kalat ang account niya. Pero kapag may order na gumagamit ng design, hindi po ito mabubura — para hindi madamay ang order at ang bayad."
@@ -344,7 +346,7 @@ Para sa mga bisita, hindi sa panel. Mga 2–3 minuto kada bisita.
 - [ ] **Admin → Exhibit Mode** → ilagay ang email ng demo account at ang **AI uses per hour** → **Save**
 - [ ] Mag-login gamit ang demo account sa device ng booth, at subukan ang **Try-On, Design Studio at 3D** doon mismo
 - [ ] Sumubok ng **totoong try-on** sa venue. I-check din ang internet, at maghanda ng mobile hotspot
-- [ ] I-check ang **Gemini quota at billing**. ~₱2–2.50 kada try-on, kaya mga ₱250 kada oras kung maabot ang 100 na limit
+- [ ] I-check ang **Gemini quota at billing**. ~₱2–2.50 kada try-on (doble sa couple try-on, kasi 2 AI call ito at 2 rin ang bilang sa limit), kaya mga ₱250 kada oras kung maabot ang 100 na limit
 - [ ] Alamin kung paano ginagamit ng Google ang mga litrato sa plan niyo. Kung puwede itong gamitin para pagandahin ang produkto nila, mas mainam ang paid plan
 - [ ] Ipabasa ang photo notice at Privacy Policy sa adviser
 - [ ] Mag-upload ng **Sample looks** (Exhibit Mode), mula sa mga kasamang pumayag. Gawin ang try-on sa **normal na account**, kasi nakatago ang Download sa demo account. Maganda kung may isang sample na custom design

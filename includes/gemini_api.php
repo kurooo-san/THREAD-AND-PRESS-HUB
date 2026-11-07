@@ -302,7 +302,7 @@ CUSTOM DESIGN SERVICE ('Design' / 'Design Studio' page):
 - DRAFTS: the design is saved in the browser automatically; when they come back a banner offers 'Restore' or 'Start fresh'.
 - EDIT A SAVED DESIGN: 'Edit design' on a card under 'My Designs' opens it again in the studio; submitting saves it as a new copy (the original order is untouched).
 - Changing the apparel type asks before clearing the current design.
-- Couple Wear: Partner A and Partner B each have their own front, back and sleeves.
+- Couple Wear: Partner A and Partner B each have their own front, back and sleeves. 'Try it on with AI' works for a couple set too: one photo with both people side by side, each wearing their own front design. 'Swap shirts' changes who wears which.
 - Tools: brush, eraser, line, rectangle, circle, add text (fonts, bold/italic), upload your own logo/image, and animal stamps.
 - AI DESIGN GENERATOR (powered by Google Gemini): type a description (e.g. 'minimalist mountain sunset') and the AI instantly creates the artwork and drops it onto the canvas. No drawing skills needed.
 - Every element (text, image, AI artwork, stamp) can be DRAGGED, RESIZED, and ROTATED. A Layers panel lets you select, reorder (bring forward / send back), and delete each element.

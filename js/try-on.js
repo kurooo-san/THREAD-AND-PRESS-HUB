@@ -38,7 +38,7 @@
         const order = typeof d.order === 'string' && d.order.indexOf('custom-order-summary.php?') === 0 ? d.order : '';
         const back = d.back === 'custom-design.php?from=tryon' ? d.back : 'custom-design.php';
         const label = String(d.label || 'design').slice(0, 60);
-        return { type: d.type, label: label, image: image, src: src, order: order, back: back };
+        return { type: d.type, label: label, image: image, src: src, order: order, back: back, couple: d.couple === true };
     }
 
     // A saved design is a file URL; the endpoint wants the image itself.
@@ -57,7 +57,8 @@
     }
 
     // Largest dimension we send to the API — keeps payloads small and fast.
-    const MAX_CAPTURE_DIM = 768;
+    // A couple photo has two faces to keep, so it needs more detail.
+    const MAX_CAPTURE_DIM = designItem && designItem.couple ? 1280 : 768;
     const JPEG_QUALITY = 0.88;
 
     // Countdown (seconds) shown before the frame is captured, so the user has
@@ -168,11 +169,13 @@
     // -------------------------------------------------------------------
     // Photo notice: asked before the camera or an upload is used. A customer
     // answers once on their device; each booth visitor answers for themselves.
+    // A couple try-on always asks: the second person has not answered before.
     // -------------------------------------------------------------------
     const consentOverlay = el('tryonConsent');
     let consented = false;
     let afterConsent = null;
-    if (!isExhibit) {
+    const isCoupleDesign = !!(designItem && designItem.couple);
+    if (!isExhibit && !isCoupleDesign) {
         try { consented = localStorage.getItem(cfg.consentKey) === 'yes'; } catch (e) { /* ask again */ }
     }
 
@@ -191,7 +194,7 @@
         afterConsent = null;
         if (!agreed) return;
         consented = true;
-        if (!isExhibit) {
+        if (!isExhibit && !isCoupleDesign) {
             try { localStorage.setItem(cfg.consentKey, 'yes'); } catch (e) { /* ask again next time */ }
         }
         if (then) then();
@@ -317,7 +320,7 @@
             catImg.src = designItem.image || designItem.src;
             catImg.alt = 'Your ' + designItem.label + ' design';
             catName.textContent = 'Your ' + designItem.label;
-            catPrice.textContent = 'Custom design · front';
+            catPrice.textContent = isCoupleDesign ? coupleSidesText() : 'Custom design · front';
             catCounter.textContent = '1/1';
             btnPrev.disabled = btnNext.disabled = true;
             return;
@@ -457,6 +460,15 @@
         });
     }
 
+    // Couple sets: who wears which shirt. On screen, Partner A is on the left
+    // unless swapped. A mirrored camera preview shows the sides the other way
+    // round from the photo it takes, so the server is told about the photo.
+    let coupleSwapped = false;
+    let frameMirrored = false;
+    function coupleSidesText() {
+        return coupleSwapped ? 'Left: Partner B · Right: Partner A' : 'Left: Partner A · Right: Partner B';
+    }
+
     // `retryFrame` (a data URL) re-sends a photo already taken, with no countdown.
     async function doTryOn(retryFrame) {
         if (busy || (!designItem && products.length === 0)) return;
@@ -480,6 +492,7 @@
             return;
         }
         lastBefore = frame;
+        if (!reuse) frameMirrored = !uploadedImage && liveVideo.classList.contains('mirrored');
 
         startSteps(TRYON_STEPS);
         showOverlay(loadingOverlay);
@@ -492,7 +505,8 @@
                     showFailure('Could not load your design. Go back to the Design Studio and try again.');
                     return;
                 }
-                payload = { personImage: frame, designImage: designImage, designType: designItem.type, consent: consented };
+                payload = { personImage: frame, designImage: designImage, designType: designItem.type, consent: consented,
+                            swapSides: coupleSwapped !== frameMirrored };
             } else {
                 payload = { personImage: frame, productId: products[currentIndex].id, consent: consented };
             }
@@ -601,7 +615,8 @@
                 setStageTag('PHOTO', 'var(--tryon-live)');
                 updateActionButtons();
                 setLiveControls();
-                showToast(designItem ? 'Photo loaded. Tap Try On to see your design on you.' : 'Photo loaded. Pick a product, then Try On.');
+                showToast(isCoupleDesign ? 'Photo loaded. Check who is on which side, then tap Try On.'
+                    : designItem ? 'Photo loaded. Tap Try On to see your design on you.' : 'Photo loaded. Pick a product, then Try On.');
             };
             img.onerror = () => showToast('Could not read that image.', true);
             img.src = reader.result;
@@ -1220,8 +1235,20 @@
                 back.style.display = '';
             }
         }
+        if (isCoupleDesign) {
+            catImg.style.objectFit = 'contain';   // two shirts side by side: show both
+            el('consentPhoto').textContent = "To make your try-on, a photo of both of you is sent to Google's Gemini AI, which handles it under its own terms. Both of you should agree before continuing.";
+            const swap = el('coupleSwap');
+            swap.style.display = '';
+            swap.addEventListener('click', () => {
+                coupleSwapped = !coupleSwapped;
+                catPrice.textContent = coupleSidesText();
+            });
+        }
         renderCatalog();
-        if (designItem) {
+        if (isCoupleDesign) {
+            showToast('Stand side by side, then turn the camera on or upload a photo of you both.');
+        } else if (designItem) {
             showToast('Ready to try on your design. Turn the camera on or upload a photo.');
         } else if (new URLSearchParams(window.location.search).get('design') === '1') {
             showToast('Your design could not be loaded here. Open it again from the Design Studio.', true);

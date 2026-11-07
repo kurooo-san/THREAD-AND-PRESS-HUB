@@ -219,6 +219,10 @@ $samples   = $isExhibit ? exhibitSamples() : [];
                     <button id="btnAddCart" class="tryon-btn tryon-btn-primary tryon-card-cart" type="button">
                         <i class="fas fa-cart-plus" aria-hidden="true"></i> Add to Cart
                     </button>
+                    <!-- Couple designs only: changes who wears which shirt -->
+                    <button id="coupleSwap" class="tryon-btn tryon-btn-ghost tryon-card-cart" type="button" style="display:none;">
+                        <i class="fas fa-right-left" aria-hidden="true"></i> Swap shirts
+                    </button>
                     <!-- Design mode (?design=1) only: shown by js/try-on.js under "Order this design" -->
                     <a id="designBack" class="tryon-btn tryon-btn-ghost tryon-card-cart" href="custom-design.php" style="display:none; text-decoration:none;">
                         <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Design Studio
@@ -349,7 +353,7 @@ $samples   = $isExhibit ? exhibitSamples() : [];
 <!-- Asked before the camera or an upload is used; see withConsent() in js/try-on.js -->
 <div class="tryon-overlay tryon-consent" id="tryonConsent" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
     <h4 class="suggest-title" id="consentTitle"><i class="fas fa-shield-halved" aria-hidden="true"></i> Before we use your photo</h4>
-    <p>To make your try-on, your photo is sent to Google's Gemini AI, which handles it under its own terms.</p>
+    <p id="consentPhoto">To make your try-on, your photo is sent to Google's Gemini AI, which handles it under its own terms.</p>
     <p><?php echo $isExhibit
         ? 'We do not save it on this booth, and it is cleared from the screen when you tap New Visitor.'
         : 'We do not keep it unless you tap “Save look”.'; ?></p>

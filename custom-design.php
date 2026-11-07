@@ -1907,7 +1907,7 @@ html.dark-mode .sleeve-tabs button.active { background: rgba(200,169,110,0.18); 
                 <button class="btn-submit-design" id="submitDesignBtn" onclick="submitDesign()">
                     <i class="fas fa-paper-plane"></i> Submit & Proceed to Order
                 </button>
-                <!-- AI Virtual Try-On with this design (front). Hidden for couple sets. -->
+                <!-- AI Virtual Try-On with this design (front). -->
                 <button type="button" class="btn-tryon-design" id="tryOnDesignBtn" onclick="tryOnDesign()">
                     <i class="fas fa-camera"></i> Try it on with AI
                 </button>
@@ -3188,7 +3188,6 @@ function refreshSleeveUI() {
     document.getElementById('sleeveCountRight').textContent = mine.right.length || '';
     document.getElementById('logoToolSection').style.display = hasLogo() ? '' : 'none';
     // Couple sets render two garments in one image, which one person cannot wear.
-    document.getElementById('tryOnDesignBtn').style.display = isCouple(state.apparelType) ? 'none' : '';
     document.getElementById('logoCount').textContent = state.logo.length || '';
     updateLogoZoneGuide();
 
@@ -4622,10 +4621,6 @@ function openTryOn(item) {
 }
 
 function tryOnDesign() {
-    if (isCouple(state.apparelType)) {
-        showToast('Couple sets cannot be tried on, as there are two shirts in one picture.', 'error');
-        return;
-    }
     saveCurrentSideData();
     if (!hasDesignWork()) {
         showToast('Add some artwork or text to your design first.', 'error');
@@ -4648,6 +4643,7 @@ function tryOnDesign() {
             image: img,
             type: state.apparelType,
             label: configOf(state.apparelType).label,
+            couple: isCouple(state.apparelType),
             back: 'custom-design.php?from=tryon'
         });
         if (!ok) btn.disabled = false;
@@ -4661,6 +4657,7 @@ function tryOnSavedDesign(btn) {
         src: btn.dataset.src,
         type: type,
         label: configOf(type).label,
+        couple: isCouple(type),
         order: btn.dataset.order || '',
         back: 'custom-design.php'
     });
@@ -5018,7 +5015,7 @@ function renderDesignCard(d) {
                     : `<div class="design-blocked mt-2">${st === 'cancelled'
                             ? 'This design was cancelled and can no longer be ordered.'
                             : 'Waiting for changes before this can be ordered.'}</div>`}
-                ${!d.image_missing && APPAREL_CONFIG[d.product_type] && !isCouple(d.product_type)
+                ${!d.image_missing && APPAREL_CONFIG[d.product_type]
                     ? `<button type="button" class="btn btn-sm w-100 mt-2 design-tryon-btn" onclick="tryOnSavedDesign(this)"
                           data-src="${escapeHtml(d.design_image)}" data-type="${escapeHtml(d.product_type)}"
                           data-order="${orderable ? escapeHtml(orderUrl) : ''}">
