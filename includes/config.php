@@ -73,18 +73,19 @@ function configureDbConnection(mysqli $db): void
     $db->query("SET time_zone = '+08:00'");
 }
 
-// Create connection. A fresh Railway container gets "Connection refused" for
-// its first ~2 seconds, so retry briefly before giving up.
+// Create connection. Railway stops an idle MySQL and refuses connections for
+// about 5 seconds while it wakes, so wait that out: a slow first page beats a 503.
+const DB_CONNECT_TRIES = 12;   // one second apart
 /** @var mysqli $conn  set below; the script dies if every attempt fails */
 $conn = null;
-for ($try = 1; $try <= 4 && !$conn; $try++) {
+for ($try = 1; $try <= DB_CONNECT_TRIES && !$conn; $try++) {
     try {
         $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
         if ($conn->connect_error) throw new mysqli_sql_exception($conn->connect_error);
     } catch (mysqli_sql_exception $e) {
         $conn = null;
         error_log("[db] connect attempt $try failed: " . $e->getMessage());
-        if ($try < 4) usleep(750000);
+        if ($try < DB_CONNECT_TRIES) sleep(1);
     }
 }
 if (!$conn) {
