@@ -59,7 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $o->execute();
             $ord = $o->get_result()->fetch_assoc();
             $o->close();
-            [$ship, $why] = shipmentFromInput($_POST);
+            $shipIn = $_POST;
+            if (trim((string) ($shipIn['tracking_number'] ?? '')) === '') {
+                $shipIn['tracking_number'] = generatedTrackingNumber((int) $order_id);
+            }
+            [$ship, $why] = shipmentFromInput($shipIn);
             if (!$ord) {
                 $error = 'Order not found.';
             } elseif (!orderNeedsCourier($ord)) {
@@ -220,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     && $oldRow && orderNeedsCourier($oldRow) && orderShipment($oldRow) === null) {
                     // The customer must be able to see who is bringing the parcel.
                     $tx  = false;
-                    $why = 'Add the courier and tracking number first: open the order (View) and fill in "Courier & Tracking".';
+                    $why = 'Add the courier first: open the order (View) and fill in "Courier & Tracking".';
                 }
                 if ($tx && $why === '') {
                     // Their ALTERs would commit the transaction early.

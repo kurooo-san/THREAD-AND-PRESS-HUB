@@ -238,11 +238,12 @@ $items_result = $items_stmt->get_result();
                                value="<?php echo htmlspecialchars((string) ($order['rider_phone'] ?? '')); ?>">
                     </div>
                     <label class="form-label small mb-1" for="shipTracking">
-                        Tracking number or link <span class="ship-optional text-muted" <?php echo $shipC === 'rider' ? '' : 'hidden'; ?>>(optional)</span>
+                        Tracking number or link <span class="text-muted">(optional)</span>
                     </label>
                     <input type="text" name="tracking_number" id="shipTracking" class="form-control mb-1" maxlength="300"
+                           placeholder="Leave blank to generate one"
                            value="<?php echo htmlspecialchars((string) ($order['tracking_number'] ?? '')); ?>">
-                    <small class="text-muted d-block mb-3">The waybill number from the courier. For Lalamove or Grab, paste the tracking link they give you.</small>
+                    <small class="text-muted d-block mb-3">Left blank, the system creates a TP- number. It works in this shop only, so it has no Track parcel link. If the courier gave you a waybill number or tracking link, enter that instead.</small>
                     <button type="submit" class="btn btn-primary w-100">
                         <?php if ($order['status'] === 'out_for_delivery'): ?>
                             <i class="fas fa-save"></i> Update courier details
@@ -308,9 +309,7 @@ $items_result = $items_stmt->get_result();
 function syncShipForm(form) {
     const sel = form && form.querySelector('#shipCourier');
     if (!sel) return;
-    const rider = sel.value === 'rider';
-    form.querySelector('.ship-rider').hidden = !rider;
-    form.querySelector('.ship-optional').hidden = !rider;
+    form.querySelector('.ship-rider').hidden = sel.value !== 'rider';
 }
 document.addEventListener('change', function (e) {
     if (e.target.id === 'shipCourier') syncShipForm(e.target.form);

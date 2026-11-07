@@ -109,6 +109,12 @@ if (!defined('COURIERS')) {
             && strtolower((string) parse_url($t, PHP_URL_SCHEME)) === 'https';
     }
 
+    /** The shop's own tracking number: built from the order id, so it is unique and never changes. */
+    function generatedTrackingNumber(int $orderId): string
+    {
+        return 'TP-' . str_pad((string) $orderId, 8, '0', STR_PAD_LEFT);
+    }
+
     /**
      * What to show the customer, or NULL when the order has no courier yet.
      *
@@ -124,7 +130,8 @@ if (!defined('COURIERS')) {
         $url = null;
         if ($isLink) {
             $url = $t;
-        } elseif ($t !== '' && COURIERS[$key]['track'] !== null && shipmentTrackingValid($t)) {
+        // The courier's site does not know the shop's own TP- numbers, so they get no link.
+        } elseif ($t !== '' && COURIERS[$key]['track'] !== null && shipmentTrackingValid($t) && !preg_match('/^TP-\d{8,}$/', $t)) {
             $url = COURIERS[$key]['track'] . rawurlencode($t);
         }
         return [

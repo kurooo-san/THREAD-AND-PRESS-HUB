@@ -1,6 +1,8 @@
-# 🎓 Thread & Press Hub — Capstone Defense Demo Script
+# 🎓 Thread & Press Hub — Capstone Demo Script
 
-**Total demo time:** ~18–21 minutes (adjust per panel rules)
+Para sa panel: sundan ang **ANG DEMO FLOW**. Para sa booth: nasa dulo ang **🎪 EXHIBIT BOOTH**.
+
+**Total demo time:** ~20–24 minutes (adjust per panel rules)
 **Kailangan:** 2 browser tabs — Tab 1: customer (naka-login), Tab 2: admin
 **Mas maganda kung may tablet:** Tablet = customer (hawak mo), Laptop = admin (naka-project). Makikita ng panel na pumapasok ang order sa admin nang walang reload.
 
@@ -29,6 +31,27 @@
 - [ ] **Notification bell → Mark seen** sa admin, sa mismong device na gagamitin (naka-save ito per browser — kung hindi, 100+ ang lalabas na "New Orders")
 - [ ] Kung tablet + laptop: parehong naka-open sa **live Railway URL** (hindi localhost — hindi maaabot ng tablet ang XAMPP ng laptop), at nasubukan na sa WiFi/hotspot ng venue
 - [ ] Huwag i-minimize o ilipat sa ibang tab ang admin page habang hinihintay ang order — humihinto ang live update kapag nakatago ang page (babalik agad pagbalik)
+- [ ] Lagyan ng **Max discount** ang mga lumang percent voucher sa Admin → Coupons (may dilaw na **No cap** badge ang mga wala pa)
+- [ ] Naka-default ang presyo sa **Custom Design Prices** kung may binago sa practice run (**Reset to defaults**)
+- [ ] Isang beses munang pindutin ang **3D** sa home page, para mabilis na itong bumukas sa demo
+- [ ] Gusto mong makita ng panel ang **photo notice** sa Step 3? Lalabas lang ito sa unang beses sa isang device, kaya gumamit ng incognito o ibang browser kung naka-agree ka na sa practice run
+- [ ] Pindutin ang **Necessary only** o **Accept all** sa cookie bar sa customer at admin
+- [ ] May **delivery order** na hindi pa Out for Delivery, para sa courier sa Step 6.3d
+
+---
+
+## 📝 MGA SUGGESTION NG PANEL — saan ipapakita
+
+Unahin o bigyang-diin ang mga ito, kasi ito ang hiningi nila noong Nov 3 defense.
+
+| Suggestion | Saan ipapakita | Isang linyang sagot |
+|---|---|---|
+| Palitan ang pangalan at logo | Step 6.3a Branding | Sa admin na po ito binabago, at sumusunod ang buong site, emails, invoices at chatbot |
+| Try-on ng sariling design | Step 4.7 | Mula sa Design Studio, puwede nang isukat sa customer ang sarili niyang design |
+| Courier at tracking | Step 6.3d | Kailangan muna ng courier at tracking number bago maging Out for Delivery, at nakikita ito ng customer |
+| Shipping fee na nababago | Step 6.3a Shipping Rates | Admin ang nagse-set ng fee at delivery days kada area |
+| Presyo ng custom design na nababago | Step 6.3a Custom Design Prices | Admin ang nagse-set ng lahat ng presyo, at hindi nagbabago ang mga dating order |
+| Maximum sa discount ng voucher | Step 5A at 5C | May "up to ₱___" na ang percent vouchers, kaya hindi lumalaki ang bawas kahit malaki ang order |
 
 ---
 
@@ -66,6 +89,8 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 
 **Gawin:**
 - I-scroll sa **AI Virtual Try-On spotlight** (yung dark section na may animated viewfinder) — ituro ang "Powered by Google Gemini AI"
+- I-scroll sa **3D Design Studio** → pindutin ang **3D** sa preview → i-drag ang shirt, tapos pumili ng ibang kulay
+  > "Totoong 3D model po ito, kapareho ng ginagamit sa Design Studio. 2D po ang default, at nagda-download lang ang 3D kapag pinindot, para hindi bumagal ang home page."
 - *Optional flourish:* i-click ang 🌙 toggle — "May full dark mode din po ang buong system" — tapos ibalik (o iwan sa kung ano ang mas maganda sa projector — **light mode ang mas ligtas sa mahinang projector**)
 
 ---
@@ -91,7 +116,8 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 **I-click:** Try-On
 
 **Gawin (sunud-sunod):**
-1. Pindutin **"Camera On"** → *"May privacy-first design po — hindi awtomatikong bumubukas ang camera."*
+1. Pindutin **"Camera On"** → lalabas ang **photo notice** → **I agree**
+   > "Hindi po awtomatikong bumubukas ang camera. Bago gamitin ang litrato, sinasabi muna namin na ipinapadala ito sa Google Gemini AI, at hindi namin ito itinatago maliban kung i-save ng customer. Hindi rin po tatanggapin ng server ang litrato kung walang pagpayag."
 2. Pindutin ang gender filter (hal. **Men**) → *"Naka-filter po ang catalog at ang AI suggestions ayon sa napili."*
 3. Pindutin **"AI Stylist"** → maghintay ~3-5 sec → lalabas ang top 3 suggestions na may dahilan
    > "Tinitingnan po ng AI ang itsura ko — kulay, build, style — at nagmumungkahi ng pinaka-babagay mula sa aktwal naming catalog, may paliwanag pa po kung bakit."
@@ -99,6 +125,8 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
    > Habang naghihintay: "Ang frame po ng camera at ang garment photo ay pinoproseso ng Gemini image model — ang API key ay nasa server, hindi po nalalantad sa browser."
 5. Paglabas ng resulta: pindutin **"Compare"** → i-drag ang before/after slider 🌟 *(pinaka-malakas na visual moment)*
 6. Mabilisang ipakita: **Save look**, **Download** (banggitin ang watermark), **Add to Cart**
+7. *Optional:* pindutin ang **END**
+   > "Pag natapos po, nare-reload ang page, kaya nabubura sa screen ang litrato at namamatay ang camera."
 
 **BACKUP kung ayaw ng camera/madilim:** gamitin ang **"Upload Photo"** — maghanda ng magandang full-body photo sa desktop.
 
@@ -111,20 +139,28 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 1. Sa **AI Design panel**, pindutin ang isang chip (hal. "Kawaii cat") → **Generate Design** → ~5-8 sec → lalabas ang artwork sa canvas
    > "Kahit po hindi marunong mag-drawing ang customer, kaya niyang magpagawa ng design sa AI."
 2. **I-drag, i-resize, i-rotate** ang artwork; ipakita ang **Layers panel** (reorder/delete)
-3. Magdagdag ng text (pangalan ng panelist? 😄) → ipakita sa **Live 3D Preview** → pindutin **Spin** at **Flip**
-4. Ituro ang **Price Estimate** na live nag-a-update
-5. *Optional:* sa **My Designs**, ituro ang **Remove design** button
+3. Magdagdag ng text (pangalan ng panelist? 😄) → i-drag ito papunta sa gitna → lalabas ang **pink na guide lines** at didikit sa gitna
+   > "May snap guides po, kaya madaling maigitna ang design. Pareho po ang pwesto sa editor at sa mismong print file."
+4. Piliin ang text → pindutin ang **Duplicate** sa toolbar (o **Ctrl+D**)
+5. Pindutin ang **Download** sa toolbar → `my-design.png`, kasama ang front at back kung may laman ang back
+6. Ipakita sa **Live 3D Preview** → pindutin ang **Front / Back** at **Spin**
+7. **⭐ Try it on with AI** → sa Try-On page, nasa catalog card na ang design → **Camera On** → **Try On**
+   > "Suggestion po ito ng panel: puwede nang isukat ng customer ang sarili niyang design. Harap pa lang po ng design ang naisusukat, at hindi ito kasama sa Couple Wear kasi dalawang damit iyon sa iisang larawan."
+   - Pindutin ang **Back to Design Studio** para ituloy ang order
+8. Ituro ang **Price Estimate** na live nag-a-update
+9. *Optional:* sa **My Designs**, ituro ang **Remove design** button
    > "Pwede pong burahin ng customer ang sariling design para hindi kalat ang account niya. Pero kapag may order na gumagamit ng design, hindi po ito mabubura — para hindi madamay ang order at ang bayad."
-6. *Optional, kung may tablet:* buksan ang Design sa tablet → ituro na maayos ang layout: 3D preview sa kaliwa, presyo at order details sa kanan, Submit sa ilalim
+10. *Optional, kung may tablet:* buksan ang Design sa tablet → ituro na maayos ang layout: 3D preview sa kaliwa, presyo at order details sa kanan, Submit sa ilalim
    > "Responsive po ang buong site — pareho ang features sa phone, tablet at desktop."
-7. **Submit & Proceed to Order** → ipakita ang order summary → **Proceed to Payment** → ipakita na **parehong payment options** ang custom at regular orders: **Pay Online (PayMongo)** o **Cash on Delivery**
+11. **Submit & Proceed to Order** → ipakita ang order summary → **Proceed to Payment** → ipakita na **parehong payment options** ang custom at regular orders: **Pay Online (PayMongo)** o **Cash on Delivery**
 
 ---
 
 ### 5. Voucher + Checkout — VAT, Discounts, Payment (3 min)
 
 **A. Gumawa at ibigay ang voucher (Tab 2, Admin → Coupons)**
-- Code: **DEMO20** · Voucher for: **Discount** · Type: **Percent** · Value: **20** · Max uses: **5** · Valid until: bukas → **Create coupon**
+- Code: **DEMO20** · Voucher for: **Items (discount)** · Type: **Percent** · Value: **20** · **Max discount: 100** · Max uses: **5** · Valid until: bukas → **Create coupon**
+  > "Suggestion po ito ng panel: kailangan na ng maximum ang percent vouchers. Ito po ay '20% off, up to ₱100', kaya kahit gaano kalaki ang order, hindi lalampas sa ₱100 ang bawas."
 - Sa row ng DEMO20 pindutin ang **Give** → piliin ang demo customer → Gift note (optional) → **Give voucher**
   > "Ang admin po ang nagbibigay ng voucher — sa piling customer o sa lahat. Walang code na ita-type kaya hindi ito maikakalat o mahuhulaan."
 
@@ -136,6 +172,7 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 - **Balik sa cart** (may laman na galing sa try-on Add to Cart) → Proceed to Checkout
 - Nakapili na ang **DEMO20** sa voucher section — awtomatikong pinipili ang pinakamalaking matitipid
   - May linya sa summary: **Voucher (DEMO20)**
+  - Ituro ang **Save ₱100.00** sa voucher: kung ₱500 pataas ang items, hindi na lalampas sa cap ang bawas
 - Ituro ang breakdown: **Subtotal → Discount (PWD/Senior 20%) → Voucher → VAT 12% → Delivery fee → Total**
   > "Transparent po ang computation. Pwede pong pagsabayin ang PWD/Senior discount at voucher, at ang 12% VAT ay kinukuwenta pagkatapos ng discounts."
 - Ituro ang **Estimated Delivery** sa summary → palitan ang Delivery Area (hal. Mindanao) → nagbabago ang petsa → piliin ang **Store Pickup** → nagiging **"Ready for Pickup"**
@@ -176,10 +213,23 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 3. **Coupons** → ituro ang DEMO20: **Used 1 / 5** at ang **Given** na halaga
    > "Awtomatiko pong nabibilang ang gamit. Kapag naabot ang limit, hindi na po ito tatanggapin — kahit sabay pang mag-checkout ang dalawang customer sa huling slot."
    - *Optional:* pindutin ang **Edit** o **Deactivate** para ipakitang buo ang management
+3a. **⭐ Mga suggestion ng panel** (mabilisan, ~1 min)
+   - **Branding** → ituro ang **Store name**, logo at app icon
+     > "Sa admin na po binabago ang pangalan at logo ng tindahan, at sumusunod ang buong site, sign-in pages, emails, invoices at chatbot."
+     - Huwag i-save ang test name sa demo, o pindutin ang **Reset** pagkatapos
+   - **Shipping Rates** → ituro ang fee at delivery days kada area
+     > "Admin po ang nagse-set nito, at agad na sumusunod ang checkout at ang chatbot. Hindi nagbabago ang fee ng mga dating order."
+   - **Custom Design Prices** → palitan ang presyo ng **T-Shirt** → **Save prices** → sa Tab 1, i-refresh ang Design at tingnan ang **Price Estimate**
+     > "Sa admin na rin po ang presyo ng custom design: base price, print size, sleeve, logo at dagdag na kulay. May sariling presyo ang bawat order na naka-save, kaya hindi nagbabago ang mga dating order."
+     - Pagkatapos: **Reset to defaults**
 3b. **Custom Orders** → buksan ang custom order mula sa Step 4 → palitan ang status sa **Printing** *(SOP 1.3.1, 1.3.3)*
    > "Ito po ang production workflow: processing, printing, ready for pickup, delivered. Bawat palit ay naka-log na may oras — doon po namin kinukuha ang lead time na makikita natin sa Sales Report."
 3c. **Reviews** → ituro ang average rating bawat produkto → i-**Hide** ang isang review, tapos **Unhide** *(SOP 1.4.1)*
    > "Dito po namin sinusukat ang customer satisfaction. Kapag spam o hindi angkop ang review, pwedeng itago — hindi na ito lalabas at hindi na bibilangin sa rating."
+3d. **⭐ Courier at tracking** → buksan ang delivery order → pumili ng **Courier** (hal. J&T Express) → iwanang blank ang tracking number → **Save & mark Out for Delivery**
+   > "Hindi po puwedeng maging Out for Delivery ang order nang walang courier. Kapag walang inilagay na tracking number, ang system na po ang gagawa ng TP- number na unique sa bawat order. Nakikita ito ng customer sa order page at sa email."
+   - Sa Tab 1, buksan ang order → ituro ang **tracking number** at **Copy tracking number**
+     > "Sariling reference number po ito ng shop, kaya hindi ito mahahanap sa website ng courier. Kapag totoong waybill ng courier ang inilagay, lalabas ang **Track parcel** na papunta sa tracking page nila. Wala pa po kaming API integration sa courier, kasi kailangan nito ng business account."
 4. **Cancel → Delete** (gamitin ang **hiwalay na test order**, hindi ang DEMO20 order)
    - Kung ginawa ang Step 5E: buksan ang duplicate order → ituro sa **Notes** ang *[Same items as Order #… - customer confirmed]*
    - Palitan ang status sa **Cancelled**
@@ -233,7 +283,13 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 | **"Magkano ang AI cost?"** | ~₱2-2.50 kada image generation (try-on/design/product), sentimo lang ang text (stylist/chatbot). Pay-per-use, walang monthly fee |
 | **"Paano kung mali/pangit ang AI output?"** | Try-on: may regenerate + fallback messages. Design: pwedeng burahin/ulitin. Products: may admin review bago ma-save. Chatbot: may safety settings + steering |
 | **"Secure ba?"** | API keys sa server-side .env (hindi umaabot sa browser), CSRF tokens sa lahat ng writes, prepared statements (SQL injection), MIME sniffing + EXIF stripping sa uploads, login-gated AI endpoints, audit log |
-| **"Paano ang privacy ng camera/photos?"** | Camera off by default; frames ay pinoproseso lang para sa try-on; payment proofs may consent checkbox + RA 10173 privacy notice + retention policy |
+| **"Paano ang privacy ng camera/photos?"** | Camera off by default. May photo notice bago gamitin ang camera o mag-upload, at tinatanggihan ng server ang litrato kung walang pagpayag. Ipinapadala ito sa Google Gemini para gawin ang try-on, at hindi namin ito itinatago maliban kung pindutin ang Save look. Nakasaad din ito sa Privacy Policy. Payment proofs may consent checkbox + RA 10173 privacy notice + retention policy |
+| **"Paano kung may malaking order at percent voucher?"** | May Max discount na po ang percent vouchers: "40% off, up to ₱500" sa ₱10,000 na items ay ₱500 ang bawas, hindi ₱4,000. Hindi ito kailangan sa fixed voucher at shipping voucher, kasi may limit na ang mga iyon |
+| **"Bakit walang cap ang ibang lumang voucher?"** | Ginawa po sila bago ang feature, at hindi namin hinuhulaan ang tamang halaga. May "No cap" badge sila hanggang ma-edit, at hindi na makakagawa o makaka-edit ng percent voucher nang walang cap |
+| **"May cap din ba ang PWD/Senior 20%?"** | Wala po. Diskwentong itinakda ng batas iyon, hindi promo ng tindahan. Voucher lang ang may cap |
+| **"Nagbabago ba ang dating order kapag binago ang presyo o shipping fee?"** | Hindi po. Naka-save sa bawat order ang presyong sinisingil. Ang mga design na hindi pa na-order ang sumusunod sa bagong presyo |
+| **"Ano ang pagkakaiba ng 2D at 3D sa home page?"** | Flat na larawan ang 2D at default ito para magaan ang page. Ang 3D ay kaparehong model ng Design Studio, at nagda-download lang kapag pinindot. Kapag hindi kaya ng device, nananatili sa 2D |
+| **"Bakit walang courier API?"** | Kailangan nito ng business account at KYC. Kaya gumagawa ang system ng sariling TP- reference number, at kapag totoong waybill ang inilagay, may link papunta sa tracking page ng courier. Puwede itong idagdag sa susunod |
 | **"Ano ang kinaiba niyo sa Shopee/Lazada?"** | Hindi kami marketplace — specialized print shop na may AI-powered fitting at design tools na wala sa kanila |
 | **"Bakit walang VAT ang custom orders?"** | Quote-based po ang custom pricing at VAT-inclusive na — ibang pricing model sa retail products |
 | **"Made to Order pero may stock?"** | Ang stock po ng concept products ay production capacity — kung ilan ang kaya naming i-produce sa isang batch |
@@ -273,3 +329,55 @@ Gamitin ito kapag tinanong ng panel ang isang item: puntahan ang step at sabihin
 | Projector washed out ang dark mode | Manatili sa light mode buong demo |
 | Hindi pumapasok ang order sa admin nang live | Hintayin ang ~8 segundo; siguraduhing naka-focus ang admin tab (hindi minimized). Kung wala pa rin, i-refresh — naka-save na ang order. Malamang internet ang problema |
 | Hindi maabot ng tablet ang site | Gamitin ang live Railway URL / i-scan ang QR; kung walang internet, gawin na lang sa 2 tab ng laptop |
+| Biglang "503" o service unavailable sa live site | Hintayin ang 5–10 segundo at i-refresh. Pansamantalang hindi nakakakonekta ang site sa database, at bumabalik din ito. Kaya buksan muna ang site bago dumating ang panel o mga bisita |
+| Ayaw lumabas ng 3D sa home page | Naka-disable ang 3D button at nananatili sa 2D ang shirt. Buksan ang Design Studio para sa 3D, o i-reload ang page |
+| Hindi lumabas ang photo notice | Naka-agree na sa device na iyon. Gumamit ng incognito kung kailangang ipakita |
+
+---
+
+## 🎪 EXHIBIT BOOTH
+
+Para sa mga bisita, hindi sa panel. Mga 2–3 minuto kada bisita.
+
+### ✅ Bago ang exhibit
+- [ ] Gumawa ng **hiwalay na demo account**. Hindi puwedeng admin, at huwag gumamit ng personal na account
+- [ ] **Admin → Exhibit Mode** → ilagay ang email ng demo account at ang **AI uses per hour** → **Save**
+- [ ] Mag-login gamit ang demo account sa device ng booth, at subukan ang **Try-On, Design Studio at 3D** doon mismo
+- [ ] Sumubok ng **totoong try-on** sa venue. I-check din ang internet, at maghanda ng mobile hotspot
+- [ ] I-check ang **Gemini quota at billing**. ~₱2–2.50 kada try-on, kaya mga ₱250 kada oras kung maabot ang 100 na limit
+- [ ] Alamin kung paano ginagamit ng Google ang mga litrato sa plan niyo. Kung puwede itong gamitin para pagandahin ang produkto nila, mas mainam ang paid plan
+- [ ] Ipabasa ang photo notice at Privacy Policy sa adviser
+- [ ] Mag-upload ng **Sample looks** (Exhibit Mode), mula sa mga kasamang pumayag. Gawin ang try-on sa **normal na account**, kasi nakatago ang Download sa demo account. Maganda kung may isang sample na custom design
+- [ ] Itago rin ang samples sa gallery ng device, kung sakaling walang internet
+- [ ] Lagyan ng **Max discount** ang mga lumang percent voucher sa live site
+- [ ] I-print ang `docs/QR-system-link.png` at i-scan muna para sigurado. Kailangang mag-register ang bisita bago makapag-Try-On o makagamit ng Design Studio sa sariling phone
+- [ ] Pindutin ang **3D** sa home page, para naka-load na ito
+- [ ] Buksan ang live site 5–10 minuto bago magsimula, at i-refresh kung may lumabas na 503
+
+### 🎬 Flow kada bisita
+1. **Home page** → **3D Design Studio** → pindutin ang **3D**, at hayaang umikot ang shirt para makaakit ng tao
+   > "Ito po ang Thread & Press Hub. Puwede kayong gumawa ng sarili niyong damit at makita ito sa 3D."
+2. **Try-On** → hayaang basahin ng bisita ang **photo notice** at siya mismo ang pumindot ng **I agree**
+   - Kung menor de edad at walang kasamang magulang o guardian: **Not now**, tapos ipakita ang **Samples**
+3. **Camera On** → pumili ng damit → **Try On** → ipakita ang **Compare**
+4. *Kung may oras:* **Design Studio** → template o AI design → i-drag sa gitna → **Try it on with AI**
+5. **⭐ Pagkatapos ng bisita: pindutin ang NEW VISITOR**, para mabura ang litrato, cart, at hindi pa naka-save na design
+
+### ⚠️ Tandaan sa booth
+- Huwag iwan ang screen na may litrato ng bisita. Dapat may bantay
+- **Huwag mag-submit ng design o order gamit ang demo account.** Makikita ng susunod na bisita ang My Designs, orders at profile nito
+- Nakatago ang **Save look** at **Download** sa demo account, para walang litratong maiwan sa device. Puwedeng kunan ng bisita ang screen gamit ang sarili niyang phone
+- Puwede pang maibalik ng browser Back button ang naunang page, kaya bantayan ang device
+
+### 🚨 Kapag may problema
+| Problema | Gagawin |
+|---|---|
+| Naubos ang limit o AI quota | Pindutin ang **See sample looks**. Kung limit lang, itaas sa Exhibit Mode |
+| Nawalan ng internet, bukas pa ang page | Pindutin ang **Samples**. **Huwag pindutin ang New Visitor o mag-refresh hangga't walang internet**, kasi hindi na makakabalik sa Try-On |
+| Nawalan ng internet, sarado na ang page | Ipakita ang samples sa gallery ng device, o gumamit ng hotspot |
+| Ayaw ng camera | **Upload Photo**, o ipakita ang **Samples** |
+
+### 🏁 Pagkatapos ng exhibit
+- [ ] **Admin → Exhibit Mode → Turn off after the exhibit**
+- [ ] Burahin ang **Sample looks**, maliban kung pumayag ang mga nasa litrato na manatili ang mga ito
+- [ ] I-log out ang demo account sa device ng booth, at linisin ang Downloads folder at browser data

@@ -51,6 +51,21 @@ final class ShippingTest extends TestCase
         $this->assertNotNull(shipmentFromInput(['courier' => 'rider', 'rider_name' => '<b>Juan</b>', 'rider_phone' => '09171234567'])[1]);
     }
 
+    public function testGeneratedTrackingNumber(): void
+    {
+        $this->assertSame('TP-00000123', generatedTrackingNumber(123));
+        $this->assertSame('TP-123456789', generatedTrackingNumber(123456789));   // longer ids still fit
+
+        [$ok, $err] = shipmentFromInput(['courier' => 'jnt', 'tracking_number' => generatedTrackingNumber(123)]);
+        $this->assertNull($err);
+        $this->assertSame('TP-00000123', $ok['tracking_number']);
+
+        // Shown and copyable, but never linked to the courier's site, which would not know it.
+        $s = orderShipment(['courier' => 'jnt', 'tracking_number' => 'TP-00000123']);
+        $this->assertSame('TP-00000123', $s['number']);
+        $this->assertNull($s['url']);
+    }
+
     public function testShipmentDisplay(): void
     {
         $this->assertNull(orderShipment([]));
