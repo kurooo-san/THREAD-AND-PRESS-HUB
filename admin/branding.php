@@ -181,6 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'name'       => trim((string)($_POST['name'] ?? '')),
             'short_name' => trim((string)($_POST['short_name'] ?? '')),
             'tagline'    => trim((string)($_POST['tagline'] ?? '')),
+            'invoice_tagline' => trim((string)($_POST['invoice_tagline'] ?? '')),
         ];
 
         if ($new['name'] === '' || $new['short_name'] === '') {
@@ -191,6 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Short name must be 24 characters or fewer (it has to fit the navbar and a phone home screen).';
         } elseif (mb_strlen($new['tagline']) > 16) {
             $error = 'Tagline must be 16 characters or fewer.';
+        } elseif (mb_strlen($new['invoice_tagline']) > 60) {
+            $error = 'Invoice tagline must be 60 characters or fewer.';
         } elseif (preg_match('/[\x00-\x1F\x7F]/u', implode('', $new)) || !mb_check_encoding(implode('', $new), 'UTF-8')) {
             $error = 'Names cannot contain line breaks or special control characters.';
         }
@@ -301,6 +304,12 @@ include __DIR__ . '/../includes/admin-sidebar.php';
                    value="<?php echo htmlspecialchars($s['tagline'], ENT_QUOTES); ?>">
             <small class="text-muted">Small text under the navbar name, e.g. "HUB". Leave blank for none.</small>
           </div>
+          <div class="mb-3">
+            <label class="form-label small" for="b_inv_tag">Invoice tagline (optional)</label>
+            <input class="form-control" id="b_inv_tag" name="invoice_tagline" maxlength="60"
+                   value="<?php echo htmlspecialchars($s['invoice_tagline'], ENT_QUOTES); ?>">
+            <small class="text-muted">Small text under the store name on PDF invoices. Leave blank for none.</small>
+          </div>
           <p class="small text-muted mb-0">
             <i class="fas fa-circle-info"></i> Payment account names are set separately in Payment Settings,
             because they must match the real bank or e-wallet account.
@@ -324,7 +333,7 @@ include __DIR__ . '/../includes/admin-sidebar.php';
           <div class="mb-3">
             <label class="form-label small" for="b_logo">Replace logo</label>
             <input class="form-control form-control-sm" type="file" id="b_logo" name="logo" accept="image/png,image/jpeg,image/webp">
-            <small class="text-muted">For light backgrounds: sign-in pages, footer, emails. PNG with a transparent background works best. Max 3&nbsp;MB.</small>
+            <small class="text-muted">For light backgrounds: sign-in pages, footer, emails, invoices. PNG with a transparent background works best. Max 3&nbsp;MB.</small>
           </div>
           <div class="mb-2">
             <label class="form-label small" for="b_logo_dark">Logo for dark backgrounds (recommended)</label>

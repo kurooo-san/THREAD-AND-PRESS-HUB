@@ -31,6 +31,18 @@ final class BrandTest extends TestCase
         $this->assertSame(BRAND_DEFAULT_ICONS['32'], brandIconUrl('32'));
     }
 
+    public function testInvoiceTaglineIsEditableAndCanBeBlank(): void
+    {
+        brandSettings(BRAND_DEFAULTS);
+        $this->assertSame('Premium Apparel &amp; Custom Designs', brandHtml('invoice_tagline'));
+
+        brandSettings(['invoice_tagline' => '<b>Prints</b>'] + BRAND_DEFAULTS);
+        $this->assertSame('&lt;b&gt;Prints&lt;/b&gt;', brandHtml('invoice_tagline'));
+
+        brandSettings(['invoice_tagline' => ''] + BRAND_DEFAULTS);
+        $this->assertSame('', brand('invoice_tagline'));
+    }
+
     public function testNameIsEscapedForHtml(): void
     {
         brandSettings(['name' => 'A & <b>"Co"</b>'] + BRAND_DEFAULTS);

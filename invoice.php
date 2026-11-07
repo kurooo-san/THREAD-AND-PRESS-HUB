@@ -2,6 +2,8 @@
 // invoice.php — Generate downloadable PDF invoice for an order
 require_once 'includes/config.php';
 require_once 'vendor/autoload.php';
+require_once 'includes/invoice-image.php';
+require_once 'includes/couriers.php';
 
 redirectToLogin();
 
@@ -12,6 +14,8 @@ if ($order_id <= 0) {
     http_response_code(400);
     exit('Invalid order ID.');
 }
+
+orderShipmentReady();   // before SELECT o.*, so the courier columns are there
 
 // Fetch order — restrict to owner unless admin
 if ($is_admin) {
@@ -41,9 +45,10 @@ $items_stmt->close();
 $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #' . $order_id . '</title>
 <style>
     body { font-family: DejaVu Sans, sans-serif; color: #1a1a1a; font-size: 12px; }
-    .header { display: flex; justify-content: space-between; border-bottom: 3px solid #1a1a1a; padding-bottom: 15px; margin-bottom: 25px; }
-    .header h1 { margin: 0; font-size: 28px; letter-spacing: 2px; }
-    .header .meta { text-align: right; font-size: 11px; }
+    .header { border-collapse: separate; border-spacing: 0; border-bottom: 3px solid #1a1a1a; margin-bottom: 25px; }
+    .header td { border: none; padding: 0 0 15px; vertical-align: top; }
+    .header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header .meta { text-align: right; font-size: 11px; white-space: nowrap; }
     .meta strong { font-size: 14px; }
     .section { margin-bottom: 18px; }
     .section h3 { background: #1a1a1a; color: #fff; padding: 6px 10px; margin: 0 0 8px; font-size: 13px; }
@@ -61,17 +66,18 @@ $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #' . $o
 </style>
 </head><body>';
 
-$html .= '<div class="header">
-    <div>
+$html .= '<table class="header"><tr>
+    ' . (($logo = invoiceImage(brandLogoUrl(), 64, 64)) !== '' ? '<td style="width:76px;">' . $logo . '</td>' : '') . '
+    <td>
         <h1>' . htmlspecialchars(mb_strtoupper(brand('name')), ENT_QUOTES) . '</h1>
-        <div style="font-size:11px;">Premium Apparel &amp; Custom Designs</div>
-    </div>
-    <div class="meta">
+        ' . (brand('invoice_tagline') !== '' ? '<div style="font-size:11px;">' . brandHtml('invoice_tagline') . '</div>' : '') . '
+    </td>
+    <td class="meta">
         <div><strong>INVOICE #' . str_pad($order_id, 6, '0', STR_PAD_LEFT) . '</strong></div>
         <div>Date: ' . date('M d, Y', strtotime($order['created_at'])) . '</div>
-        <div>Status: ' . ucfirst(htmlspecialchars($order['status'])) . '</div>
-    </div>
-</div>';
+        <div>Status: ' . ucfirst(str_replace('_', ' ', htmlspecialchars($order['status']))) . '</div>
+    </td>
+</tr></table>';
 
 $html .= '<div class="section"><h3>Bill To</h3>
     <div><strong>' . htmlspecialchars($order['fullname']) . '</strong></div>
@@ -87,7 +93,7 @@ $i = 1;
 foreach ($items as $it) {
     $unit = (float)($it['unit_price'] ?? $it['price'] ?? 0);
     $line = $unit * (int)$it['quantity'];
-    $variant = trim(($it['color'] ?? '') . ($it['size'] ? ' / ' . $it['size'] : ''));
+    $variant = implode(' / ', array_filter([$it['color'] ?? '', $it['size'] ?? '']));
     $html .= '<tr>
         <td>' . $i++ . '</td>
         <td>' . htmlspecialchars($it['product_name'] ?? 'Product #' . $it['product_id']) . '</td>
@@ -102,7 +108,7 @@ $html .= '</tbody></table></div>';
 $html .= '<table class="totals">
     <tr><td>Subtotal:</td><td class="text-right">PHP ' . number_format((float)$order['subtotal'], 2) . '</td></tr>';
 if ((float)$order['discount_amount'] > 0) {
-    $html .= '<tr><td>Discount (' . htmlspecialchars($order['discount_type']) . '):</td><td class="text-right">- PHP ' . number_format((float)$order['discount_amount'], 2) . '</td></tr>';
+    $html .= '<tr><td>Discount (' . htmlspecialchars(['pwd' => 'PWD', 'senior' => 'Senior Citizen'][$order['discount_type']] ?? ucfirst((string) $order['discount_type'])) . '):</td><td class="text-right">- PHP ' . number_format((float)$order['discount_amount'], 2) . '</td></tr>';
 }
 if (isset($order['coupon_discount']) && (float)$order['coupon_discount'] > 0) {
     $html .= '<tr><td>Coupon (' . htmlspecialchars($order['coupon_code'] ?? '') . '):</td><td class="text-right">- PHP ' . number_format((float)$order['coupon_discount'], 2) . '</td></tr>';
@@ -124,13 +130,30 @@ $html .= '
 </table>';
 
 $pay_status = $order['payment_status'] ?? '';
-$badge = ($pay_status === 'verified') ? '<span class="badge badge-paid">PAID</span>' : '<span class="badge badge-pending">' . strtoupper(htmlspecialchars($pay_status ?: 'unpaid')) . '</span>';
+$badge = ($pay_status === 'verified') ? '<span class="badge badge-paid">PAID</span>' : '<span class="badge badge-pending">' . strtoupper(str_replace('_', ' ', htmlspecialchars($pay_status ?: 'unpaid'))) . '</span>';
 $html .= '<div class="section" style="margin-top:25px;"><h3>Payment</h3>
     <div>Method: <strong>' . htmlspecialchars(paymentMethodLabel($order['payment_method'])) . '</strong> ' . $badge . '</div>';
 if (!empty($order['payment_reference'])) {
     $html .= '<div>Reference: ' . htmlspecialchars($order['payment_reference']) . '</div>';
 }
 $html .= '</div>';
+
+// Same rule as the customer's order page: shown once the parcel is on its way.
+$ship = in_array($order['status'], ['out_for_delivery', 'completed'], true) ? orderShipment($order) : null;
+if ($ship) {
+    $html .= '<div class="section"><h3>Courier &amp; Tracking</h3>
+        <div>Shipped via: <strong>' . htmlspecialchars($ship['courier']) . '</strong></div>';
+    if ($ship['rider']) {
+        $html .= '<div>Rider: ' . htmlspecialchars($ship['rider'] . ($ship['phone'] ? ' (' . $ship['phone'] . ')' : '')) . '</div>';
+    }
+    if ($ship['number']) {
+        $html .= '<div>Tracking number: <strong>' . htmlspecialchars($ship['number']) . '</strong></div>';
+    }
+    if ($ship['url']) {
+        $html .= '<div style="word-break:break-all;">Track at: ' . htmlspecialchars($ship['url']) . '</div>';
+    }
+    $html .= '</div>';
+}
 
 $html .= '<div class="footer">
     Thank you for shopping with ' . brandHtml('name') . '!<br>

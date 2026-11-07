@@ -21,6 +21,7 @@ const BRAND_DEFAULTS = [
     'name'       => 'Thread & Press Hub', // full name: titles, emails, invoices, AI prompts
     'short_name' => 'Thread & Press',     // navbar, admin sidebar, app name on a phone
     'tagline'    => 'HUB',                // small label under the navbar name (may be empty)
+    'invoice_tagline' => 'Premium Apparel & Custom Designs', // under the name on PDF invoices (may be empty)
     'logo'       => '',                   // file in uploads/branding/, '' = shipped logo
     'logo_dark'  => '',                   // logo for dark backgrounds, '' = use 'logo'
     'icon'       => '',                   // icon set version id, '' = shipped icons

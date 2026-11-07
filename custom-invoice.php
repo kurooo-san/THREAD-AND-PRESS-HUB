@@ -2,6 +2,8 @@
 // custom-invoice.php — Generate downloadable PDF invoice for a custom order
 require_once 'includes/config.php';
 require_once 'vendor/autoload.php';
+require_once 'includes/invoice-image.php';
+require_once 'includes/apparel-config.php';
 
 redirectToLogin();
 
@@ -55,8 +57,17 @@ $payStmt->execute();
 $payment = $payStmt->get_result()->fetch_assoc();
 $payStmt->close();
 
-$typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
-$typeName = $typeNames[$order['product_type']] ?? 'Custom Apparel';
+$designBack = '';
+if (!empty($order['design_id'])) {
+    // SELECT *: design_image_back is added by the Design Studio, older databases may not have it.
+    $d = $conn->prepare("SELECT * FROM custom_designs WHERE id = ?");
+    $d->bind_param("i", $order['design_id']);
+    $d->execute();
+    $designBack = ($d->get_result()->fetch_assoc() ?: [])['design_image_back'] ?? '';
+    $d->close();
+}
+
+$typeName = getApparelConfig()[$order['product_type']]['label'] ?? 'Custom Apparel';
 $qty = (int)$order['quantity'];
 $basePrice = (float)$order['base_price'];
 $printCost = (float)$order['print_cost'];
@@ -67,9 +78,10 @@ $unitPrice = $basePrice + $printCost + $colorCost;
 $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Custom Invoice #' . $order_id . '</title>
 <style>
     body { font-family: DejaVu Sans, sans-serif; color: #1a1a1a; font-size: 12px; }
-    .header { display: flex; justify-content: space-between; border-bottom: 3px solid #1a1a1a; padding-bottom: 15px; margin-bottom: 25px; }
-    .header h1 { margin: 0; font-size: 28px; letter-spacing: 2px; }
-    .header .meta { text-align: right; font-size: 11px; }
+    .header { border-collapse: separate; border-spacing: 0; border-bottom: 3px solid #1a1a1a; margin-bottom: 25px; }
+    .header td { border: none; padding: 0 0 15px; vertical-align: top; }
+    .header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header .meta { text-align: right; font-size: 11px; white-space: nowrap; }
     .meta strong { font-size: 14px; }
     .section { margin-bottom: 18px; }
     .section h3 { background: #1a1a1a; color: #fff; padding: 6px 10px; margin: 0 0 8px; font-size: 13px; }
@@ -89,17 +101,18 @@ $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Custom Invoice 
 </style>
 </head><body>';
 
-$html .= '<div class="header">
-    <div>
+$html .= '<table class="header"><tr>
+    ' . (($logo = invoiceImage(brandLogoUrl(), 64, 64)) !== '' ? '<td style="width:76px;">' . $logo . '</td>' : '') . '
+    <td>
         <h1>' . htmlspecialchars(mb_strtoupper(brand('name')), ENT_QUOTES) . '</h1>
-        <div style="font-size:11px;">Premium Apparel &amp; Custom Designs</div>
-    </div>
-    <div class="meta">
+        ' . (brand('invoice_tagline') !== '' ? '<div style="font-size:11px;">' . brandHtml('invoice_tagline') . '</div>' : '') . '
+    </td>
+    <td class="meta">
         <div><strong>CUSTOM INVOICE #C' . str_pad($order_id, 6, '0', STR_PAD_LEFT) . '</strong></div>
         <div>Date: ' . date('M d, Y', strtotime($order['created_at'])) . '</div>
         <div>Status: ' . ucfirst(str_replace('_', ' ', htmlspecialchars($order['status']))) . '</div>
-    </div>
-</div>';
+    </td>
+</tr></table>';
 
 $html .= '<div class="section"><h3>Bill To</h3>
     <div><strong>' . htmlspecialchars($order['fullname']) . '</strong></div>
@@ -110,16 +123,32 @@ if ($address !== '') {
 }
 $html .= '</div>';
 
+// The garment mockups. The back comes from the saved design, the same as on the order summary.
+$pictures = '';
+foreach (['Front' => $order['design_image'] ?? '', 'Back' => $designBack] as $side => $src) {
+    $img = invoiceImage((string) $src, 130, 165);
+    if ($img !== '') {
+        $pictures .= '<td style="border:none;padding:0 0 0 8px;text-align:center;font-size:10px;color:#666;">' . $img . '<br>' . $side . '</td>';
+    }
+}
+
+// The colour is stored as a hex code, so show it as well as name it.
+$swatch = preg_match('/^#[0-9A-Fa-f]{3,8}$/', (string) $order['apparel_color'])
+    ? '<span style="display:inline-block;width:10px;height:10px;border:1px solid #999;background:' . $order['apparel_color'] . ';"></span> '
+    : '';
+
 $html .= '<div class="section"><h3>Custom Design Details</h3>
+    <table><tr><td style="border:none;padding:0;vertical-align:top;">
     <table class="design-meta">
         <tr><td>Apparel Type:</td><td><strong>' . htmlspecialchars($typeName) . '</strong></td></tr>
-        <tr><td>Color:</td><td>' . htmlspecialchars($order['apparel_color']) . '</td></tr>
+        <tr><td>Color:</td><td>' . $swatch . htmlspecialchars($order['apparel_color']) . '</td></tr>
         <tr><td>Size:</td><td>' . htmlspecialchars($order['size']) . '</td></tr>
         <tr><td>Quantity:</td><td>' . $qty . '</td></tr>';
 if (!empty($order['notes'])) {
     $html .= '<tr><td>Notes:</td><td>' . nl2br(htmlspecialchars($order['notes'])) . '</td></tr>';
 }
 $html .= '</table>
+    </td>' . ($pictures !== '' ? '<td style="border:none;padding:0;width:290px;vertical-align:top;"><table style="width:auto;margin-left:auto;"><tr>' . $pictures . '</tr></table></td>' : '') . '</tr></table>
 </div>';
 
 $html .= '<div class="section"><h3>Cost Breakdown</h3><table>
@@ -152,7 +181,7 @@ $html .= '</tbody></table></div>';
 $html .= '<table class="totals">
     <tr><td>Subtotal:</td><td class="text-right">PHP ' . number_format((float)$order['subtotal'], 2) . '</td></tr>';
 if ((float)$order['discount_amount'] > 0) {
-    $html .= '<tr><td>Discount (' . htmlspecialchars($order['discount_type']) . '):</td><td class="text-right">- PHP ' . number_format((float)$order['discount_amount'], 2) . '</td></tr>';
+    $html .= '<tr><td>Discount (' . htmlspecialchars(['pwd' => 'PWD', 'senior' => 'Senior Citizen'][$order['discount_type']] ?? ucfirst((string) $order['discount_type'])) . '):</td><td class="text-right">- PHP ' . number_format((float)$order['discount_amount'], 2) . '</td></tr>';
 }
 $html .= '<tr class="grand"><td>TOTAL:</td><td class="text-right">PHP ' . number_format((float)$order['total_price'], 2) . '</td></tr>
 </table>';
