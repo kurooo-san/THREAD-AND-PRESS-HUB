@@ -66,6 +66,14 @@ final class ShippingTest extends TestCase
         $this->assertNull($s['url']);
     }
 
+    public function testFindsOrderIdsFromTrackingNumbers(): void
+    {
+        $this->assertSame([169], orderIdsFromTrackingNumbers('Where is TP-00000169?'));
+        $this->assertSame([169, 7], orderIdsFromTrackingNumbers('tp-00000169 and TP-00000007'));
+        $this->assertSame([123456789], orderIdsFromTrackingNumbers(generatedTrackingNumber(123456789)));
+        $this->assertSame([], orderIdsFromTrackingNumbers('JT820012345 STP-123 TP-00000000 order 45'));
+    }
+
     public function testShipmentDisplay(): void
     {
         $this->assertNull(orderShipment([]));

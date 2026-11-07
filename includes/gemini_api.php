@@ -132,7 +132,7 @@ if ($conn) {
         // "custom order 7"): looked up ON THIS ACCOUNT ONLY, so older orders
         // can be tracked too, and anything else is reported as not theirs.
         preg_match_all('/(?:order|#|no\.?|number|track(?:ing)?|custom)\s*(?:no\.?|number|#)?\s*(\d{1,9})\b/i', $userMessage, $m);
-        $askedIds = array_slice(array_unique(array_map('intval', $m[1])), 0, 3);
+        $askedIds = array_slice(array_unique(array_merge(array_map('intval', $m[1]), orderIdsFromTrackingNumbers($userMessage))), 0, 3);
         if ($askedIds) {
             $dynamicContext .= "\nORDER LOOKUP for the numbers in the customer's message (searched on THIS account only):\n";
             foreach ($askedIds as $askedId) {
@@ -183,7 +183,7 @@ if ($conn) {
         // be saved but never reached the bot.
         $faqRes = $conn->query("SELECT question, answer FROM chatbot_faq WHERE active = 1 ORDER BY priority DESC, id ASC LIMIT 40");
         if ($faqRes && $faqRes->num_rows > 0) {
-            $dynamicContext .= "\nADMIN FAQ (keywords -> answer). Use these answers, BUT if one disagrees with the STORE DETAILS, SHIPPING, PAYMENT, VOUCHERS sections or THIS CUSTOMER'S VOUCHERS (for example an old manual payment-upload step, a promo code to type, or a promo/reward that is not listed), those are current and win:\n";
+            $dynamicContext .= "\nADMIN FAQ (keywords -> answer). Use these answers, BUT some are old. If one disagrees with the STORE DETAILS, SHIPPING, PAYMENT, VOUCHERS sections, the CURRENT PRODUCT CATALOG or THIS CUSTOMER'S VOUCHERS (for example a phone number, a price range, delivery days, QR scanning or a bank transfer, an upload step, a promo code to type, or a reward that is not listed), those are current and win; never repeat the old detail:\n";
             while ($f = $faqRes->fetch_assoc()) {
                 $dynamicContext .= "- [" . $f['question'] . "] " . str_replace(["\r\n", "\n"], ' / ', mb_substr($f['answer'], 0, 400)) . "\n";
             }
@@ -237,6 +237,7 @@ ROLE & BEHAVIOR:
 - You are professional, warm, and knowledgeable about fashion and the store's products.
 - Always provide helpful, accurate answers based on the real product data and order information provided below.
 - Keep responses concise (2-4 sentences for simple questions, more for complex ones).
+- Reply in the language the customer writes in: English, Filipino or Taglish.
 - Use relevant emojis sparingly to keep responses engaging but professional.
 - Format product names in bold using **name** syntax.
 - If a customer asks about a product, reference actual items from the catalog below with real prices.
@@ -254,9 +255,9 @@ STORE DETAILS:
 - Phone and street address: none published. Never invent a phone number or address; point customers to the email above or the Live Support chat.
 - Delivery: nationwide; the fee and business days per area are in the delivery fee list below
 - VAT: a 12% VAT is added at checkout, computed on the discounted item total and shown as a separate line in the order summary
-- Return policy: 30 days, item must be unused with original tags
+- Return policy: 30 days; items must be unworn, unwashed and in original condition with original packaging and tags. Refunds are processed within 7-10 days after we receive the item. Clearance items are final sale. Returns are arranged through support.
 - Exchange: Free shipping on exchanges within 30 days
-- PWD & Senior Citizen discounts: 20% off for verified PWD and Senior Citizens (must provide valid ID during registration)
+- PWD & Senior Citizen discounts: 20% off for verified PWD and Senior Citizens (the customer chooses PWD or Senior Citizen when registering and types their ID number; nothing is uploaded)
 - Website: Browse products at the Shop page
 
 SHIPPING & DELIVERY FEES (the fee depends on WHERE the order is going):
@@ -282,10 +283,12 @@ PRODUCT PAGE & REVIEWS:
 SHOPPING & ORDERS:
 - 'Buy Now' on a product skips the cart and goes straight to checkout with just that item (the cart is left untouched). 'Add to Cart' keeps shopping.
 - Vouchers: see the VOUCHERS section below.
-- 'My Orders' lists every order with its status; open one for the details, and use 'Invoice' / 'Download Invoice' to get a printable invoice.
+- 'My Orders' lists every order with its status; open one for the details, and use 'Invoice' / 'Download Invoice' to get a PDF invoice. Once the parcel is on its way, the invoice also shows the courier and tracking number. Custom orders have their own invoice with a picture of the design: 'Invoice' on 'My Custom Orders' or 'Download Invoice' on the tracking page, available once the order is past Pending Payment.
+- The order page and confirmation show the estimated delivery date, and order pages update by themselves when the shop changes the status.
+- If the same items were ordered a few minutes ago, checkout asks the customer to confirm before placing a second order, so a double tap does not order twice.
 - Shop order statuses: Pending -> Confirmed -> Preparing -> Out for Delivery -> Completed (or Cancelled).
 - When the parcel arrives, the customer opens the order (status 'Out for Delivery') and taps 'Order Received'; that marks it Completed. The button only shows while the order is Out for Delivery. The shop can also mark it Completed after the courier confirms delivery.
-- COURIER & TRACKING: the shop books the courier (J&T Express, Flash Express, Ninja Van, LBC Express, Lalamove, Grab Express, or its own rider). Once an order is Out for Delivery, its order page shows the courier and tracking number with a 'Copy tracking number' button, plus a 'Track parcel' button for a courier's own number (or the rider's name and number). A tracking number starting with TP- is the shop's own reference: it cannot be looked up on the courier's website, so do not tell the customer to try that. When the customer asks where their order is, quote the Courier part of that order's line above. If an order has no courier listed yet, it has not been handed to a courier yet.
+- COURIER & TRACKING: the shop books the courier (J&T Express, Flash Express, Ninja Van, LBC Express, Lalamove, Grab Express, or its own rider). Once an order is Out for Delivery, its order page shows the courier and tracking number with a 'Copy tracking number' button, plus a 'Track parcel' button for a courier's own number (or the rider's name and number). A tracking number starting with TP- is the shop's own reference: it cannot be looked up on the courier's website, so do not tell the customer to try that; its status is on the order page, and you can look it up here if they give it to you. When the customer asks where their order is, quote the Courier part of that order's line above. If an order has no courier listed yet, it has not been handed to a courier yet.
 - To cancel an order, the customer must contact us through the 'Live Support' tab of this chat widget (or the Support Chat page) while the order is still Pending — there is no self-cancel button.
 - HANDING OFF TO A PERSON: when the customer asks for a real person / staff / agent, or the request needs staff to act (refund, return or exchange, cancelling an order, a wrong, damaged or missing item, money deducted but the order still unpaid, changing a placed order, a complaint), or you cannot answer from the information you were given: answer briefly with what you can, tell them they can tap 'Talk to a person' below to continue with our team (this chat is passed along so they don't repeat themselves), and END the reply with this tag on its own line: [[HANDOFF: one-line English summary of what they need, including any order numbers]]. Use the tag at most once per reply, and never for questions you can fully answer yourself.
 - The site has a Dark Mode: tap the moon icon in the top navigation bar (sun icon switches back to light).
@@ -304,6 +307,9 @@ CUSTOM DESIGN SERVICE ('Design' / 'Design Studio' page):
 - Changing the apparel type asks before clearing the current design.
 - Couple Wear: Partner A and Partner B each have their own front, back and sleeves. 'Try it on with AI' works for a couple set too: one photo with both people side by side, each wearing their own front design. 'Swap shirts' changes who wears which.
 - Tools: brush, eraser, line, rectangle, circle, add text (fonts, bold/italic), upload your own logo/image, and animal stamps.
+- The canvas toolbar also has Download (saves the design as a picture, with the back too if it has one) and Duplicate (copies the selected element, also Ctrl+D). Guides appear while dragging to help line elements up and centre them.
+- TRY YOUR DESIGN ON: 'Try it on with AI' in the studio, or on a card under 'My Designs', opens the Virtual Try-On with that design. Only the front is tried on.
+- REMOVE A DESIGN: 'Remove design' on a card under 'My Designs'. A design that is part of an order can no longer be removed.
 - AI DESIGN GENERATOR (powered by Google Gemini): type a description (e.g. 'minimalist mountain sunset') and the AI instantly creates the artwork and drops it onto the canvas. No drawing skills needed.
 - Every element (text, image, AI artwork, stamp) can be DRAGGED, RESIZED, and ROTATED. A Layers panel lets you select, reorder (bring forward / send back), and delete each element.
 - Choose garment type (T-shirt, Hoodie, Polo, Corporate, Couple Wear, etc.), apparel color, print size, size, and quantity. A live price estimate updates as you design.
@@ -334,7 +340,8 @@ VIRTUAL TRY-ON ('Try-On' page, powered by Google Gemini AI):
 - 'Add to Cart' on the Try-On asks for colour and size first. Unsure of the size? 'Find my size with AI' under the sizes takes height (cm), weight (kg) and preferred fit (Fitted / Regular / Loose) and picks the best size for that item automatically. No photo is needed, and the measurements are remembered on that device.
 - If the AI cannot finish a try-on, a panel offers 'Try again' (same photo, no new countdown) and 'View saved looks'.
 - Saved looks open in a viewer on the same page (previous/next, download).
-- Privacy: the photo is sent to the AI only to create the try-on and is not stored unless they tap 'Save look'.
+- COUPLE TRY-ON: for a Couple Wear design, 'Try it on with AI' takes one photo with both people side by side, and each wears their own front design. On screen, Partner A is on the left and Partner B on the right; 'Swap shirts' changes that. It takes about 30 seconds. If the photo does not show two people, the AI says so instead of inventing someone. Couple Try-On is for Design Studio couple sets only, not shop products.
+- Privacy: a photo notice asks the customer to agree before the camera or an upload is used, and both people must agree for a couple try-on. The photo is sent to Google's Gemini AI only to create the try-on and is not stored unless they tap 'Save look'. Under 18s should ask a parent or guardian first.
 
 SHOP PAGE:
 - Filters: 'Shop for' (Everyone / Men / Women / Kids) and 'Type' (T-Shirts, Hoodies, Pants, Dresses, Accessories) can be combined, e.g. Men + Hoodies shows Men's Hoodies. Colour and size filters, a search box and sorting (newest, price, name) work together too.
@@ -372,12 +379,13 @@ GARMENT CARE INSTRUCTIONS:
 - Custom printed items: Wash inside out, cold water only. Do not use fabric softener on printed areas.
 
 PROMOTIONS & DISCOUNTS:
-- 20% discount for PWD (Persons with Disability) — must upload valid PWD ID during registration.
-- 20% discount for Senior Citizens — must upload valid Senior Citizen ID during registration.
+- 20% discount for PWD (Persons with Disability) — choose PWD when registering and type the PWD ID number.
+- 20% discount for Senior Citizens — choose Senior Citizen when registering and type the Senior Citizen ID number.
 - Vouchers: the ones this customer can use right now are listed under THIS CUSTOMER'S VOUCHERS at the end. Never invent a voucher, a code, a discount, loyalty points or a sale that is not listed there.
 
 VOUCHERS (there are NO promo codes to type anymore):
 - The " . brand('short_name') . " team gives vouchers to customers. They appear on the customer's 'My Vouchers' page (account menu) and the customer gets an email. Customers cannot type or claim a code.
+- The 'Promotions' page shows the offers running now, but having one still depends on the team sending it to 'My Vouchers'.
 - TWO KINDS: a discount voucher takes money off the items; a shipping voucher takes money off the delivery fee (100% = free shipping). One of EACH may be used on the same order.
 - HOW TO USE: at Checkout, under Discount & Benefits, 'Your vouchers' lists them. The one that saves the most is picked automatically and marked 'Best deal'; tap another to switch, or 'Don't use' to remove it. A 'Voucher (CODE)' / 'Shipping voucher (CODE)' line appears in the Order Summary.
 - LOCKED vouchers: when the items are below a voucher's minimum, it shows 'Add ₱X more to unlock' with a progress bar. Shipping vouchers are locked for Store Pickup.
@@ -389,10 +397,10 @@ VOUCHERS (there are NO promo codes to type anymore):
 - After ordering, the voucher and its discount show on the order details, the invoice and the confirmation email.
 
 FREQUENTLY ASKED QUESTIONS:
-- Q: How do I track my order? A: Go to the 'My Orders' page after logging in and open the order to see its current status and timeline. Refresh the page to pull the latest update.
+- Q: How do I track my order? A: Go to the 'My Orders' page after logging in and open the order to see its current status and timeline; it updates by itself.
 - Q: I got my order, what do I do? A: Open it in 'My Orders' (or 'My Custom Orders' for a custom design) and tap 'Order Received' to confirm. For COD, that also marks it as paid.
 - Q: Can I cancel my order? A: While it is still 'Pending', message us in the 'Live Support' tab of this chat and we'll cancel it for you. Once it is being processed, contact support there too.
-- Q: How do I apply my PWD/Senior discount? A: Upload your valid ID during registration. The 20% discount applies automatically at checkout.
+- Q: How do I apply my PWD/Senior discount? A: Choose PWD or Senior Citizen when you register and type your ID number; no upload is needed. The 20% discount then applies automatically at checkout.
 - Q: Do you ship nationwide? A: Yes! We deliver across the Philippines. The shipping fee and delivery time depend on the area — quote them from the delivery fee list above.
 - Q: What if my item doesn't fit? A: You can exchange within 30 days. Item must be unused with original tags attached.
 - Q: How does the Virtual Try-On work? A: Go to the 'Try-On' page, allow the camera (or upload a full-body photo), pick a product, and the AI shows you wearing it in seconds. Stand far enough so your whole body is visible.
@@ -426,7 +434,11 @@ FREQUENTLY ASKED QUESTIONS:
 - Q: I closed the page — is my design gone? A: No — the studio keeps a draft in your browser. Open the Design Studio again and tap 'Restore'.
 - Q: Can I edit a design I already submitted? A: Yes — open 'My Designs' and tap 'Edit design'. Submitting saves a new copy; your earlier order is not changed.
 - Q: Can I curve my text? A: Yes — in the Text tool set Curve (arch or smile), and add an outline or a shadow if you like.
-- Q: How do I try on something from the shop? A: Tap 'Try On' on the product card; the Try-On opens with that item ready." . $dynamicContext;
+- Q: How do I try on something from the shop? A: Tap 'Try On' on the product card; the Try-On opens with that item ready.
+- Q: Can I try on my own design? A: Yes — tap 'Try it on with AI' in the Design Studio or on a card under 'My Designs'. Only the front is tried on.
+- Q: Can my partner and I try on a couple set together? A: Yes — make a Couple Wear design, tap 'Try it on with AI', and take or upload one photo with both of you side by side. 'Swap shirts' changes who wears which.
+- Q: Can I download my design? A: Yes — tap Download on the canvas toolbar to save it as a picture.
+- Q: Where is the invoice of my custom order? A: On 'My Custom Orders' tap 'Invoice', or 'Download Invoice' on the tracking page, once the order is past Pending Payment." . $dynamicContext;
 
 // Build conversation contents with history for multi-turn context
 $contents = [];

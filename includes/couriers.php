@@ -115,6 +115,13 @@ if (!defined('COURIERS')) {
         return 'TP-' . str_pad((string) $orderId, 8, '0', STR_PAD_LEFT);
     }
 
+    /** Order ids behind the TP- numbers in a message ("where is TP-00000169?" => [169]). */
+    function orderIdsFromTrackingNumbers(string $text): array
+    {
+        preg_match_all('/\bTP-0*([1-9]\d{0,8})\b/i', $text, $m);
+        return array_map('intval', $m[1]);
+    }
+
     /**
      * What to show the customer, or NULL when the order has no courier yet.
      *
