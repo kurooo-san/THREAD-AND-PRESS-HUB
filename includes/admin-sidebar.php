@@ -109,7 +109,7 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="adminSidebar">
         <div class="ad-side-head">
-            <?php echo brandLogoImgs('ad-logo', '../', brand('short_name') . ' logo', true); ?>
+            <?php echo brandLogoImgs('ad-logo', '../', brand('short_name') . ' logo'); ?>
             <span class="ad-wordmark">
                 <b><?php echo brandHtml('short_name'); ?></b>
                 <span>Admin</span>

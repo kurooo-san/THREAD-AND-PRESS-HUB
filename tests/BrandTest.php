@@ -20,7 +20,15 @@ final class BrandTest extends TestCase
         $this->assertSame(BRAND_DEFAULT_LOGO, brandLogoUrl(false));
         $this->assertSame(BRAND_DEFAULT_LOGO_DARK, brandLogoUrl(true));
         $this->assertSame(BRAND_DEFAULT_ICONS['180'], brandIconUrl('180'));
-        $this->assertStringNotContainsString('brand-custom', brandLogoImgs('brand-logo', '', '', true));
+        $this->assertStringNotContainsString('brand-custom', brandLogoImgs('brand-logo'));
+    }
+
+    public function testOldStoreNameInFaqTextBecomesTheCurrentName(): void
+    {
+        brandSettings(['name' => 'John $1 Chloe'] + BRAND_DEFAULTS);
+        $this->assertSame('At John $1 Chloe!', brandCurrentName('At Thread and Press Hub!'));
+        $this->assertSame('John $1 Chloe team', brandCurrentName('Thread & Press team'));
+        $this->assertSame('We thread and press shirts', brandCurrentName('We thread and press shirts'));
     }
 
     public function testMissingOrTraversalFilesFallBackToShippedLogo(): void

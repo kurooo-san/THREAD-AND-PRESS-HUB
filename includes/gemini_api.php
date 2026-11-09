@@ -185,7 +185,7 @@ if ($conn) {
         if ($faqRes && $faqRes->num_rows > 0) {
             $dynamicContext .= "\nADMIN FAQ (keywords -> answer). Use these answers, BUT some are old. If one disagrees with the STORE DETAILS, SHIPPING, PAYMENT, VOUCHERS sections, the CURRENT PRODUCT CATALOG or THIS CUSTOMER'S VOUCHERS (for example a phone number, a price range, delivery days, QR scanning or a bank transfer, an upload step, a promo code to type, or a reward that is not listed), those are current and win; never repeat the old detail:\n";
             while ($f = $faqRes->fetch_assoc()) {
-                $dynamicContext .= "- [" . $f['question'] . "] " . str_replace(["\r\n", "\n"], ' / ', mb_substr($f['answer'], 0, 400)) . "\n";
+                $dynamicContext .= "- [" . $f['question'] . "] " . str_replace(["\r\n", "\n"], ' / ', mb_substr(brandCurrentName($f['answer']), 0, 400)) . "\n";
             }
         }
     } catch (Exception $e) {

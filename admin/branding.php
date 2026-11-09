@@ -333,12 +333,12 @@ include __DIR__ . '/../includes/admin-sidebar.php';
           <div class="mb-3">
             <label class="form-label small" for="b_logo">Replace logo</label>
             <input class="form-control form-control-sm" type="file" id="b_logo" name="logo" accept="image/png,image/jpeg,image/webp">
-            <small class="text-muted">For light backgrounds: sign-in pages, footer, emails, invoices. PNG with a transparent background works best. Max 3&nbsp;MB.</small>
+            <small class="text-muted">Shown in light mode, and on emails and invoices. PNG with a transparent background works best. Max 3&nbsp;MB.</small>
           </div>
           <div class="mb-2">
             <label class="form-label small" for="b_logo_dark">Logo for dark backgrounds (recommended)</label>
             <input class="form-control form-control-sm" type="file" id="b_logo_dark" name="logo_dark" accept="image/png,image/jpeg,image/webp">
-            <small class="text-muted">A white or light-coloured version. Used on the navbar and admin sidebar (always dark) and in dark mode. Without one, the logo above is used there too.</small>
+            <small class="text-muted">A white or light-coloured version, shown in dark mode. Without one, the logo above is used there too.</small>
           </div>
           <?php if ($s['logo_dark'] !== ''): ?>
           <div class="form-check">

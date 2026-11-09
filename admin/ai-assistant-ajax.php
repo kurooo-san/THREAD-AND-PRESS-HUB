@@ -556,7 +556,7 @@ if ($action === 'suggest_reply') {
     if ($faqRows) {
         $facts .= "\nSHOP FAQ (if one disagrees with STORE FACTS, STORE FACTS win):\n";
         foreach ($faqRows as $f) {
-            $facts .= "- [" . $f['question'] . "] " . str_replace(["\r\n", "\n"], ' / ', mb_substr($f['answer'], 0, 300)) . "\n";
+            $facts .= "- [" . $f['question'] . "] " . str_replace(["\r\n", "\n"], ' / ', mb_substr(brandCurrentName($f['answer']), 0, 300)) . "\n";
         }
     }
 

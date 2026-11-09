@@ -83,6 +83,12 @@ function brandHtml(string $key): string
     return htmlspecialchars(brand($key), ENT_QUOTES, 'UTF-8');
 }
 
+/** Seeded FAQ answers name the original store; show the current name instead. */
+function brandCurrentName(string $text): string
+{
+    return preg_replace_callback('/Thread\s*(?:and|&amp;|&)\s*Press(?:\s*Hub)?/', static fn(): string => brand('name'), $text) ?? $text;
+}
+
 /** Save settings to brand.json. */
 function brandSave(array $settings): bool
 {
@@ -141,16 +147,9 @@ function brandIconUrl(string $size): string
  * The light + dark logo pair the site swaps with CSS (.logo-light/.logo-dark).
  * $base is the path back to the web root ('' or '../').
  */
-function brandLogoImgs(string $class, string $base = '', string $alt = '', bool $alwaysDark = false): string
+function brandLogoImgs(string $class, string $base = '', string $alt = ''): string
 {
     $alt = htmlspecialchars($alt, ENT_QUOTES, 'UTF-8');
-    // The storefront navbar and admin sidebar are dark in both themes, so an
-    // uploaded logo there always uses its dark-background version. (The
-    // shipped logos are tiles that already work there, so they keep the pair.)
-    if ($alwaysDark && brandSettings()['logo'] !== '' && strpos(brandLogoUrl(true), BRAND_URLBASE) === 0) {
-        return '<img class="' . $class . ' brand-custom" src="'
-            . htmlspecialchars($base . brandLogoUrl(true), ENT_QUOTES, 'UTF-8') . '" alt="' . $alt . '">';
-    }
     $out = '';
     foreach ([false => 'logo-light', true => 'logo-dark'] as $dark => $themeClass) {
         $url = brandLogoUrl((bool)$dark);

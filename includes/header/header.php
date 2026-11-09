@@ -88,7 +88,7 @@ if ($navFirstName === false || $navFirstName === '') {
     <nav class="navbar navbar-expand-lg cafe-navbar tp-nav sticky-top">
         <div class="container tp-nav-shell">
             <a class="navbar-brand" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? '../index.php' : 'index.php'; ?>">
-                <?php echo brandLogoImgs('brand-logo', $assetBase, brand('name') . ' logo', true); ?>
+                <?php echo brandLogoImgs('brand-logo', $assetBase, brand('name') . ' logo'); ?>
                 <span class="brand-text">
                     <span class="brand-name"><?php echo brandHtml('short_name'); ?></span>
                     <?php if (brand('tagline') !== ''): ?><span class="brand-sub"><?php echo brandHtml('tagline'); ?></span><?php endif; ?>

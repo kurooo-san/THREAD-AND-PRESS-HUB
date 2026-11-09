@@ -194,7 +194,7 @@
             </div>
             <div id="chat-messages" class="chat-messages">
                 <div class="chat-message bot-message">
-                    Hi there! I'm your AI shopping assistant powered by Gemini. I can help you find products, give style advice, track orders, and answer any questions about Thread &amp; Press Hub. How can I help you today?
+                    Hi there! I'm your AI shopping assistant powered by Gemini. I can help you find products, give style advice, track orders, and answer any questions about <?php echo brandHtml('name'); ?>. How can I help you today?
                 </div>
             </div>
             <div class="chat-input-area">
