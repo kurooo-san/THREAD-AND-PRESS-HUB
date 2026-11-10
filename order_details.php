@@ -254,7 +254,7 @@ $items_result = $items_stmt->get_result();
                                 <p class="text-muted mb-1">Payment Method</p>
                                 <p style="color: var(--coffee-dark); font-weight: 600;">
                                     <i class="fas fa-<?php echo $order['payment_method'] === 'cod' ? 'money-bill' : 'credit-card'; ?>"></i>
-                                    <?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'])); ?>
+                                    <?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'], ($order['delivery_address'] ?? '') === 'Store Pickup')); ?>
                                 </p>
                             </div>
                             <?php if ($order['payment_reference']): ?>

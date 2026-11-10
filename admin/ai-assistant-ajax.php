@@ -550,7 +550,7 @@ if ($action === 'suggest_reply') {
 - Vouchers: given by the shop, shown in My Vouchers; no codes to type. At checkout the best one is picked automatically (one discount voucher off the items, one shipping voucher off the delivery fee); PWD/Senior accounts get both. A voucher used on a cancelled order goes back to the wallet. " . $promoLine . "
 - Returns/exchanges: within 30 days, unused with original tags; free shipping on exchanges.
 - Cancelling: only while the order is still Pending, done by the shop on request.
-- Custom (Design Studio) orders take 5-7 business days to produce after payment is confirmed. Custom statuses: Pending Payment -> Payment Uploaded / Verified -> Processing -> Printing -> Ready for Pickup -> Delivered.
+- Custom (Design Studio) orders take 5-7 business days to produce after payment is confirmed. Custom statuses: Pending Payment -> Payment Uploaded / Verified -> Processing -> Printing -> Ready for Pickup -> Picked Up (status value 'delivered'). Custom orders are pickup only: no delivery, courier or delivery fee.
 ";
     $faqRows = aia_rows($conn, "SELECT question, answer FROM chatbot_faq WHERE active = 1 ORDER BY priority DESC, id ASC LIMIT 30");
     if ($faqRows) {

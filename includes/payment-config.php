@@ -150,14 +150,15 @@ function paymentChannelTitle(string $key): string
  * stored value. Resolving through the channel config keeps the label right
  * for any channel that is ever added.
  */
-function paymentMethodLabel(?string $method): string
+function paymentMethodLabel(?string $method, bool $pickup = false): string
 {
     $method = (string) $method;
     if ($method === '' ) {
         return 'Not specified';
     }
     if ($method === 'cod') {
-        return 'Cash on Delivery';
+        // Store Pickup and every custom order are paid in cash at the counter.
+        return $pickup ? 'Cash on Pickup' : 'Cash on Delivery';
     }
     // Settled by the PayMongo gateway. It is not a QR channel, so it has no
     // display_name in the JSON config and would otherwise print as "Paymongo".

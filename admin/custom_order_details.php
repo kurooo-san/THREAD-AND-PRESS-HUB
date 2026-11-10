@@ -55,7 +55,7 @@ $statusLabels = [
     'processing'       => 'Processing',
     'printing'         => 'Printing',
     'ready_pickup'     => 'Ready for Pickup',
-    'delivered'        => 'Delivered',
+    'delivered'        => 'Picked Up',
     'cancelled'        => 'Cancelled',
 ];
 $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
@@ -215,7 +215,7 @@ $lines     = [
                     <p class="text-muted mb-2">Payment Method</p>
                     <p style="color: var(--coffee-dark); font-weight: 600;">
                         <i class="fas fa-<?php echo $payment['payment_method'] === 'cod' ? 'money-bill' : 'mobile-alt'; ?>"></i>
-                        <?php echo htmlspecialchars(paymentMethodLabel($payment['payment_method'])); ?>
+                        <?php echo htmlspecialchars(paymentMethodLabel($payment['payment_method'], true)); ?>
                         <?php if ($gateway && $gateway['payment_method_used']): ?>
                             <small class="text-muted">(<?php echo htmlspecialchars(strtoupper($gateway['payment_method_used'])); ?>)</small>
                         <?php endif; ?>

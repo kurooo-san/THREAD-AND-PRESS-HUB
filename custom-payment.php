@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$hasPaid) {
         header("Location: paymongo-checkout.php?kind=custom&order_id=" . $orderId);
         exit();
     } elseif ($channel === 'cod') {
-        // Cash on Delivery — no proof needed.
+        // Cash on Pickup — paid at the shop, so no proof needed.
         $stmt = $conn->prepare("INSERT INTO custom_order_payments (custom_order_id, payment_method, amount, payment_status) VALUES (?, 'cod', ?, 'pending')");
         $stmt->bind_param("id", $orderId, $order['total_price']);
         if ($stmt->execute()) {
@@ -464,11 +464,11 @@ $typeName = $typeNames[$order['product_type']] ?? 'T-Shirt';
                     <?php endif; ?>
                     <label class="channel-option" onclick="selectChannel('cod', false)">
                         <input type="radio" name="payment_method" value="cod">
-                        <span><i class="fas fa-money-bill-wave me-1"></i> Cash on Delivery</span>
+                        <span><i class="fas fa-money-bill-wave me-1"></i> Cash on Pickup</span>
                     </label>
                 </div>
                 <?php if (!$gatewayReady): ?>
-                    <p class="text-muted mt-2" style="font-size:.82rem;">Online payment is temporarily unavailable — you can still choose Cash on Delivery.</p>
+                    <p class="text-muted mt-2" style="font-size:.82rem;">Online payment is temporarily unavailable — you can still choose Cash on Pickup.</p>
                 <?php endif; ?>
 
                 <!-- Shown when the gateway is picked: no QR, no screenshot. -->
@@ -569,8 +569,8 @@ $typeName = $typeNames[$order['product_type']] ?? 'T-Shirt';
                 <!-- COD Notice -->
                 <div class="payment-proof-section" id="codSection">
                     <div class="payment-instructions" style="background:linear-gradient(135deg, #fff8e1, #fff3cd);">
-                        <h6 style="color:#f39c12;"><i class="fas fa-truck me-1"></i>Cash on Delivery</h6>
-                        <p style="margin:0;">You will pay <strong>₱<?php echo number_format($order['total_price'], 2); ?></strong> when you receive your order. Please prepare the exact amount.</p>
+                        <h6 style="color:#f39c12;"><i class="fas fa-store me-1"></i>Cash on Pickup</h6>
+                        <p style="margin:0;">You will pay <strong>₱<?php echo number_format($order['total_price'], 2); ?></strong> at our shop when you pick up your order. Please prepare the exact amount.</p>
                     </div>
                 </div>
             </div>

@@ -136,7 +136,7 @@ $statusLabels = [
     'processing'       => ['label' => 'Processing',       'badge' => 'primary'],
     'printing'         => ['label' => 'Printing',         'badge' => 'primary'],
     'ready_pickup'     => ['label' => 'Ready for Pickup', 'badge' => 'teal'],
-    'delivered'        => ['label' => 'Delivered',         'badge' => 'success'],
+    'delivered'        => ['label' => 'Picked Up',         'badge' => 'success'],
     'cancelled'        => ['label' => 'Cancelled',         'badge' => 'danger'],
 ];
 $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
@@ -257,7 +257,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
         <a href="?status=processing" class="co-filter-tab <?php echo $statusFilter === 'processing' ? 'active' : ''; ?>">Processing</a>
         <a href="?status=printing" class="co-filter-tab <?php echo $statusFilter === 'printing' ? 'active' : ''; ?>">Printing</a>
         <a href="?status=ready_pickup" class="co-filter-tab <?php echo $statusFilter === 'ready_pickup' ? 'active' : ''; ?>">Ready</a>
-        <a href="?status=delivered" class="co-filter-tab <?php echo $statusFilter === 'delivered' ? 'active' : ''; ?>">Delivered</a>
+        <a href="?status=delivered" class="co-filter-tab <?php echo $statusFilter === 'delivered' ? 'active' : ''; ?>">Picked Up</a>
         <a href="?status=cancelled" class="co-filter-tab <?php echo $statusFilter === 'cancelled' ? 'active' : ''; ?>">Cancelled</a>
     </div>
 
@@ -303,7 +303,7 @@ $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
                     <div>
                         <?php if ($o['payment_method']): ?>
                             <div class="co-payment-section">
-                                <p style="font-size:0.78rem; margin:0 0 0.3rem; font-weight:700;"><?php echo htmlspecialchars(paymentMethodLabel($o['payment_method'])); ?></p>
+                                <p style="font-size:0.78rem; margin:0 0 0.3rem; font-weight:700;"><?php echo htmlspecialchars(paymentMethodLabel($o['payment_method'], true)); ?></p>
                                 <span class="co-badge <?php echo $o['payment_status'] === 'verified' ? 'success' : ($o['payment_status'] === 'rejected' ? 'danger' : 'warning'); ?>">
                                     <?php echo htmlspecialchars($o['payment_status']); ?>
                                 </span>

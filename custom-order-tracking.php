@@ -68,7 +68,7 @@ $statusConfig = [
     'processing'         => ['label' => 'Processing',         'icon' => 'fas fa-cog',           'color' => '#8e44ad', 'step' => 3],
     'printing'           => ['label' => 'Printing',           'icon' => 'fas fa-print',         'color' => '#2980b9', 'step' => 4],
     'ready_pickup'       => ['label' => 'Ready for Pickup',   'icon' => 'fas fa-box',           'color' => '#16a085', 'step' => 5],
-    'delivered'          => ['label' => 'Delivered',           'icon' => 'fas fa-check-double',  'color' => '#27ae60', 'step' => 6],
+    'delivered'          => ['label' => 'Picked Up',           'icon' => 'fas fa-check-double',  'color' => '#27ae60', 'step' => 6],
     'cancelled'          => ['label' => 'Cancelled',          'icon' => 'fas fa-times-circle',  'color' => '#e74c3c', 'step' => -1],
 ];
 
@@ -94,7 +94,7 @@ if ($successFlash !== null) {
         $message = 'Your payment went through. We will start printing your design shortly.';
     } elseif ($isCod) {
         $title   = 'Order Placed!';
-        $message = 'Cash on Delivery — please prepare the exact amount when you receive your custom apparel.';
+        $message = 'Cash on Pickup — please prepare the exact amount and pay at our shop when you pick up your custom apparel.';
     } else {
         $title   = 'Payment Submitted!';
         $message = 'We received your proof of payment. We will verify it shortly and start printing your design.';
@@ -393,7 +393,7 @@ if ($successFlash !== null) {
                         <?php if ($payment): ?>
                         <li>
                             <span class="label">Payment Method</span>
-                            <span class="value"><?php echo htmlspecialchars(paymentMethodLabel($payment['payment_method'])); ?></span>
+                            <span class="value"><?php echo htmlspecialchars(paymentMethodLabel($payment['payment_method'], true)); ?></span>
                         </li>
                         <li>
                             <span class="label">Payment Status</span>
@@ -443,8 +443,8 @@ if ($successFlash !== null) {
                         ['step' => 2, 'icon' => 'fas fa-check-circle', 'title' => 'Payment Verified',   'desc' => 'Payment has been verified by admin.'],
                         ['step' => 3, 'icon' => 'fas fa-cog',          'title' => 'Processing',         'desc' => 'Your order is being processed and prepared for printing.'],
                         ['step' => 4, 'icon' => 'fas fa-print',        'title' => 'Printing',           'desc' => 'Your custom design is being printed on your apparel.'],
-                        ['step' => 5, 'icon' => 'fas fa-box',          'title' => 'Ready for Pickup',   'desc' => 'Your order is ready! Come pick it up or wait for delivery, then tap "Order Received".'],
-                        ['step' => 6, 'icon' => 'fas fa-check-double', 'title' => 'Delivered',          'desc' => 'Order has been delivered. Enjoy your custom apparel!'],
+                        ['step' => 5, 'icon' => 'fas fa-box',          'title' => 'Ready for Pickup',   'desc' => 'Your order is ready! Pick it up at our shop, then tap "Order Received".'],
+                        ['step' => 6, 'icon' => 'fas fa-check-double', 'title' => 'Picked Up',          'desc' => 'You have picked up your order. Enjoy your custom apparel!'],
                     ];
                     foreach ($steps as $s): 
                         $stepClass = '';

@@ -81,7 +81,7 @@ if ($conn) {
 
         $orderLine = function (array $o) use ($label) {
             return "- Order #" . $o['id'] . " | Status: " . $label($o['status'])
-                . " | Payment: " . paymentMethodLabel($o['payment_method'])
+                . " | Payment: " . paymentMethodLabel($o['payment_method'], ($o['delivery_address'] ?? '') === 'Store Pickup')
                 . (!empty($o['payment_status']) ? ' (' . $label($o['payment_status']) . ')' : '')
                 . " | Total: ₱" . number_format((float) $o['total'], 2)
                 . " | Date: " . date('M d, Y', strtotime($o['created_at']))
@@ -321,11 +321,12 @@ CUSTOM DESIGN SERVICE ('Design' / 'Design Studio' page):
   * PWD / Senior Citizen: 20% off the total
 - ORDERING FLOW (4 steps shown at the top of the pages): Design -> Order Summary -> Payment -> Tracking.
   * After tapping submit, the customer goes straight to the Order Summary, which shows the final price breakdown (base price, print size, extra colors, PWD/Senior discount). They do NOT need to wait for approval before ordering.
-  * On the Payment page they choose Pay Online (PayMongo) or Cash on Delivery — same rules as the regular checkout.
+  * On the Payment page they choose Pay Online (PayMongo) or Cash on Pickup (paid at the shop when they collect it).
   * Saved designs appear under 'My Designs' on the Design page with an 'Order Now' button ('Order again' for completed ones).
   * The shop team may send a design back for changes ('Revision') or cancel it; those designs cannot be ordered until updated (a cancelled one cannot be ordered at all).
-- Custom order statuses: Pending Payment -> Payment Uploaded / Payment Verified -> Processing -> Printing -> Ready for Pickup -> Delivered (or Cancelled).
-- Once a custom order is 'Ready for Pickup' and the customer has it in hand, they tap 'Order Received' on the order tracking page; that marks it Delivered.
+- Custom order statuses: Pending Payment -> Payment Uploaded / Payment Verified -> Processing -> Printing -> Ready for Pickup -> Picked Up (or Cancelled).
+- Custom orders are PICKUP ONLY: there is no delivery, courier or delivery fee for them. The customer collects the order at the shop.
+- Once a custom order is 'Ready for Pickup' and the customer has it in hand, they tap 'Order Received' on the order tracking page; that marks it Picked Up.
 - Custom orders typically take 5-7 business days to produce after payment confirmation.
 - Track custom order status on the 'My Custom Orders' page.
 

@@ -32,7 +32,7 @@ if (!$order) {
     exit('Custom order not found.');
 }
 
-// Delivery address. `users` has no single `address` column — it stores the
+// Billing address. `users` has no single `address` column — it stores the
 // parts separately — so assemble it the same way checkout.php does. The old
 // lookup asked for a column that does not exist, so this was always blank.
 $address = '';
@@ -110,7 +110,7 @@ $html .= '<table class="header"><tr>
     <td class="meta">
         <div><strong>CUSTOM INVOICE #C' . str_pad($order_id, 6, '0', STR_PAD_LEFT) . '</strong></div>
         <div>Date: ' . date('M d, Y', strtotime($order['created_at'])) . '</div>
-        <div>Status: ' . ucfirst(str_replace('_', ' ', htmlspecialchars($order['status']))) . '</div>
+        <div>Status: ' . htmlspecialchars(['ready_pickup' => 'Ready for pickup', 'delivered' => 'Picked up'][$order['status']] ?? ucfirst(str_replace('_', ' ', $order['status']))) . '</div>
     </td>
 </tr></table>';
 
@@ -192,7 +192,7 @@ if ($payment) {
         ? '<span class="badge badge-paid">PAID</span>'
         : '<span class="badge badge-pending">' . strtoupper(htmlspecialchars($pay_status ?: 'unpaid')) . '</span>';
     $html .= '<div class="section" style="margin-top:25px;"><h3>Payment</h3>
-        <div>Method: <strong>' . htmlspecialchars(paymentMethodLabel($payment['payment_method'])) . '</strong> ' . $badge . '</div>';
+        <div>Method: <strong>' . htmlspecialchars(paymentMethodLabel($payment['payment_method'], true)) . '</strong> ' . $badge . '</div>';
     if (!empty($payment['reference_number'])) {
         $html .= '<div>Reference: ' . htmlspecialchars($payment['reference_number']) . '</div>';
     }

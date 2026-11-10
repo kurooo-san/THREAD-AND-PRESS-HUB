@@ -156,7 +156,7 @@ if ($successFlash !== null) {
                             <p style="color: var(--coffee-dark); font-weight: 600;">
                                 <i class="fas fa-<?php echo $order['payment_method'] === 'cod' ? 'money-bill' : 'mobile-alt'; ?>"></i>
                                 <?php 
-                                    echo htmlspecialchars(paymentMethodLabel($order['payment_method']));
+                                    echo htmlspecialchars(paymentMethodLabel($order['payment_method'], ($order['delivery_address'] ?? '') === 'Store Pickup'));
                                 ?>
                             </p>
                         </div>

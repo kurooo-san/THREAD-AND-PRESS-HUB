@@ -207,7 +207,7 @@ function sendOrderConfirmationEmail($conn, $orderId) {
 
     <div style="background:#f9f9f9;border-radius:8px;padding:15px;margin:15px 0;">
         <p style="margin:5px 0;font-size:14px;"><strong>Order #' . $orderId . '</strong></p>
-        <p style="margin:5px 0;font-size:13px;color:#666;">Payment: ' . paymentMethodLabel($order['payment_method']) . '</p>
+        <p style="margin:5px 0;font-size:13px;color:#666;">Payment: ' . paymentMethodLabel($order['payment_method'], ($order['delivery_address'] ?? '') === 'Store Pickup') . '</p>
         <p style="margin:5px 0;font-size:13px;color:#666;">Delivery: ' . htmlspecialchars($order['delivery_address']) . '</p>
     </div>
 
@@ -419,7 +419,7 @@ function sendPasswordResetEmail($email, $fullname, $resetLink) {
 /**
  * Send a status-update email for a CUSTOM order (mirrors sendOrderStatusEmail).
  * Called by the admin custom-orders panel whenever the status changes, so the
- * customer gets real-time updates (processing → printing → delivered, etc.).
+ * customer gets real-time updates (processing → printing → ready for pickup, etc.).
  */
 function sendCustomOrderStatusEmail($conn, $customOrderId, $newStatus) {
     $stmt = $conn->prepare("SELECT co.*, u.fullname, u.email FROM custom_orders co JOIN users u ON co.user_id = u.id WHERE co.id = ?");
@@ -435,8 +435,8 @@ function sendCustomOrderStatusEmail($conn, $customOrderId, $newStatus) {
         'payment_verified' => ['Payment Verified', '#27ae60', 'Your payment is verified! Your custom apparel is queued for production.'],
         'processing'       => ['Processing', '#8e44ad', 'Your custom apparel is now in production.'],
         'printing'         => ['Printing', '#2980b9', 'Your design is being printed right now!'],
-        'ready_pickup'     => ['Ready', '#16a085', 'Your custom order is ready! It will be delivered or is ready for pickup. Once you have it, tap "Order Received" on your tracking page to confirm.'],
-        'delivered'        => ['Delivered', '#2ecc71', 'Your custom order has been delivered. Enjoy wearing your own design!'],
+        'ready_pickup'     => ['Ready', '#16a085', 'Your custom order is ready for pickup at our shop. Once you have it, tap "Order Received" on your tracking page to confirm.'],
+        'delivered'        => ['Picked Up', '#2ecc71', 'You have picked up your custom order. Enjoy wearing your own design!'],
         'cancelled'        => ['Cancelled', '#e74c3c', 'Your custom order has been cancelled. Contact support if you have questions.'],
     ];
     $statusInfo = $statusLabels[$newStatus] ?? ['Updated', '#666', 'Your custom order status has been updated.'];
@@ -485,7 +485,7 @@ function sendCustomOrderConfirmationEmail($conn, $customOrderId) {
 
     $typeNames = ['tshirt' => 'T-Shirt', 'hoodie' => 'Hoodie', 'polo' => 'Polo'];
     $typeName = $typeNames[$order['product_type']] ?? ucfirst($order['product_type']);
-    $paymentLabel = paymentMethodLabel($order['payment_method'] ?? '');
+    $paymentLabel = paymentMethodLabel($order['payment_method'] ?? '', true);
 
     $content = '
     <p style="color:#555;line-height:1.6;">Hi ' . htmlspecialchars($order['fullname']) . ',</p>

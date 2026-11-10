@@ -36,7 +36,7 @@ $statusLabels = [
     'processing'       => ['label' => 'Processing',       'class' => 'primary'],
     'printing'         => ['label' => 'Printing',         'class' => 'primary'],
     'ready_pickup'     => ['label' => 'Ready for Pickup', 'class' => 'success'],
-    'delivered'        => ['label' => 'Delivered',         'class' => 'success'],
+    'delivered'        => ['label' => 'Picked Up',         'class' => 'success'],
     'cancelled'        => ['label' => 'Cancelled',         'class' => 'danger'],
 ];
 ?>
@@ -179,7 +179,7 @@ $statusLabels = [
                         <p>Order #<?php echo (int)$o['id']; ?> · Size: <?php echo htmlspecialchars($o['size']); ?> · Qty: <?php echo (int)$o['quantity']; ?></p>
                         <p><?php echo date('M d, Y h:i A', strtotime($o['created_at'])); ?>
                             <?php if ($o['payment_method']): ?>
-                                · <?php echo htmlspecialchars(paymentMethodLabel($o['payment_method'])); ?>
+                                · <?php echo htmlspecialchars(paymentMethodLabel($o['payment_method'], true)); ?>
                             <?php endif; ?>
                         </p>
                     </div>

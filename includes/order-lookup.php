@@ -90,7 +90,7 @@ try {
             $response .= "Items: " . $order['item_count'] . " product(s)\n";
             $response .= "Total: ₱" . number_format($order['total'], 2) . "\n";
             $payIcon = ($order['payment_method'] === 'cod') ? "💵" : "💳";
-            $response .= "Payment: {$payIcon} " . paymentMethodLabel($order['payment_method']) . "\n";
+            $response .= "Payment: {$payIcon} " . paymentMethodLabel($order['payment_method'], ($order['delivery_address'] ?? '') === 'Store Pickup') . "\n";
             $response .= "Order Date: " . date('F d, Y g:i A', strtotime($order['created_at'])) . "\n";
             
             if (in_array($order['status'], ['out_for_delivery', 'completed'], true) && ($ship = orderShipmentText($order))) {

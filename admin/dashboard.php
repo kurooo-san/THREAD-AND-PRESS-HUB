@@ -372,7 +372,7 @@ function adStatusPill(string $status): string
                         <td><?php echo htmlspecialchars($order['fullname']); ?></td>
                         <td>₱<?php echo number_format($order['total'], 2); ?></td>
                         <td><span class="ad-pill <?php echo adStatusPill($order['status']); ?>"><?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $order['status']))); ?></span></td>
-                        <td><?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'] ?? '')); ?></td>
+                        <td><?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'] ?? '', ($order['delivery_address'] ?? '') === 'Store Pickup')); ?></td>
                         <td><?php echo date('M d, Y', strtotime($order['created_at'])); ?></td>
                         <td style="text-align:right;"><a href="order_details.php?id=<?php echo (int)$order['id']; ?>" class="ad-btn-out">View</a></td>
                     </tr>

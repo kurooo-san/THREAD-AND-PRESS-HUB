@@ -323,7 +323,7 @@ $orders = $conn->query("SELECT o.*$selectExtras, u.fullname, u.email FROM orders
                         </td>
                         <td>₱<?php echo number_format($order['total'], 2); ?></td>
                         <td>
-                            <?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'])); ?>
+                            <?php echo htmlspecialchars(paymentMethodLabel($order['payment_method'], ($order['delivery_address'] ?? '') === 'Store Pickup')); ?>
                             <?php if (!empty($order['payment_reference'])): ?>
                                 <br><small class="text-muted">Ref: <?php echo htmlspecialchars($order['payment_reference']); ?></small>
                             <?php endif; ?>
