@@ -1278,6 +1278,10 @@ body.admin-page .ad-dash .ad-thumb {
     background: var(--ad-page);
 }
 body.admin-page .ad-dash .ad-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* Numbers hug the right edge instead of floating mid-table. */
+body.admin-page .ad-dash .ad-col-num { width: 1%; padding-left: 28px; text-align: right; }
+/* Room under the last card so the floating AI Insights button never covers it. */
+body.admin-page .ad-dash { padding-bottom: 110px; }
 body.admin-page .ad-dash .ad-item {
     display: flex;
     align-items: center;

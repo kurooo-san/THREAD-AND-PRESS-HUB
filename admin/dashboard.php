@@ -156,7 +156,7 @@ if (productsHasStockColumn()) {
                 AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
           )
         ORDER BY p.stock DESC
-        LIMIT 8
+        LIMIT 5
     ");
     if ($ss_q) { while ($r = $ss_q->fetch_assoc()) { $slow_stock[] = $r; } }
 }
@@ -405,7 +405,7 @@ function adStatusPill(string $status): string
             <?php else: ?>
             <div class="ad-table-wrap">
                 <table class="ad-table">
-                    <thead><tr><th>Product</th><th>Sold</th><th style="text-align:right;">Revenue</th></tr></thead>
+                    <thead><tr><th>Product</th><th class="ad-col-num">Sold</th><th class="ad-col-num">Revenue</th></tr></thead>
                     <tbody>
                         <?php foreach ($top_products as $i => $tp): ?>
                         <tr>
@@ -416,8 +416,8 @@ function adStatusPill(string $status): string
                                     <?php echo htmlspecialchars($tp['name']); ?>
                                 </span>
                             </td>
-                            <td><?php echo (int)$tp['qty_sold']; ?></td>
-                            <td style="text-align:right;">₱<?php echo number_format($tp['revenue'], 2); ?></td>
+                            <td class="ad-col-num"><?php echo (int)$tp['qty_sold']; ?></td>
+                            <td class="ad-col-num">₱<?php echo number_format($tp['revenue'], 2); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
