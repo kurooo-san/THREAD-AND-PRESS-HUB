@@ -233,10 +233,11 @@ function adStatusPill(string $status): string
 <?php include '../includes/header/header.php'; ?>
 <?php include '../includes/admin-sidebar.php'; ?>
 
-<div class="admin-container" data-live-poll>
+<div class="admin-container ad-dash is-entering" data-live-poll>
 
     <div class="ad-head">
         <div>
+            <span class="ad-eyebrow"><?php echo date('l, F j, Y'); ?></span>
             <h1>Dashboard</h1>
             <p>Kumusta, <?php echo htmlspecialchars($adminFirstName); ?> — eto ang nangyayari sa store mo ngayon.</p>
         </div>
@@ -253,38 +254,42 @@ function adStatusPill(string $status): string
 
     <!-- Stat cards -->
     <div class="ad-stats" data-live="dash-stats">
-        <div class="ad-card">
+        <div class="ad-card ad-stat ad-stat-hero">
             <div class="ad-stat-top">
-                <span class="ad-stat-label">Total Revenue</span>
+                <span class="ad-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></span>
                 <span class="ad-trend <?php echo $rev_dir; ?>"><?php echo htmlspecialchars($rev_pct); ?></span>
             </div>
+            <span class="ad-stat-label">Total Revenue</span>
             <div class="ad-stat-value">₱<?php echo number_format($total_revenue, 2); ?></div>
             <div class="ad-stat-sub">vs ₱<?php echo number_format($rev_prev, 2); ?> last period</div>
         </div>
 
-        <div class="ad-card">
+        <div class="ad-card ad-stat">
             <div class="ad-stat-top">
-                <span class="ad-stat-label">Total Orders</span>
+                <span class="ad-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
                 <span class="ad-trend <?php echo $ord_dir; ?>"><?php echo htmlspecialchars($ord_pct); ?></span>
             </div>
+            <span class="ad-stat-label">Total Orders</span>
             <div class="ad-stat-value"><?php echo number_format($orders_count); ?></div>
             <div class="ad-stat-sub"><?php echo number_format($pending_orders_count); ?> pending review</div>
         </div>
 
-        <div class="ad-card">
+        <div class="ad-card ad-stat">
             <div class="ad-stat-top">
-                <span class="ad-stat-label">Products</span>
+                <span class="ad-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg></span>
                 <span class="ad-trend <?php echo $new_products > 0 ? 'up' : 'flat'; ?>"><?php echo $new_products > 0 ? '+' . $new_products . ' new' : 'No change'; ?></span>
             </div>
+            <span class="ad-stat-label">Products</span>
             <div class="ad-stat-value"><?php echo number_format($products_count); ?></div>
             <div class="ad-stat-sub"><?php echo number_format($low_stock_count); ?> low on stock</div>
         </div>
 
-        <div class="ad-card">
+        <div class="ad-card ad-stat">
             <div class="ad-stat-top">
-                <span class="ad-stat-label">Total Users</span>
+                <span class="ad-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                 <span class="ad-trend <?php echo $usr_dir; ?>"><?php echo htmlspecialchars($usr_pct); ?></span>
             </div>
+            <span class="ad-stat-label">Total Users</span>
             <div class="ad-stat-value"><?php echo number_format($users_count); ?></div>
             <div class="ad-stat-sub"><?php echo number_format($users_this_month); ?> joined this month</div>
         </div>
@@ -299,8 +304,8 @@ function adStatusPill(string $status): string
                     <p><?php echo htmlspecialchars($chart_range); ?></p>
                 </div>
                 <div class="ad-legend">
-                    <span><i class="ad-legend-revenue" style="background:#17181b;"></i>Revenue</span>
-                    <span><i style="background:#d9884c;"></i>Orders</span>
+                    <span><i class="ad-legend-revenue"></i>Revenue</span>
+                    <span><i class="ad-legend-orders"></i>Orders</span>
                 </div>
             </div>
             <?php if (empty($revenue_data)): ?>
@@ -313,7 +318,7 @@ function adStatusPill(string $status): string
         <div class="ad-card" data-live="dash-status">
             <div class="ad-card-head">
                 <h2>Order Status</h2>
-                <span style="font-size:12px;color:#97928a;white-space:nowrap;"><?php echo number_format($status_total); ?> total</span>
+                <span class="ad-count-chip"><?php echo number_format($status_total); ?> total</span>
             </div>
 
             <?php if ($status_total === 0): ?>
@@ -325,8 +330,8 @@ function adStatusPill(string $status): string
                 ?>
                 <div class="ad-status-row">
                     <div class="ad-status-top">
-                        <b><?php echo htmlspecialchars($row['label']); ?></b>
-                        <span><?php echo number_format($count); ?></span>
+                        <b><i class="ad-dot <?php echo $row['colour']; ?>"></i><?php echo htmlspecialchars($row['label']); ?></b>
+                        <span><?php echo number_format($count); ?> <small><?php echo $pct; ?>%</small></span>
                     </div>
                     <div class="ad-bar"><i class="<?php echo $row['colour']; ?>" style="width:<?php echo $pct; ?>%;"></i></div>
                 </div>
@@ -335,6 +340,7 @@ function adStatusPill(string $status): string
 
             <?php if ($pending_custom_orders > 0): ?>
             <div class="ad-alert">
+                <span class="ad-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m14.6 3.4 6 6L9 21H3v-6z"/><path d="m12 6 6 6"/></svg></span>
                 <div>
                     <small>Pending custom orders</small>
                     <b><?php echo number_format($pending_custom_orders); ?> to review</b>
@@ -346,7 +352,7 @@ function adStatusPill(string $status): string
     </div>
 
     <!-- Recent orders -->
-    <div class="ad-card" style="margin-bottom:18px;" data-live="dash-recent">
+    <div class="ad-card ad-block" data-live="dash-recent">
         <div class="ad-card-head">
             <h2>Recent Orders</h2>
             <a href="orders.php" class="ad-link">View all orders →</a>
@@ -401,11 +407,12 @@ function adStatusPill(string $status): string
                 <table class="ad-table">
                     <thead><tr><th>Product</th><th>Sold</th><th style="text-align:right;">Revenue</th></tr></thead>
                     <tbody>
-                        <?php foreach ($top_products as $tp): ?>
+                        <?php foreach ($top_products as $i => $tp): ?>
                         <tr>
                             <td>
-                                <span style="display:inline-flex;align-items:center;gap:10px;">
-                                    <img src="../images/products/<?php echo htmlspecialchars($tp['image']); ?>" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:8px;border:1px solid #e6e3dc;">
+                                <span class="ad-prod">
+                                    <span class="ad-rank"><?php echo $i + 1; ?></span>
+                                    <img class="ad-thumb" src="../images/products/<?php echo htmlspecialchars($tp['image']); ?>" alt="">
                                     <?php echo htmlspecialchars($tp['name']); ?>
                                 </span>
                             </td>
@@ -419,7 +426,7 @@ function adStatusPill(string $status): string
             <?php endif; ?>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
+        <div class="ad-stack">
         <div class="ad-card">
             <div class="ad-card-head">
                 <h2>Low Stock</h2>
@@ -429,9 +436,9 @@ function adStatusPill(string $status): string
                 <div class="ad-empty">Everything is well stocked.</div>
             <?php else: ?>
                 <?php foreach ($low_stock as $ls): ?>
-                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1eee8;">
-                    <img src="../images/products/<?php echo htmlspecialchars($ls['image']); ?>" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:8px;border:1px solid #e6e3dc;flex-shrink:0;">
-                    <span style="flex:1 1 auto;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo htmlspecialchars($ls['name']); ?></span>
+                <div class="ad-item">
+                    <img class="ad-thumb" src="../images/products/<?php echo htmlspecialchars($ls['image']); ?>" alt="">
+                    <span class="ad-item-name"><?php echo htmlspecialchars($ls['name']); ?></span>
                     <span class="ad-pill <?php echo (int)$ls['stock'] <= 0 ? 's-other' : 's-pending'; ?>"><?php echo (int)$ls['stock']; ?> left</span>
                 </div>
                 <?php endforeach; ?>
@@ -450,9 +457,9 @@ function adStatusPill(string $status): string
                 <div class="ad-empty">No overstock. Every stocked product sold recently.</div>
             <?php else: ?>
                 <?php foreach ($slow_stock as $ss): ?>
-                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1eee8;">
-                    <img src="../images/products/<?php echo htmlspecialchars($ss['image']); ?>" alt="" style="width:34px;height:34px;object-fit:cover;border-radius:8px;border:1px solid #e6e3dc;flex-shrink:0;">
-                    <span style="flex:1 1 auto;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo htmlspecialchars($ss['name']); ?></span>
+                <div class="ad-item">
+                    <img class="ad-thumb" src="../images/products/<?php echo htmlspecialchars($ss['image']); ?>" alt="">
+                    <span class="ad-item-name"><?php echo htmlspecialchars($ss['name']); ?></span>
                     <span class="ad-pill s-other"><?php echo (int)$ss['stock']; ?> in stock</span>
                 </div>
                 <?php endforeach; ?>
@@ -468,6 +475,8 @@ function adStatusPill(string $status): string
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="../js/admin-sidebar.js"></script>
 <script>
+// Entrance plays once; live-poll swaps must not replay it.
+setTimeout(() => document.querySelector('.ad-dash')?.classList.remove('is-entering'), 900);
 (function () {
     if (typeof Chart === 'undefined') return;
 
@@ -527,7 +536,7 @@ function adStatusPill(string $status): string
                     {
                         label: 'Orders',
                         data: data.orders,
-                        backgroundColor: '#d9884c',
+                        backgroundColor: '#c8a96e',
                         borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
                         borderSkipped: false,
                         barPercentage: 0.62,

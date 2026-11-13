@@ -276,7 +276,7 @@ try { if (localStorage.getItem('tph_admin_sidebar') === 'collapsed') document.do
                 if (!count) return '';
                 return `<a href="${href}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid #f1eee8;text-decoration:none;color:#16171a;font-size:13px;">
                     <span style="flex:1 1 auto;font-weight:600;">${label}</span>
-                    <span style="min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#e8a05a;color:#1b1206;font-size:11px;font-weight:700;line-height:20px;text-align:center;">${count}</span>
+                    <span style="min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#d4b47a;color:#1b1206;font-size:11px;font-weight:700;line-height:20px;text-align:center;">${count}</span>
                 </a>`;
             }
 

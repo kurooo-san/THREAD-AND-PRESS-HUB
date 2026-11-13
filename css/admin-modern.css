@@ -15,11 +15,11 @@ body.admin-page {
     --ad-muted:       #6f6b63;
     --ad-faint:       #97928a;
 
-    --ad-amber:       #d9884c;
-    --ad-amber-lite:  #e8a05a;
-    --ad-amber-deep:  #c96a3a;
-    --ad-amber-grad:  linear-gradient(135deg, #e8a05a, #c96a3a);
-    --ad-amber-tint:  rgba(232, 149, 90, 0.14);
+    --ad-amber:       #c8a96e;
+    --ad-amber-lite:  #d4b47a;
+    --ad-amber-deep:  #8a6d36;
+    --ad-amber-grad:  linear-gradient(135deg, #d4b47a, #b89555);
+    --ad-amber-tint:  rgba(200, 169, 110, 0.14);
 
     --ad-panel:       linear-gradient(180deg, #17181b, #101114);
     --ad-on-dark:     #f4f2ee;
@@ -29,7 +29,7 @@ body.admin-page {
 
     --ad-ok-bg:       #e8f3ea;  --ad-ok-fg:       #2c6e3f;
     --ad-warn-bg:     #faf3dc;  --ad-warn-fg:     #8a6d1a;
-    --ad-info-bg:     #f4ede2;  --ad-info-fg:     #a5601e;
+    --ad-info-bg:     #f4eee2;  --ad-info-fg:     #85682f;
 
     background: var(--ad-page) !important;
     font-family: 'Instrument Sans', Helvetica, Arial, sans-serif;
@@ -406,7 +406,7 @@ body.admin-page .ad-bar i {
     background: var(--ad-faint);
 }
 body.admin-page .ad-bar i.c-green  { background: #3f9d5f; }
-body.admin-page .ad-bar i.c-amber  { background: #d9884c; }
+body.admin-page .ad-bar i.c-amber  { background: #c8a96e; }
 body.admin-page .ad-bar i.c-yellow { background: #e0b93f; }
 body.admin-page .ad-bar i.c-blue   { background: #3f7fd9; }
 
@@ -610,7 +610,7 @@ body.admin-page .admin-container .form-control-sm { height: 34px; padding: 0 9px
 body.admin-page .admin-container .form-control:focus,
 body.admin-page .admin-container .form-select:focus {
     border-color: var(--ad-amber);
-    box-shadow: 0 0 0 3px rgba(217, 136, 76, 0.15);
+    box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.15);
     background-color: #fff;
 }
 body.admin-page .admin-container .form-control::placeholder { color: #b4afa6; }
@@ -621,7 +621,7 @@ body.admin-page .admin-container .form-check-input:checked {
 }
 body.admin-page .admin-container .form-check-input:focus {
     border-color: var(--ad-amber);
-    box-shadow: 0 0 0 3px rgba(217, 136, 76, 0.15);
+    box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.15);
 }
 body.admin-page .admin-container .form-check-label { font-size: 13.5px; color: var(--ad-ink); }
 body.admin-page .admin-container .form-text { font-size: 12px; color: var(--ad-faint); }
@@ -956,11 +956,11 @@ body.admin-page .ad-ai-toggle {
     color: #1b1206;
     font-weight: 700;
     font-size: 13.5px;
-    box-shadow: 0 10px 28px rgba(201, 106, 58, 0.35);
+    box-shadow: 0 10px 28px rgba(184, 149, 85, 0.35);
     cursor: pointer;
     transition: transform .15s ease, box-shadow .15s ease;
 }
-body.admin-page .ad-ai-toggle:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(201, 106, 58, 0.42); }
+body.admin-page .ad-ai-toggle:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(184, 149, 85, 0.42); }
 body.admin-page .ad-ai-toggle:focus-visible { outline: 3px solid var(--ad-ink); outline-offset: 3px; }
 body.admin-page .ad-ai-toggle.is-open { transform: none; }
 /* Support Chat's reply box sits in the bottom-right corner. */
@@ -1134,7 +1134,7 @@ body.admin-page .support-ai-suggest {
     font-weight: 700;
     cursor: pointer;
 }
-body.admin-page .support-ai-suggest:hover { background: rgba(232, 149, 90, 0.24); }
+body.admin-page .support-ai-suggest:hover { background: rgba(200, 169, 110, 0.24); }
 body.admin-page .support-ai-suggest:disabled { opacity: .6; cursor: wait; }
 body.admin-page .support-ai-note { font-size: 11.5px; color: var(--ad-faint); }
 body.admin-page .support-ai-note.is-error { color: #b13c3c; }
@@ -1142,3 +1142,189 @@ html.dark-mode body.admin-page .support-ai-suggest { color: var(--ad-amber-lite)
 html.dark-mode body.admin-page .ad-ai-error { border-color: #4f2a2a; color: #f1a0a0; }
 html.dark-mode body.admin-page .support-ai-note.is-error { color: #f1a0a0; }
 html.dark-mode body.admin-page .ad-ai-user { background: #2c2c36; }
+
+/* =========================================================
+   Dashboard polish (admin/dashboard.php only — scoped to .ad-dash,
+   so the shared .ad-card / .ad-table on other admin pages are untouched).
+   ========================================================= */
+body.admin-page .ad-dash {
+    --ad-row-line: #f1eee8;
+    --ad-icon-bg:  var(--ad-amber-tint);
+    --ad-icon-fg:  var(--ad-amber-deep);
+    --ad-shadow:   0 1px 2px rgba(22, 23, 26, 0.04), 0 6px 18px -10px rgba(22, 23, 26, 0.12);
+}
+body.admin-page .ad-dash .ad-eyebrow {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ad-amber-deep);
+}
+body.admin-page .ad-dash .ad-card { box-shadow: var(--ad-shadow); }
+body.admin-page .ad-dash .ad-block { margin-bottom: 18px; }
+body.admin-page .ad-dash .ad-card-head {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--ad-row-line);
+}
+body.admin-page .ad-dash .ad-stat-value,
+body.admin-page .ad-dash .ad-table td,
+body.admin-page .ad-dash .ad-status-top span { font-variant-numeric: tabular-nums; }
+
+/* ---- Stat cards ---- */
+body.admin-page .ad-dash .ad-stat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+body.admin-page .ad-dash .ad-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(22, 23, 26, 0.05), 0 14px 28px -14px rgba(22, 23, 26, 0.22);
+}
+body.admin-page .ad-dash .ad-stat .ad-stat-top { margin-bottom: 16px; align-items: center; }
+body.admin-page .ad-dash .ad-stat .ad-stat-label { margin-bottom: 4px; }
+body.admin-page .ad-dash .ad-stat-icon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: var(--ad-icon-bg);
+    color: var(--ad-icon-fg);
+}
+body.admin-page .ad-dash .ad-stat-icon svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+body.admin-page .ad-dash .ad-trend.up::before   { content: "↑"; }
+body.admin-page .ad-dash .ad-trend.down::before { content: "↓"; }
+
+/* Revenue is the number admins open the page for, so it gets the dark panel. */
+body.admin-page .ad-dash .ad-stat-hero {
+    background: var(--ad-panel);
+    border-color: transparent;
+    overflow: hidden;
+    --ad-icon-bg: rgba(200, 169, 110, 0.18);
+    --ad-icon-fg: var(--ad-amber-lite);
+}
+body.admin-page .ad-dash .ad-stat-hero::after {
+    content: "";
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(200, 169, 110, 0.28), transparent 70%);
+    pointer-events: none;
+}
+body.admin-page .ad-dash .ad-stat-hero .ad-stat-label { color: var(--ad-on-dark-dim); }
+body.admin-page .ad-dash .ad-stat-hero .ad-stat-value { color: var(--ad-on-dark); }
+body.admin-page .ad-dash .ad-stat-hero .ad-stat-sub   { color: var(--ad-on-dark-lbl); }
+body.admin-page .ad-dash .ad-stat-hero .ad-trend.up   { background: rgba(127, 212, 155, 0.16); color: #8fdcaa; }
+body.admin-page .ad-dash .ad-stat-hero .ad-trend.down { background: rgba(241, 160, 160, 0.16); color: #f1a0a0; }
+body.admin-page .ad-dash .ad-stat-hero .ad-trend.flat { background: rgba(255, 255, 255, 0.08); color: var(--ad-on-dark-dim); }
+
+/* ---- Chart legend + status ---- */
+body.admin-page .ad-dash .ad-legend-revenue { background: var(--ad-ink); }
+body.admin-page .ad-dash .ad-legend-orders  { background: var(--ad-amber); }
+body.admin-page .ad-dash .ad-count-chip {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--ad-row-line);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ad-muted);
+    white-space: nowrap;
+}
+body.admin-page .ad-dash .ad-status-top b { display: inline-flex; align-items: center; gap: 8px; }
+body.admin-page .ad-dash .ad-status-top span small { margin-left: 4px; font-size: 11.5px; font-weight: 500; color: var(--ad-faint); }
+body.admin-page .ad-dash .ad-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ad-faint); }
+body.admin-page .ad-dash .ad-dot.c-green  { background: #3f9d5f; }
+body.admin-page .ad-dash .ad-dot.c-amber  { background: #c8a96e; }
+body.admin-page .ad-dash .ad-dot.c-yellow { background: #e0b93f; }
+body.admin-page .ad-dash .ad-dot.c-blue   { background: #3f7fd9; }
+body.admin-page .ad-dash .ad-bar i { transition: width .6s cubic-bezier(.2, .7, .2, 1); }
+body.admin-page .ad-dash .ad-alert .ad-stat-icon { width: 34px; height: 34px; border-radius: 10px; }
+
+/* ---- Tables + product lists ---- */
+body.admin-page .ad-dash .ad-table td { border-bottom-color: var(--ad-row-line); }
+body.admin-page .ad-dash .ad-prod { display: inline-flex; align-items: center; gap: 10px; }
+body.admin-page .ad-dash .ad-rank {
+    width: 22px;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ad-faint);
+    text-align: center;
+}
+body.admin-page .ad-dash tr:first-child .ad-rank { color: var(--ad-amber-deep); }
+body.admin-page .ad-dash .ad-thumb {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: 9px;
+    border: 1px solid var(--ad-line);
+    background: var(--ad-page);
+}
+body.admin-page .ad-dash .ad-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+body.admin-page .ad-dash .ad-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 6px;
+    margin: 0 -6px;
+    border-radius: 10px;
+    border-bottom: 1px solid var(--ad-row-line);
+}
+body.admin-page .ad-dash .ad-item:last-child { border-bottom: 0; }
+body.admin-page .ad-dash .ad-item:hover { background: var(--ad-page); }
+body.admin-page .ad-dash .ad-item-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---- First-load entrance. is-entering is removed after load, so the
+   live-poll region swaps never replay it. ---- */
+@keyframes adRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+body.admin-page .ad-dash.is-entering > :not(.ad-stats) { animation: adRise .45s cubic-bezier(.2, .7, .2, 1) both; }
+body.admin-page .ad-dash.is-entering .ad-stats > * { animation: adRise .45s cubic-bezier(.2, .7, .2, 1) both; }
+body.admin-page .ad-dash.is-entering > :nth-child(3) { animation-delay: .08s; }
+body.admin-page .ad-dash.is-entering > :nth-child(4) { animation-delay: .14s; }
+body.admin-page .ad-dash.is-entering > :nth-child(5) { animation-delay: .2s; }
+body.admin-page .ad-dash.is-entering .ad-stats > :nth-child(2) { animation-delay: .04s; }
+body.admin-page .ad-dash.is-entering .ad-stats > :nth-child(3) { animation-delay: .08s; }
+body.admin-page .ad-dash.is-entering .ad-stats > :nth-child(4) { animation-delay: .12s; }
+@media (prefers-reduced-motion: reduce) {
+    body.admin-page .ad-dash *,
+    body.admin-page .ad-dash.is-entering > * { animation: none !important; transition: none !important; }
+    body.admin-page .ad-dash .ad-stat:hover { transform: none; }
+}
+
+/* ---- Dark mode ---- */
+html.dark-mode body.admin-page .ad-dash {
+    --ad-row-line: #282830;
+    --ad-icon-fg:  var(--ad-amber-lite);
+    --ad-shadow:   none;
+}
+html.dark-mode body.admin-page .ad-dash .ad-stat-hero {
+    background: linear-gradient(160deg, #2a2621, #1d1d24 70%);
+    border-color: #3a3229;
+}
+html.dark-mode body.admin-page .ad-dash .ad-eyebrow,
+html.dark-mode body.admin-page .ad-dash tr:first-child .ad-rank { color: var(--ad-amber-lite); }

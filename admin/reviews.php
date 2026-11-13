@@ -181,7 +181,7 @@ if ($tableExists) {
                 <div class="d-flex align-items-center gap-2 small mb-1">
                     <span class="text-nowrap" style="width: 2.5rem;"><?php echo $star; ?> ★</span>
                     <div class="flex-grow-1" style="height: 8px; background: rgba(127,127,127,.2); border-radius: 4px; overflow: hidden;">
-                        <div style="width: <?php echo $pct; ?>%; height: 100%; background: #e8a05a;"></div>
+                        <div style="width: <?php echo $pct; ?>%; height: 100%; background: #d4b47a;"></div>
                     </div>
                     <span class="text-muted text-end" style="width: 2rem;"><?php echo $c; ?></span>
                 </div>
@@ -282,7 +282,7 @@ if ($tableExists) {
                             <?php if ((int)$rv['is_verified'] === 1): ?><br><span class="badge bg-success">Verified buyer</span><?php endif; ?>
                         </td>
                         <?php $stars = max(1, min(5, (int)$rv['rating'])); // renderStars() needs product-modern.css, which admin pages don't load ?>
-                        <td class="text-nowrap" style="color:#e8a05a;" aria-label="<?php echo $stars; ?> out of 5 stars"><?php echo str_repeat('★', $stars) . str_repeat('☆', 5 - $stars); ?></td>
+                        <td class="text-nowrap" style="color:#d4b47a;" aria-label="<?php echo $stars; ?> out of 5 stars"><?php echo str_repeat('★', $stars) . str_repeat('☆', 5 - $stars); ?></td>
                         <td class="small">
                             <?php if (trim((string)$rv['title']) !== ''): ?><strong><?php echo htmlspecialchars($rv['title']); ?></strong><br><?php endif; ?>
                             <?php echo trim((string)$rv['body']) !== '' ? nl2br(htmlspecialchars($rv['body'])) : '<span class="text-muted">(no comment)</span>'; ?>

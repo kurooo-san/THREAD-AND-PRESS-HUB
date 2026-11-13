@@ -474,7 +474,7 @@ $peso = fn($n) => '₱' . number_format((float)$n, 2);
                 datasets: [{
                     label: 'Sales (₱)',
                     data: data.sales,
-                    backgroundColor: '#d9884c',
+                    backgroundColor: '#c8a96e',
                     borderRadius: 4
                 }]
             },

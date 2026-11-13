@@ -583,7 +583,7 @@ html.dark-mode body.admin-page {
     --ad-faint:  #86827b;
     --ad-ok-bg:   #173022;  --ad-ok-fg:   #7fd49b;
     --ad-warn-bg: #332a12;  --ad-warn-fg: #e7c66a;
-    --ad-info-bg: #33261a;  --ad-info-fg: #eaa86a;
+    --ad-info-bg: #2f2a1e;  --ad-info-fg: #d9bf8a;
 }
 html.dark-mode body.admin-page .ad-trend.down { background: #3a1c1c; color: #f1a0a0; }
 html.dark-mode body.admin-page .ad-trend.flat { background: #26262e; }
